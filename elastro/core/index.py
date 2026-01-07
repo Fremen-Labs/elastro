@@ -6,8 +6,11 @@ This module provides functionality for managing Elasticsearch indices.
 
 from typing import Dict, Optional, Any, List, Union
 from elastro.core.client import ElasticsearchClient
-from elastro.core.errors import IndexError, ValidationError
+from elastro.core.errors import ElasticIndexError, ValidationError
 from elastro.core.validation import Validator
+from elastro.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class IndexManager:
@@ -33,7 +36,7 @@ class IndexManager:
         name: str,
         settings: Optional[Dict[str, Any]] = None,
         mappings: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    ) -> Any:
         """
         Create a new Elasticsearch index.
 
@@ -43,11 +46,7 @@ class IndexManager:
             mappings: Index mappings
 
         Returns:
-            Dict containing creation response
-
-        Raises:
-            ValidationError: If input validation fails
-            IndexError: If index creation fails
+            Creation response
         """
         if not name:
             raise ValidationError("Index name is required")
@@ -67,6 +66,7 @@ class IndexManager:
                 self.validator.validate_index_settings(settings)
                 body["settings"] = settings
             except ValidationError as e:
+                logger.error(f"Invalid index settings for {name}: {str(e)}")
                 raise ValidationError(f"Invalid index settings: {str(e)}")
 
         # Process mappings
@@ -75,13 +75,17 @@ class IndexManager:
                 self.validator.validate_index_mappings(mappings)
                 body["mappings"] = mappings
             except ValidationError as e:
+                logger.error(f"Invalid index mappings for {name}: {str(e)}")
                 raise ValidationError(f"Invalid index mappings: {str(e)}")
 
         try:
+            logger.info(f"Creating index '{name}'...")
             response = self.client.client.indices.create(index=name, body=body)
+            logger.info(f"Index '{name}' created successfully")
             return response
         except Exception as e:
-            raise IndexError(f"Failed to create index '{name}': {str(e)}")
+            logger.error(f"Failed to create index '{name}': {str(e)}")
+            raise ElasticIndexError(f"Failed to create index '{name}': {str(e)}")
 
     def exists(self, name: str) -> bool:
         """
@@ -92,19 +96,20 @@ class IndexManager:
 
         Returns:
             True if index exists, False otherwise
-
-        Raises:
-            IndexError: If the check operation fails
         """
         if not name:
             raise ValidationError("Index name is required")
 
         try:
-            return self.client.client.indices.exists(index=name)
+            # exists() returns a boolean in the python client usually, but types might say HeadApiResponse
+            exists = self.client.client.indices.exists(index=name)
+            logger.debug(f"Index '{name}' exists: {exists}")
+            return bool(exists)
         except Exception as e:
-            raise IndexError(f"Failed to check if index '{name}' exists: {str(e)}")
+            logger.error(f"Failed to check if index '{name}' exists: {str(e)}")
+            raise ElasticIndexError(f"Failed to check if index '{name}' exists: {str(e)}")
 
-    def get(self, name: str) -> Dict[str, Any]:
+    def get(self, name: str) -> Any:
         """
         Get index information.
 
@@ -112,26 +117,24 @@ class IndexManager:
             name: Name of the index
 
         Returns:
-            Dict containing index information
-
-        Raises:
-            IndexError: If index doesn't exist or operation fails
+            Index information
         """
         if not name:
             raise ValidationError("Index name is required")
 
         try:
             if not self.exists(name):
-                raise IndexError(f"Index '{name}' does not exist")
+                raise ElasticIndexError(f"Index '{name}' does not exist")
 
             response = self.client.client.indices.get(index=name)
             return response
-        except IndexError:
+        except ElasticIndexError:
             raise
         except Exception as e:
-            raise IndexError(f"Failed to get index '{name}': {str(e)}")
+            logger.error(f"Failed to get index '{name}': {str(e)}")
+            raise ElasticIndexError(f"Failed to get index '{name}': {str(e)}")
 
-    def update(self, name: str, settings: Dict[str, Any]) -> Dict[str, Any]:
+    def update(self, name: str, settings: Dict[str, Any]) -> Any:
         """
         Update index settings.
 
@@ -140,11 +143,7 @@ class IndexManager:
             settings: Updated index settings
 
         Returns:
-            Dict containing update response
-
-        Raises:
-            ValidationError: If input validation fails
-            IndexError: If index update fails
+            Update response
         """
         if not name:
             raise ValidationError("Index name is required")
@@ -155,24 +154,27 @@ class IndexManager:
         try:
             self.validator.validate_index_settings(settings)
         except ValidationError as e:
+            logger.error(f"Invalid index settings for {name}: {str(e)}")
             raise ValidationError(f"Invalid index settings: {str(e)}")
 
         try:
             if not self.exists(name):
-                raise IndexError(f"Index '{name}' does not exist")
+                raise ElasticIndexError(f"Index '{name}' does not exist")
 
+            logger.info(f"Updating settings for index '{name}'")
             # Unlike create, update expects the settings without the 'settings' wrapper
             response = self.client.client.indices.put_settings(
                 index=name,
                 body=settings
             )
             return response
-        except IndexError:
+        except ElasticIndexError:
             raise
         except Exception as e:
-            raise IndexError(f"Failed to update index '{name}': {str(e)}")
+            logger.error(f"Failed to update index '{name}': {str(e)}")
+            raise ElasticIndexError(f"Failed to update index '{name}': {str(e)}")
 
-    def delete(self, name: str) -> Dict[str, Any]:
+    def delete(self, name: str) -> Any:
         """
         Delete an index.
 
@@ -180,26 +182,25 @@ class IndexManager:
             name: Name of the index
 
         Returns:
-            Dict containing deletion response
-
-        Raises:
-            IndexError: If index deletion fails
+            Deletion response
         """
         if not name:
             raise ValidationError("Index name is required")
 
         try:
             if not self.exists(name):
-                raise IndexError(f"Index '{name}' does not exist")
+                raise ElasticIndexError(f"Index '{name}' does not exist")
 
+            logger.info(f"Deleting index '{name}'")
             response = self.client.client.indices.delete(index=name)
             return response
-        except IndexError:
+        except ElasticIndexError:
             raise
         except Exception as e:
-            raise IndexError(f"Failed to delete index '{name}': {str(e)}")
+            logger.error(f"Failed to delete index '{name}': {str(e)}")
+            raise ElasticIndexError(f"Failed to delete index '{name}': {str(e)}")
 
-    def open(self, name: str) -> Dict[str, Any]:
+    def open(self, name: str) -> Any:
         """
         Open an index.
 
@@ -207,26 +208,25 @@ class IndexManager:
             name: Name of the index
 
         Returns:
-            Dict containing open response
-
-        Raises:
-            IndexError: If index open operation fails
+            Open response
         """
         if not name:
             raise ValidationError("Index name is required")
 
         try:
             if not self.exists(name):
-                raise IndexError(f"Index '{name}' does not exist")
+                raise ElasticIndexError(f"Index '{name}' does not exist")
 
+            logger.info(f"Opening index '{name}'")
             response = self.client.client.indices.open(index=name)
             return response
-        except IndexError:
+        except ElasticIndexError:
             raise
         except Exception as e:
-            raise IndexError(f"Failed to open index '{name}': {str(e)}")
+            logger.error(f"Failed to open index '{name}': {str(e)}")
+            raise ElasticIndexError(f"Failed to open index '{name}': {str(e)}")
 
-    def close(self, name: str) -> Dict[str, Any]:
+    def close(self, name: str) -> Any:
         """
         Close an index.
 
@@ -234,21 +234,20 @@ class IndexManager:
             name: Name of the index
 
         Returns:
-            Dict containing close response
-
-        Raises:
-            IndexError: If index close operation fails
+            Close response
         """
         if not name:
             raise ValidationError("Index name is required")
 
         try:
             if not self.exists(name):
-                raise IndexError(f"Index '{name}' does not exist")
+                raise ElasticIndexError(f"Index '{name}' does not exist")
 
+            logger.info(f"Closing index '{name}'")
             response = self.client.client.indices.close(index=name)
             return response
-        except IndexError:
+        except ElasticIndexError:
             raise
         except Exception as e:
-            raise IndexError(f"Failed to close index '{name}': {str(e)}")
+            logger.error(f"Failed to close index '{name}': {str(e)}")
+            raise ElasticIndexError(f"Failed to close index '{name}': {str(e)}")

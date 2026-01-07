@@ -13,6 +13,9 @@ from elasticsearch.exceptions import (
 )
 from elastro.core.errors import ConnectionError, AuthenticationError, OperationError
 from elastro.config import get_config
+from elastro.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class ElasticsearchClient:
@@ -91,6 +94,8 @@ class ElasticsearchClient:
         self.client_kwargs = kwargs
         self._client = None
         self._connected = False
+        
+        logger.debug(f"Initialized ElasticsearchClient with hosts: {self.hosts}")
 
     @property
     def auth_type(self) -> Optional[str]:
@@ -115,6 +120,8 @@ class ElasticsearchClient:
             ConnectionError: If unable to connect to Elasticsearch
             AuthenticationError: If authentication fails
         """
+        logger.info(f"Connecting to Elasticsearch at {self.hosts}...")
+        
         client_params = {
             "hosts": self.hosts,
         }
@@ -129,6 +136,7 @@ class ElasticsearchClient:
             client_params["verify_certs"] = self.verify_certs
             # Additional SSL settings when verify_certs is False
             if self.verify_certs is False:
+                logger.warning("SSL certificate verification is disabled. This is not secure for production.")
                 import urllib3
                 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
                 client_params["ssl_assert_hostname"] = False
@@ -157,29 +165,35 @@ class ElasticsearchClient:
                 client_params["cloud_id"] = self.auth["cloud_id"]
 
         try:
-            self._client = Elasticsearch(**client_params)
+            self._client = Elasticsearch(**client_params)  # type: ignore
             # Verify connection by making a ping request
             ping_result = self._client.ping()
             if not ping_result:
+                logger.error("Ping failed during connection attempt")
                 raise ConnectionError("Failed to connect to Elasticsearch")
             self._connected = True
+            logger.info("Successfully connected to Elasticsearch")
         except ESConnectionError as e:
             self._connected = False
             self._client = None
+            logger.error(f"Connection failed: {str(e)}")
             raise ConnectionError(f"Failed to connect to Elasticsearch: {str(e)}")
         except AuthenticationException as e:
             self._connected = False
             self._client = None
+            logger.error(f"Authentication failed: {str(e)}")
             raise AuthenticationError(f"Authentication failed: {str(e)}")
         except Exception as e:
             self._connected = False
             self._client = None
+            logger.exception(f"Unexpected connection error: {str(e)}")
             raise ConnectionError(f"Unexpected error connecting to Elasticsearch: {str(e)}")
 
     def disconnect(self) -> None:
         """Disconnect from Elasticsearch and clean up resources."""
         if self._client:
             self._client.close()
+            logger.info("Disconnected from Elasticsearch")
         self._client = None
         self._connected = False
         
@@ -242,13 +256,17 @@ class ElasticsearchClient:
                 "initializing_shards": health.get("initializing_shards"),
                 "unassigned_shards": health.get("unassigned_shards"),
             }
-
+            
+            logger.debug(f"Cluster health check: {result.get('status')}")
             return result
         except ESConnectionError:
+            logger.error("Lost connection during health check")
             raise ConnectionError("Lost connection to Elasticsearch during health check")
         except TransportError as e:
+            logger.error(f"Transport error during health check: {str(e)}")
             raise OperationError(f"Failed to retrieve cluster health: {str(e)}")
         except Exception as e:
+            logger.exception("Unexpected error during health check")
             raise OperationError(f"Unexpected error during health check: {str(e)}")
 
     @property
