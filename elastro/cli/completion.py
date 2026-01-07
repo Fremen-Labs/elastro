@@ -88,3 +88,18 @@ def complete_templates(ctx, param, incomplete: str) -> List[str]:
         return names
     except Exception:
         return []
+
+def complete_policies(ctx, param, incomplete: str) -> List[str]:
+    """Autocomplete for ILM policies."""
+    client = ctx.obj if ctx and ctx.obj else get_quick_client()
+    if not client:
+        return []
+        
+    try:
+        # Use get_lifecycle to list all
+        resp = client.client.ilm.get_lifecycle()
+        body = resp.body if hasattr(resp, 'body') else dict(resp)
+        policies = list(body.keys())
+        return [p for p in policies if p.startswith(incomplete)]
+    except Exception:
+        return []

@@ -2,16 +2,23 @@ import subprocess
 import json
 import os
 import time
+from rich.console import Console
+
+console = Console()
+
 
 # Configuration
 ELASTRO_BIN = "elastro"  # Assumes in PATH or venv
 INDEX_NAME = "e2e-test-index"
 COMPONENT_NAME = "e2e-component"
 TEMPLATE_NAME = "e2e-template"
+
 DOC_FILE = "tests/e2e_doc.json"
 BULK_FILE = "tests/e2e_bulk.json"
 TEMPLATE_FILE = "tests/e2e_template.json"
 COMPONENT_FILE = "tests/e2e_component.json"
+POLICY_FILE = "tests/e2e_policy.json"
+
 
 def run_elastro(args):
     """Run elastro command and return output."""
@@ -64,11 +71,53 @@ def setup_files():
             }
         }, f)
 
+    with open(POLICY_FILE, 'w') as f:
+        json.dump({
+            "policy": {
+                "phases": {
+                    "hot": {
+                        "min_age": "0s",
+                        "actions": {
+                            "rollover": {
+                                "max_age": "1d",
+                                "max_docs": 1000
+                            }
+                        }
+                    },
+                    "delete": {
+                        "min_age": "7d",
+                        "actions": {
+                            "delete": {}
+                        }
+                    }
+                }
+            }
+        }, f)
+
 def cleanup_files():
     """Remove temp files."""
-    for f in [DOC_FILE, BULK_FILE, TEMPLATE_FILE, COMPONENT_FILE]:
+    for f in [DOC_FILE, BULK_FILE, TEMPLATE_FILE, COMPONENT_FILE, POLICY_FILE]:
         if os.path.exists(f):
             os.remove(f)
+
+def print_success(msg):
+    console.print(f"✅ {msg}", style="bold green")
+
+def print_failure(msg, details=""):
+    console.print(f"❌ {msg}", style="bold red")
+    if details:
+        console.print(details, style="red")
+
+def print_header(num, title):
+    console.print(f"\n[{num}] {title}", style="bold blue")
+
+def run_command_and_check(cmd_args, success_msg, failure_msg, check_output=None):
+    res = run_elastro(cmd_args)
+    if res and res.returncode == 0 and (check_output is None or check_output in res.stdout):
+        print_success(success_msg)
+    else:
+        print_failure(failure_msg, res.stderr if res else "Command failed or no output")
+    return res
 
 def run_tests():
     print("🚀 Starting E2E CLI Tests...")
@@ -78,6 +127,7 @@ def run_tests():
     run_elastro(["index", "delete", INDEX_NAME, "--force"])
     run_elastro(["template", "delete", TEMPLATE_NAME, "--type", "index", "--force"])
     run_elastro(["template", "delete", COMPONENT_NAME, "--type", "component", "--force"])
+    run_elastro(["ilm", "delete", "e2e-policy", "--force"])
 
     # 1. Templates
     print("\n[1] Templates")
@@ -130,11 +180,44 @@ def run_tests():
     res = run_elastro(["doc", "search", INDEX_NAME, "--term", "category=test"])
     if "hits" in res.stdout and '"total":' in res.stdout:
         # Check if we got hits (should be 3)
-        print("✅ Term Search passed")
-    else: print(f"❌ Term Search failed: {res.stdout}")
+        print_success("Term Search passed")
+    else: print_failure("Term Search failed", res.stdout)
 
-    # 5. Cleanup
-    print("\n[5] Cleanup")
+    # 5. ILM
+    print_header("5", "ILM")
+    
+    # Create Policy
+    run_command_and_check(["ilm", "create", "e2e-policy", "--file", POLICY_FILE],
+                          "Policy created", "Failed to create policy")
+    
+    # List
+    res = run_elastro(["ilm", "list"])
+    if res.returncode == 0 and "e2e-policy" in res.stdout:
+        print_success("Policy listed")
+    else:
+        print_failure("Policy listing failed", res.stderr if res else "No output")
+        
+    # Create index with policy to test explain
+    # (Just a regular index creates fine, but won't have lifecycle unless template applies or settings used)
+    # Let's create an index with the policy in settings
+    # We don't have a direct 'create with settings' command that takes JSON string easily in args, 
+    # but we can use the python script logic if needed or just skip explain for E2E CLI until we have advanced create.
+    # Actually, we can use the 'create_index' if we had a file input for settings. We don't.
+    # We'll skip complex explain test for now, just creating the policy is good verification of the command.
+    
+    # Delete Policy
+    run_command_and_check(["ilm", "delete", "e2e-policy", "--force"],
+                          "Policy deleted", "Failed to delete policy")
+
+    # 6. Snapshot
+    print_header("6", "Snapshot")
+    
+    # List Repositories
+    run_command_and_check(["snapshot", "repo", "list"], 
+                         "Repositories listed", "Failed to list repositories")
+
+    # 7. Cleanup
+    print_header("7", "Cleanup")
     run_elastro(["index", "delete", INDEX_NAME, "--force"])
     run_elastro(["template", "delete", TEMPLATE_NAME, "--type", "index", "--force"])
     run_elastro(["template", "delete", COMPONENT_NAME, "--type", "component", "--force"])

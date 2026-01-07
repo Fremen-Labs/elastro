@@ -164,7 +164,17 @@ class ElasticsearchClient:
             elif "cloud_id" in self.auth:
                 client_params["cloud_id"] = self.auth["cloud_id"]
 
-        logger.info(f"Connecting with params: hosts={client_params.get('hosts')}, auth={self.auth}, basic_auth={client_params.get('basic_auth')}")
+        # Prepare safe loggable params
+        log_params = client_params.copy()
+        if "basic_auth" in log_params:
+            user = log_params["basic_auth"][0]
+            log_params["basic_auth"] = (user, "******")
+            
+        log_auth = self.auth.copy() if self.auth else {}
+        if "password" in log_auth:
+            log_auth["password"] = "******"
+            
+        logger.info(f"Connecting with params: hosts={client_params.get('hosts')}, auth={log_auth}, basic_auth={log_params.get('basic_auth')}")
 
         try:
             self._client = Elasticsearch(**client_params)  # type: ignore

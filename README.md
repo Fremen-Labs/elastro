@@ -114,21 +114,83 @@ print(results)
 
 ```bash
 # Initialize configuration
-elastic-cli config init
+elastro config init
 
 # Create an index
-elastic-cli index create products --shards 3 --replicas 1 --mapping ./product-mapping.json
+elastro index create products --shards 3 --replicas 1
+
+# Interactive Template Wizard
+elastro template wizard
+
+# Interactive ILM Policy Wizard
+elastro ilm create my-policy
+
+# List ILM Policies (Table View)
+elastro ilm list
 
 # Add a document
-elastic-cli doc index products --id 1 --file ./product.json
+elastro doc index products --id 1 --file ./product.json
 
 # Search documents
-elastic-cli search products "name:laptop" --format json
+elastro doc search products --term category=laptop
 ```
 
-## Documentation
+### ILM (Index Lifecycle Management)
 
-For more detailed documentation, please refer to the [docs](https://github.com/Fremen-Labs/elastro/tree/main/docs) directory:
+Elastro provides a powerful CLI for managing ILM policies, including an interactive wizard.
+
+```bash
+# List all policies (Table View)
+elastro ilm list
+
+# List with full JSON details (limited to first 2)
+elastro ilm list --full
+
+# Create a policy using the Interactive Wizard (Recommended)
+elastro ilm create my-policy
+# Follow the prompts to configure Hot, Warm, Cold, and Delete phases.
+
+# Create a policy from a file
+elastro ilm create my-policy --file ./policy.json
+
+# Explain lifecycle status for an index (includes step info for debugging)
+elastro ilm explain my-index
+```
+
+### Snapshot & Restore
+
+Manage backup repositories and snapshots with ease.
+
+**Repositories:**
+```bash
+# List all repositories
+elastro snapshot repo list
+
+# Create a filesystem repository
+elastro snapshot repo create my_backup fs --setting location=/tmp/backups
+
+# Create an S3 repository
+elastro snapshot repo create my_s3_backup s3 --setting bucket=my-bucket --setting region=us-east-1
+```
+
+**Snapshots:**
+```bash
+# List snapshots in a repository
+elastro snapshot list my_backup
+
+# Create a snapshot (async default)
+elastro snapshot create my_backup snapshot_1
+
+# Create and wait for completion
+elastro snapshot create my_backup snapshot_2 --wait --indices "logs-*,metrics-*"
+
+# Restore a snapshot (Interactive Wizard)
+elastro snapshot restore
+# Launches a wizard to select repo -> snapshot -> indices -> rename pattern
+
+# Restore specific indices from CLI
+elastro snapshot restore my_backup snapshot_1 --indices "logs-*"
+```
 
 - [Getting Started](https://github.com/Fremen-Labs/elastro/blob/main/docs/getting_started.md)
 - [API Reference](https://github.com/Fremen-Labs/elastro/blob/main/docs/api_reference.md)
