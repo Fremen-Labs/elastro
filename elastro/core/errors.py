@@ -36,7 +36,7 @@ class ConfigurationError(ElasticModuleError):
     pass
 
 
-class IndexError(OperationError):
+class ElasticIndexError(OperationError):
     """Raised when an index operation fails."""
     pass
 

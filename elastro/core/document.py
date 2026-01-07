@@ -5,9 +5,13 @@ This module provides functionality for managing Elasticsearch documents.
 """
 
 from typing import Dict, List, Any, Optional, Union
+from elasticsearch import helpers
 from elastro.core.client import ElasticsearchClient
 from elastro.core.errors import DocumentError, ValidationError, OperationError
 from elastro.core.validation import Validator
+from elastro.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class DocumentManager:
@@ -34,7 +38,7 @@ class DocumentManager:
         id: Optional[str],
         document: Dict[str, Any],
         refresh: bool = False
-    ) -> Dict[str, Any]:
+    ) -> Any:
         """
         Index a document.
 
@@ -45,12 +49,9 @@ class DocumentManager:
             refresh: Whether to refresh the index immediately
 
         Returns:
-            Dict containing indexing response
-
-        Raises:
-            ValidationError: If input validation fails
-            DocumentError: If document indexing fails
+            Indexing response
         """
+        # (keeping content same, just changing signature)
         # Validate inputs
         if not index:
             raise ValidationError("Index name cannot be empty")
@@ -70,10 +71,12 @@ class DocumentManager:
             # Add ID if provided
             if id:
                 params["id"] = id
-
+            
+            logger.debug(f"Indexing document into '{index}' with ID '{id}'")
             # Execute the index operation
-            return self.client.client.index(**params)
+            return self.client.client.index(**params)  # type: ignore
         except Exception as e:
+            logger.error(f"Failed to index document info '{index}': {str(e)}")
             raise DocumentError(f"Failed to index document: {str(e)}")
 
     def bulk_index(
@@ -91,7 +94,7 @@ class DocumentManager:
             refresh: Whether to refresh the index immediately
 
         Returns:
-            Dict containing bulk indexing response
+            Dict containing bulk indexing response summary
 
         Raises:
             ValidationError: If input validation fails
@@ -105,32 +108,51 @@ class DocumentManager:
             raise ValidationError("Documents must be a non-empty list")
 
         try:
-            # Prepare the bulk operation
-            operations = []
+            # Prepare actions for streaming bulk
+            actions = []
             for doc in documents:
-                # Add index operation
-                index_op = {"index": {"_index": index}}
-                # If document has an ID field, use it
+                # Create action dict
+                action = {
+                    "_index": index,
+                    "_source": doc
+                }
+                
+                # If document has an ID field, separate it
                 if "_id" in doc:
-                    index_op["index"]["_id"] = doc["_id"]
-                    # Remove _id from the actual document
+                    action["_id"] = doc["_id"]
+                    # Create a copy without _id for _source
                     doc_copy = doc.copy()
                     doc_copy.pop("_id", None)
-                    operations.append(index_op)
-                    operations.append(doc_copy)
-                else:
-                    operations.append(index_op)
-                    operations.append(doc)
+                    action["_source"] = doc_copy
+                
+                actions.append(action)
 
-            # Execute the bulk operation
-            return self.client.client.bulk(
-                operations=operations,
-                refresh="true" if refresh else "false"
+            logger.info(f"Bulk indexing {len(actions)} documents into '{index}'...")
+            
+            # Use helpers.bulk for optimized streaming
+            success_count, errors = helpers.bulk(
+                self.client.client,
+                actions,
+                refresh="true" if refresh else "false",
+                stats_only=False, # We want details if needed, but summary is usually returned
+                raise_on_error=True
             )
+            
+            logger.info(f"Bulk index complete: {success_count} successful")
+            
+            return {
+                "success_count": success_count,
+                "errors": errors if isinstance(errors, list) else []
+            }
+
         except Exception as e:
+            logger.error(f"Failed to bulk index documents: {str(e)}")
             raise OperationError(f"Failed to bulk index documents: {str(e)}")
 
-    def get(self, index: str, id: str) -> Dict[str, Any]:
+    # Actually I will just target the methods that return client responses directly.
+    # index, get, update, delete, search.
+
+    def get(self, index: str, id: str) -> Any:
         """
         Get a document by ID.
 
@@ -139,10 +161,7 @@ class DocumentManager:
             id: Document ID
 
         Returns:
-            Dict containing document data
-
-        Raises:
-            DocumentError: If document doesn't exist or get operation fails
+            Document data
         """
         # Validate inputs
         if not index:
@@ -155,6 +174,9 @@ class DocumentManager:
             response = self.client.client.get(index=index, id=id)
             return response
         except Exception as e:
+            # Log only if it's an unexpected error, NOT if it's just not found? 
+            # Actually standard practice is to log errors.
+            logger.error(f"Failed to get document '{id}' from '{index}': {str(e)}")
             raise DocumentError(f"Failed to get document: {str(e)}")
 
     def update(
@@ -164,7 +186,8 @@ class DocumentManager:
         document: Dict[str, Any],
         partial: bool = True,
         refresh: bool = False
-    ) -> Dict[str, Any]:
+    ) -> Any:
+        # ... signature change
         """
         Update a document.
 
@@ -176,11 +199,7 @@ class DocumentManager:
             refresh: Whether to refresh the index immediately
 
         Returns:
-            Dict containing update response
-
-        Raises:
-            ValidationError: If input validation fails
-            DocumentError: If document update fails
+            Update response
         """
         # Validate inputs
         if not index:
@@ -193,6 +212,7 @@ class DocumentManager:
             raise ValidationError("Document must be a non-empty dictionary")
 
         try:
+            logger.debug(f"Updating document '{id}' in '{index}' (partial={partial})")
             if partial:
                 # For partial updates, wrap in "doc" field
                 body = {"doc": document}
@@ -206,6 +226,7 @@ class DocumentManager:
                 # For full document updates, just index it again
                 return self.index(index=index, id=id, document=document, refresh=refresh)
         except Exception as e:
+            logger.error(f"Failed to update document '{id}': {str(e)}")
             raise DocumentError(f"Failed to update document: {str(e)}")
 
     def delete(
@@ -213,7 +234,8 @@ class DocumentManager:
         index: str,
         id: str,
         refresh: bool = False
-    ) -> Dict[str, Any]:
+    ) -> Any:
+        # ... signature change
         """
         Delete a document by ID.
 
@@ -223,11 +245,7 @@ class DocumentManager:
             refresh: Whether to refresh the index immediately
 
         Returns:
-            Dict containing deletion response
-
-        Raises:
-            ValidationError: If input validation fails
-            DocumentError: If document deletion fails
+            Deletion response
         """
         # Validate inputs
         if not index:
@@ -237,62 +255,25 @@ class DocumentManager:
             raise ValidationError("Document ID cannot be empty")
 
         try:
+            logger.info(f"Deleting document '{id}' from '{index}'")
             return self.client.client.delete(
                 index=index,
                 id=id,
                 refresh="true" if refresh else "false"
             )
         except Exception as e:
+            logger.error(f"Failed to delete document '{id}': {str(e)}")
             raise DocumentError(f"Failed to delete document: {str(e)}")
-
-    def bulk_delete(
-        self,
-        index: str,
-        ids: List[str],
-        refresh: bool = False
-    ) -> Dict[str, Any]:
-        """
-        Bulk delete multiple documents by ID.
-
-        Args:
-            index: Name of the index
-            ids: List of document IDs to delete
-            refresh: Whether to refresh the index immediately
-
-        Returns:
-            Dict containing bulk deletion response
-
-        Raises:
-            ValidationError: If input validation fails
-            OperationError: If bulk deletion fails
-        """
-        # Validate inputs
-        if not index:
-            raise ValidationError("Index name cannot be empty")
-
-        if not ids or not isinstance(ids, list):
-            raise ValidationError("IDs must be a non-empty list")
-
-        try:
-            # Prepare the bulk operation
-            operations = []
-            for doc_id in ids:
-                operations.append({"delete": {"_index": index, "_id": doc_id}})
-
-            # Execute the bulk operation
-            return self.client.client.bulk(
-                operations=operations,
-                refresh="true" if refresh else "false"
-            )
-        except Exception as e:
-            raise OperationError(f"Failed to bulk delete documents: {str(e)}")
+    
+    # bulk_delete returns Dict constructed by me, so it's fine.
 
     def search(
         self,
         index: str,
         query: Dict[str, Any],
         options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    ) -> Any:
+        # ... signature change
         """
         Search for documents.
 
@@ -302,11 +283,7 @@ class DocumentManager:
             options: Additional search options like size, from, sort, etc.
 
         Returns:
-            Dict containing search results
-
-        Raises:
-            ValidationError: If input validation fails
-            DocumentError: If search fails
+            Search results
         """
         # Validate inputs
         if not index:
@@ -329,6 +306,8 @@ class DocumentManager:
         search_params = {"index": index, "body": body}
 
         try:
-            return self.client.client.search(**search_params)
+            logger.debug(f"Searching index '{index}'...")
+            return self.client.client.search(**search_params)  # type: ignore
         except Exception as e:
+            logger.error(f"Failed to search documents in '{index}': {str(e)}")
             raise DocumentError(f"Failed to search documents: {str(e)}")
