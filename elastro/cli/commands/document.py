@@ -10,9 +10,10 @@ from elastro.core.document import DocumentManager
 from elastro.core.errors import OperationError
 from elastro.core.query_builder import QueryBuilder
 from elastro.cli.output import format_output
+from elastro.cli.completion import complete_indices
 
 @click.command("index")
-@click.argument("index", type=str)
+@click.argument("index", type=str, shell_complete=complete_indices)
 @click.option("--id", type=str, help="Document ID")
 @click.option("--file", type=click.Path(exists=True, readable=True), help="Path to document file")
 @click.pass_obj
@@ -38,7 +39,7 @@ def index_document(client, index, id, file):
         exit(1)
 
 @click.command("bulk")
-@click.argument("index", type=str)
+@click.argument("index", type=str, shell_complete=complete_indices)
 @click.option("--file", type=click.Path(exists=True, readable=True), required=True, help="Path to bulk documents file")
 @click.pass_obj
 def bulk_index(client, index, file):
@@ -63,7 +64,7 @@ def bulk_index(client, index, file):
         exit(1)
 
 @click.command("get")
-@click.argument("index", type=str)
+@click.argument("index", type=str, shell_complete=complete_indices)
 @click.argument("id", type=str)
 @click.pass_obj
 def get_document(client, index, id):
@@ -79,7 +80,7 @@ def get_document(client, index, id):
         exit(1)
 
 @click.command("search")
-@click.argument("index", type=str)
+@click.argument("index", type=str, shell_complete=complete_indices)
 @click.argument("query", type=str, required=False)
 @click.option("--size", type=int, default=10, help="Maximum number of results")
 @click.option("--from", "from_", type=int, default=0, help="Starting offset")
@@ -154,7 +155,7 @@ def search_documents(
         exit(1)
 
 @click.command("update")
-@click.argument("index", type=str)
+@click.argument("index", type=str, shell_complete=complete_indices)
 @click.argument("id", type=str)
 @click.option("--file", type=click.Path(exists=True, readable=True), required=True, help="Path to document file")
 @click.option("--partial", is_flag=True, help="Perform partial update")
@@ -177,7 +178,7 @@ def update_document(client, index, id, file, partial):
         exit(1)
 
 @click.command("delete")
-@click.argument("index", type=str)
+@click.argument("index", type=str, shell_complete=complete_indices)
 @click.argument("id", type=str)
 @click.pass_obj
 def delete_document(client, index, id):
@@ -194,7 +195,7 @@ def delete_document(client, index, id):
         exit(1)
 
 @click.command("bulk-delete")
-@click.argument("index", type=str)
+@click.argument("index", type=str, shell_complete=complete_indices)
 @click.option("--file", type=click.Path(exists=True, readable=True), required=True, help="Path to IDs file")
 @click.pass_obj
 def bulk_delete(client, index, file):

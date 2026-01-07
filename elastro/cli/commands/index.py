@@ -7,6 +7,7 @@ import json
 from elastro.core.client import ElasticsearchClient
 from elastro.core.index import IndexManager
 from elastro.core.errors import OperationError
+from elastro.cli.completion import complete_indices
 
 @click.command("create")
 @click.argument("name", type=str)
@@ -49,7 +50,7 @@ def create_index(client, name, shards, replicas, mapping, settings):
         exit(1)
 
 @click.command("get")
-@click.argument("name", type=str)
+@click.argument("name", type=str, shell_complete=complete_indices)
 @click.pass_obj
 def get_index(client, name):
     """Get information about an index."""
@@ -63,7 +64,7 @@ def get_index(client, name):
         exit(1)
 
 @click.command("exists")
-@click.argument("name", type=str)
+@click.argument("name", type=str, shell_complete=complete_indices)
 @click.pass_obj
 def index_exists(client, name):
     """Check if an index exists."""
@@ -77,7 +78,7 @@ def index_exists(client, name):
         exit(1)
 
 @click.command("update")
-@click.argument("name", type=str)
+@click.argument("name", type=str, shell_complete=complete_indices)
 @click.option("--settings", type=click.Path(exists=True, readable=True), required=True, help="Path to settings file")
 @click.pass_obj
 def update_index(client, name, settings):
@@ -97,7 +98,7 @@ def update_index(client, name, settings):
         exit(1)
 
 @click.command("delete")
-@click.argument("name", type=str)
+@click.argument("name", type=str, shell_complete=complete_indices)
 @click.option("--force", is_flag=True, help="Force deletion without confirmation")
 @click.pass_obj
 def delete_index(client, name, force):
@@ -120,7 +121,7 @@ def delete_index(client, name, force):
         exit(1)
 
 @click.command("open")
-@click.argument("name", type=str)
+@click.argument("name", type=str, shell_complete=complete_indices)
 @click.pass_obj
 def open_index(client, name):
     """Open an index."""
@@ -135,7 +136,7 @@ def open_index(client, name):
         exit(1)
 
 @click.command("close")
-@click.argument("name", type=str)
+@click.argument("name", type=str, shell_complete=complete_indices)
 @click.pass_obj
 def close_index(client, name):
     """Close an index."""

@@ -44,9 +44,9 @@ from elastro.cli.commands.config import (
     get_config_value, set_config_value, list_config, init_config
 )
 from elastro.cli.commands.utils import (
-    health, templates, aliases
+    health, templates as utils_templates, aliases
 )
-
+from elastro.cli.commands.template import template_group
 
 pass_client = click.make_pass_decorator(ElasticsearchClient)
 
@@ -206,9 +206,11 @@ def utils() -> None:
 
 # Register utility commands
 utils.add_command(health)
-utils.add_command(templates)
+utils.add_command(utils_templates)
 utils.add_command(aliases)
 
+# Register Top-Level Template Group
+cli.add_command(template_group)
 
 def main():
     """Entry point for CLI."""
