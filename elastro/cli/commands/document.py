@@ -8,6 +8,8 @@ import sys
 from elastro.core.client import ElasticsearchClient
 from elastro.core.document import DocumentManager
 from elastro.core.errors import OperationError
+from elastro.core.query_builder import QueryBuilder
+from elastro.cli.output import format_output
 
 @click.command("index")
 @click.argument("index", type=str)
@@ -28,7 +30,8 @@ def index_document(client, index, id, file):
 
     try:
         result = document_manager.index(index, id, document)
-        click.echo(json.dumps(result, indent=2))
+        output = format_output(result)
+        click.echo(output)
         click.echo(f"Document indexed successfully in '{index}'.")
     except OperationError as e:
         click.echo(f"Error indexing document: {str(e)}", err=True)
@@ -52,7 +55,8 @@ def bulk_index(client, index, file):
 
     try:
         result = document_manager.bulk_index(index, documents)
-        click.echo(json.dumps(result, indent=2))
+        output = format_output(result)
+        click.echo(output)
         click.echo(f"Bulk indexing completed: {len(documents)} documents processed.")
     except OperationError as e:
         click.echo(f"Error in bulk indexing: {str(e)}", err=True)
@@ -68,7 +72,8 @@ def get_document(client, index, id):
 
     try:
         result = document_manager.get(index, id)
-        click.echo(json.dumps(result, indent=2))
+        output = format_output(result)
+        click.echo(output)
     except OperationError as e:
         click.echo(f"Error retrieving document: {str(e)}", err=True)
         exit(1)
@@ -79,31 +84,60 @@ def get_document(client, index, id):
 @click.option("--size", type=int, default=10, help="Maximum number of results")
 @click.option("--from", "from_", type=int, default=0, help="Starting offset")
 @click.option("--file", type=click.Path(exists=True, readable=True), help="Path to query file")
+# Top 10 Query Types
+@click.option("--match", multiple=True, help="Match query (field=value)")
+@click.option("--match-phrase", multiple=True, help="Match phrase query (field=phrase)")
+@click.option("--term", multiple=True, help="Term query (field=value)")
+@click.option("--terms", multiple=True, help="Terms query (field=val1,val2)")
+@click.option("--range", multiple=True, help="Range query (field=op:val)")
+@click.option("--prefix", multiple=True, help="Prefix query (field=value)")
+@click.option("--wildcard", multiple=True, help="Wildcard query (field=pattern)")
+@click.option("--exists", multiple=True, help="Exists query (field)")
+@click.option("--ids", multiple=True, help="IDs query (id1,id2)")
+@click.option("--fuzzy", multiple=True, help="Fuzzy query (field=value)")
+# Excludes
+@click.option("--exclude-match", multiple=True, help="Exclude match (must_not)")
+@click.option("--exclude-term", multiple=True, help="Exclude term (must_not)")
 @click.pass_obj
-def search_documents(client, index, query, size, from_, file):
-    """Search for documents."""
+def search_documents(
+    client, index, query, size, from_, file,
+    match, match_phrase, term, terms, range, prefix, wildcard, exists, ids, fuzzy,
+    exclude_match, exclude_term
+):
+    """
+    Search for documents using explicit flags or a query string.
+    
+    Supports combining multiple flags to build a bool query (AND by default).
+    """
     document_manager = DocumentManager(client)
 
     # Determine query source
     if file:
         with open(file, 'r') as f:
             query_body = json.load(f)
-    elif query:
-        # Simple query string query
-        query_body = {
-            "query": {
-                "query_string": {
-                    "query": query
-                }
-            }
-        }
     else:
-        # Match all if no query provided
-        query_body = {
-            "query": {
-                "match_all": {}
-            }
-        }
+        # Check if any flags set
+        # If no flags and no query, default to match_all inside QueryBuilder
+        # If flags set, build bool query.
+        
+        # Build the actual query part using QueryBuilder
+        inner_query = QueryBuilder.build_bool_query(
+            must_match=match,
+            must_match_phrase=match_phrase,
+            must_term=term,
+            must_terms=terms,
+            must_range=range,
+            must_prefix=prefix,
+            must_wildcard=wildcard,
+            must_exists=exists,
+            must_ids=ids,
+            must_fuzzy=fuzzy,
+            exclude_match=exclude_match,
+            exclude_term=exclude_term,
+            query_string=query
+        )
+        
+        query_body = {"query": inner_query}
 
     # Add pagination
     options = {
@@ -113,7 +147,8 @@ def search_documents(client, index, query, size, from_, file):
 
     try:
         results = document_manager.search(index, query_body, options)
-        click.echo(json.dumps(results, indent=2))
+        output = format_output(results)
+        click.echo(output)
     except OperationError as e:
         click.echo(f"Error searching documents: {str(e)}", err=True)
         exit(1)
@@ -134,7 +169,8 @@ def update_document(client, index, id, file, partial):
 
     try:
         result = document_manager.update(index, id, document, partial)
-        click.echo(json.dumps(result, indent=2))
+        output = format_output(result)
+        click.echo(output)
         click.echo(f"Document '{id}' in index '{index}' updated successfully.")
     except OperationError as e:
         click.echo(f"Error updating document: {str(e)}", err=True)
@@ -150,7 +186,8 @@ def delete_document(client, index, id):
 
     try:
         result = document_manager.delete(index, id)
-        click.echo(json.dumps(result, indent=2))
+        output = format_output(result)
+        click.echo(output)
         click.echo(f"Document '{id}' deleted from index '{index}'.")
     except OperationError as e:
         click.echo(f"Error deleting document: {str(e)}", err=True)
@@ -174,7 +211,8 @@ def bulk_delete(client, index, file):
 
     try:
         result = document_manager.bulk_delete(index, ids)
-        click.echo(json.dumps(result, indent=2))
+        output = format_output(result)
+        click.echo(output)
         click.echo(f"Bulk deletion completed: {len(ids)} documents processed.")
     except OperationError as e:
         click.echo(f"Error in bulk deletion: {str(e)}", err=True)

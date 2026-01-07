@@ -4,10 +4,25 @@ Command-line interface main module.
 This module defines the main CLI structure using Click.
 """
 
-import click
-from typing import Dict, Any, Optional
+import rich_click as click
 import json
 import yaml
+from typing import Dict, Any, Optional, List, Union
+from rich.console import Console
+from rich.table import Table
+from rich import box
+
+from elastro.cli.art import ELASTRO_ART
+
+# Configure rich-click
+click.rich_click.USE_RICH_MARKUP = True
+click.rich_click.SHOW_ARGUMENTS = True
+click.rich_click.GROUP_ARGUMENTS_OPTIONS = True
+click.rich_click.STYLE_ERRORS_SUGGESTION = "magenta italic"
+click.rich_click.ERRORS_SUGGESTION = "Try running the command again with --help for more information."
+click.rich_click.ERRORS_EPILOGUE = "To find out more, visit [link=https://github.com/Fremen-Labs/elastro]https://github.com/Fremen-Labs/elastro[/link]"
+click.rich_click.HEADER_TEXT = ELASTRO_ART
+
 from elastro import __version__
 from elastro.config import load_config, get_config
 from elastro.core.client import ElasticsearchClient
@@ -31,28 +46,6 @@ from elastro.cli.commands.config import (
 from elastro.cli.commands.utils import (
     health, templates, aliases
 )
-
-
-def format_output(data: Any, output_format: str = "json") -> str:
-    """
-    Format output data based on the specified format.
-
-    Args:
-        data: Data to format
-        output_format: Output format (json, yaml, table)
-
-    Returns:
-        Formatted string
-    """
-    if output_format == "json":
-        return json.dumps(data, indent=2)
-    elif output_format == "yaml":
-        return yaml.dump(data, default_flow_style=False)
-    elif output_format == "table":
-        # Simple table implementation for now
-        raise NotImplementedError("Table output format will be implemented in a future version")
-    else:
-        return str(data)
 
 
 pass_client = click.make_pass_decorator(ElasticsearchClient)
@@ -123,6 +116,19 @@ def cli(
         retry_on_timeout=cfg["elasticsearch"]["retry_on_timeout"],
         max_retries=cfg["elasticsearch"]["max_retries"]
     )
+    
+    # Establish connection
+    try:
+        client.connect()
+    except Exception as e:
+        if verbose:
+            click.echo(f"Failed to connect to Elasticsearch: {e}", err=True)
+        # We don't exit here because some commands might not need connection (e.g. config), 
+        # but most do. For now, let's let individual commands fail if they need connection,
+        # or better, just Log it. client.connect() raises ConnectionError.
+        # Actually, if we fail to connect, most commands will fail.
+        # Let's print a warning but continue, as 'config' commands shouldn't fail.
+        pass
 
     # Store in context
     ctx.obj = client

@@ -29,6 +29,8 @@ dependencies = [
     "pydantic==2.11.3",
     "pyyaml>=6.0",
     "colorlog>=6.0.0",
+    "rich>=10.0.0",
+    "rich-click>=1.7.0",
 ]
 
 [project.optional-dependencies]
@@ -46,7 +48,7 @@ dev = [
 ]
 
 [project.scripts]
-elastic-cli = "elastro.cli.cli:main"
+elastro = "elastro.cli.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["elastro*"]

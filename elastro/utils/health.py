@@ -23,7 +23,8 @@ class HealthManager:
 
     def cluster_health(self, index: Optional[str] = None,
                      level: str = "cluster",
-                     timeout: str = "30s") -> Dict[str, Any]:
+                     timeout: str = "30s",
+                     wait_for_status: Optional[str] = None) -> Dict[str, Any]:
         """Get cluster health information.
 
         Args:
@@ -42,6 +43,9 @@ level: Health information detail level ('cluster', 'indices', or 'shards').
                 "level": level,
                 "timeout": timeout
             }
+
+            if wait_for_status:
+                params["wait_for_status"] = wait_for_status
 
             if index:
                 return self._es.cluster.health(index=index, **params)

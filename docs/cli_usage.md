@@ -4,52 +4,39 @@ The Elastro package provides a powerful command-line interface (CLI) for managin
 
 ## Installation
 
-The CLI is automatically installed when you install the elastic-module package:
+The CLI is automatically installed when you install the elastro package:
 
 ```bash
-pip install elastic-module
+pip install elastro
 ```
 
-## Configuration
+## Getting Started
+
+### 1. Initialize Configuration
 
 Before using the CLI, you'll need to configure your Elasticsearch connection details.
 
-### Initialize Configuration
-
 ```bash
-elastic-module config init
+elastro config init
 ```
 
-This creates a default configuration file at `~/.elastic/config.yaml`. You can use the `--profile` option to create a named profile:
+This creates a default configuration file at `~/.elastic/config.yaml`.
+
+### 2. Configure Authentication
+
+Secure your connection by setting up authentication (e.g., Basic Auth):
 
 ```bash
-elastic-module config init --profile production
+elastro config set elasticsearch.auth '{"type": "basic", "username": "elastic", "password": "changeme"}'
+elastro config set elasticsearch.hosts '["http://localhost:9200"]'
 ```
 
-### Set Configuration Values
+### 3. Verify Connection
 
-You can set configuration values using the `config set` command:
-
-```bash
-elastic-module config set elasticsearch.hosts '["http://localhost:9200"]'
-elastic-module config set elasticsearch.auth.username my_username
-elastic-module config set elasticsearch.auth.password my_password
-```
-
-### List Configuration
-
-To view your current configuration:
+Check if `elastro` can connect to your cluster:
 
 ```bash
-elastic-module config list
-```
-
-### Get Configuration Value
-
-To get a specific configuration value:
-
-```bash
-elastic-module config get elasticsearch.hosts
+elastro utils health
 ```
 
 ## Global Options
@@ -59,19 +46,84 @@ The following options can be used with any command:
 - `--config, -c`: Path to configuration file
 - `--profile, -p`: Configuration profile to use (default: "default")
 - `--host, -h`: Elasticsearch host(s) (can be specified multiple times)
-- `--output, -o`: Output format (json, yaml, table)
+- `--output, -o`: Output format for results (json, yaml, table)
 - `--verbose, -v`: Enable verbose output
 - `--version`: Show version and exit
-- `--help`: Show help message and exit
+- `--help`: Show styled help message via rich-click
+
+## Search Documents
+
+The `doc search` command is the powerhouse of the CLI, supporting simple text searches, file-based queries, and complex boolean logic via flags.
+
+```bash
+elastro doc search INDEX_NAME [QUERY] [OPTIONS]
+```
+
+### Basic Search
+
+```bash
+# Simple query string search
+elastro doc search my_index "error"
+
+# Output as a formatted table
+elastro --output table doc search my_index "error"
+```
+
+### Advanced Search (Top 10 Query Types)
+
+Build complex boolean queries directly using these flags. All flags can be combined (AND logic by default).
+
+| Flag | Description | Example |
+|---|---|---|
+| `--match` | Standard match query (analyzed) | `--match name=Laptop` |
+| `--match-phrase` | Phrase match query | `--match-phrase title="Star Wars"` |
+| `--term` | Exact term match (keyword) | `--term status=active` |
+| `--terms` | Match ANY value in list | `--terms tags=env,prod` |
+| `--range` | Numeric/Date range | `--range price=gt:10,lte:50` |
+| `--prefix` | Prefix match | `--prefix sku=XY-` |
+| `--wildcard` | Wildcard pattern match | `--wildcard user=jo*` |
+| `--exists` | Field existence check | `--exists error_details` |
+| `--ids` | Retrieve by Document ID | `--ids 101,102` |
+| `--fuzzy` | Fuzzy matching | `--fuzzy name=elstastic` |
+| `--exclude-term` | Must NOT match term | `--exclude-term status=deleted` |
+| `--exclude-match` | Must NOT match text | `--exclude-match level=debug` |
+
+### Search Examples
+
+**1. Product Search**
+Find explicit "Alienware" laptops over $1000, excluding tablets.
+
+```bash
+elastro --output table doc search products \
+  --term brand.keyword=Alienware \
+  --match name=Laptop \
+  --range price=gt:1000 \
+  --exclude-term category.keyword=Tablet
+```
+
+**2. Log Analysis**
+Find logs with "error" status from a specific wildcard source, checking if "trace_id" exists.
+
+```bash
+elastro doc search logs-2024 \
+  --term status=error \
+  --wildcard source=service-a* \
+  --exists trace_id
+```
+
+**3. Complex Query from File**
+For deeply nested queries or aggregations, use a JSON file.
+
+```bash
+elastro doc search my_index --file query.json
+```
 
 ## Index Management
-
-The CLI provides commands for managing Elasticsearch indices.
 
 ### Create Index
 
 ```bash
-elastic-module index create INDEX_NAME [OPTIONS]
+elastro index create INDEX_NAME [OPTIONS]
 ```
 
 Options:
@@ -83,25 +135,25 @@ Options:
 ### Get Index
 
 ```bash
-elastic-module index get INDEX_NAME
+elastro index get INDEX_NAME
 ```
 
 ### Check if Index Exists
 
 ```bash
-elastic-module index exists INDEX_NAME
+elastro index exists INDEX_NAME
 ```
 
 ### Update Index
 
 ```bash
-elastic-module index update INDEX_NAME --settings SETTINGS_FILE
+elastro index update INDEX_NAME --settings SETTINGS_FILE
 ```
 
 ### Delete Index
 
 ```bash
-elastic-module index delete INDEX_NAME [--force]
+elastro index delete INDEX_NAME [--force]
 ```
 
 The `--force` option skips the confirmation prompt.
@@ -109,23 +161,21 @@ The `--force` option skips the confirmation prompt.
 ### Open Index
 
 ```bash
-elastic-module index open INDEX_NAME
+elastro index open INDEX_NAME
 ```
 
 ### Close Index
 
 ```bash
-elastic-module index close INDEX_NAME
+elastro index close INDEX_NAME
 ```
 
-## Document Management
-
-The CLI provides commands for managing documents within indices.
+## Document Management (General)
 
 ### Index a Document
 
 ```bash
-elastic-module doc index INDEX_NAME [OPTIONS]
+elastro doc index INDEX_NAME [OPTIONS]
 ```
 
 Options:
@@ -134,10 +184,14 @@ Options:
 
 If no file is provided, the document is read from stdin.
 
+```bash
+echo '{"name": "foo"}' | elastro doc index my_index
+```
+
 ### Bulk Index Documents
 
 ```bash
-elastic-module doc bulk INDEX_NAME --file DOCUMENTS_FILE
+elastro doc bulk INDEX_NAME --file DOCUMENTS_FILE
 ```
 
 The file should contain a JSON array of documents.
@@ -145,26 +199,13 @@ The file should contain a JSON array of documents.
 ### Get Document
 
 ```bash
-elastic-module doc get INDEX_NAME DOCUMENT_ID
+elastro doc get INDEX_NAME DOCUMENT_ID
 ```
-
-### Search Documents
-
-```bash
-elastic-module doc search INDEX_NAME [QUERY] [OPTIONS]
-```
-
-Options:
-- `--size`: Maximum number of results (default: 10)
-- `--from`: Starting offset (default: 0)
-- `--file`: Path to query file (JSON format)
-
-If no query is provided, a match_all query is used.
 
 ### Update Document
 
 ```bash
-elastic-module doc update INDEX_NAME DOCUMENT_ID --file DOCUMENT_FILE [--partial]
+elastro doc update INDEX_NAME DOCUMENT_ID --file DOCUMENT_FILE [--partial]
 ```
 
 The `--partial` flag enables partial document updates.
@@ -172,107 +213,98 @@ The `--partial` flag enables partial document updates.
 ### Delete Document
 
 ```bash
-elastic-module doc delete INDEX_NAME DOCUMENT_ID
+elastro doc delete INDEX_NAME DOCUMENT_ID
 ```
 
 ### Bulk Delete Documents
 
 ```bash
-elastic-module doc bulk-delete INDEX_NAME --file IDS_FILE
+elastro doc bulk-delete INDEX_NAME --file IDS_FILE
 ```
 
 The file should contain a JSON array of document IDs.
 
 ## Datastream Management
 
-The CLI provides commands for managing Elasticsearch datastreams.
-
 ### Create Datastream
 
 ```bash
-elastic-module datastream create DATASTREAM_NAME [--index-pattern INDEX_PATTERN]
+elastro datastream create DATASTREAM_NAME [--index-pattern INDEX_PATTERN]
 ```
 
 ### List Datastreams
 
 ```bash
-elastic-module datastream list [--pattern PATTERN]
+elastro datastream list [--pattern PATTERN]
 ```
 
 ### Get Datastream
 
 ```bash
-elastic-module datastream get DATASTREAM_NAME
+elastro datastream get DATASTREAM_NAME
 ```
 
 ### Delete Datastream
 
 ```bash
-elastic-module datastream delete DATASTREAM_NAME
+elastro datastream delete DATASTREAM_NAME
 ```
 
 ### Rollover Datastream
 
 ```bash
-elastic-module datastream rollover DATASTREAM_NAME [--conditions CONDITIONS_FILE]
+elastro datastream rollover DATASTREAM_NAME [--conditions CONDITIONS_FILE]
 ```
 
 ## Utility Commands
 
-The CLI provides utility commands for common Elasticsearch operations.
-
 ### Cluster Health
 
 ```bash
-elastic-module utils health [--level LEVEL]
+elastro utils health [--level LEVEL] [--wait-for-status STATUS]
 ```
-
-The level can be one of: cluster, indices, shards.
 
 ### Index Templates
 
 ```bash
-elastic-module utils templates list [--pattern PATTERN]
-elastic-module utils templates get TEMPLATE_NAME
+elastro utils templates list [--pattern PATTERN]
+elastro utils templates get TEMPLATE_NAME
 ```
 
 ### Aliases
 
 ```bash
-elastic-module utils aliases list [--index INDEX]
+elastro utils aliases list [--index INDEX]
 ```
 
-## Examples
+## Configuration (Advanced)
 
-### Create an Index with Custom Mapping
+### List Configuration
+
+To view your current configuration:
 
 ```bash
-elastic-module index create my_index --shards 3 --replicas 2 --mapping mapping.json
+elastro config list
 ```
 
-### Index a Document
+### Get/Set Configuration Values
 
 ```bash
-echo '{"title": "Test", "content": "This is a test document"}' | elastic-module doc index my_index
-```
-
-### Search Documents
-
-```bash
-elastic-module doc search my_index "title:Test" --size 20
+elastro config get elasticsearch.hosts
+elastro config set elasticsearch.timeout 60
 ```
 
 ### Using Multiple Profiles
 
 ```bash
 # Initialize production profile
-elastic-module config init --profile production
+elastro config init --profile production
 
 # Set production configuration
-elastic-module config set elasticsearch.hosts '["https://prod-es:9200"]' --profile production
+elastro config set elasticsearch.hosts '["https://prod-es:9200"]' --profile production
 
 # Use production profile for operations
-elastic-module --profile production index list
+elastro --profile production index list
 ```
 
 ## Troubleshooting
@@ -282,10 +314,14 @@ elastic-module --profile production index list
 If you're having trouble connecting to Elasticsearch, verify your configuration:
 
 ```bash
-elastic-module config list
+elastro config list
 ```
 
-Ensure that the hosts, username, and password are correct.
+Ensure that the hosts, username, and password are correct. Use `elastro utils health` to verify basic connectivity.
+
+### Authenticated Environment
+
+If your cluster requires authentication, ensure you have set the credentials correctly using `config set elasticsearch.auth ...`. 
 
 ### Permission Errors
 
@@ -301,4 +337,4 @@ cat document.json | jq
 
 ## Additional Resources
 
-For more advanced usage and API documentation, refer to the project's [API documentation](./api_docs.md).
+For more advanced usage and API documentation, refer to the project's [API documentation](./api_docs.md).    

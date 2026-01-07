@@ -293,7 +293,14 @@ class DocumentManager:
             raise ValidationError("Query cannot be empty")
 
         # Prepare search body
-        body = {"query": query}
+        # Check if query already has "query" key at top level to avoid double wrapping
+        if query and "query" in query and len(query) == 1:
+            # It might be a full body with just query
+            body = query.copy()
+        elif query:
+            body = {"query": query}
+        else:
+             body = {"query": {"match_all": {}}}
 
         # Add search options if provided
         if options:
