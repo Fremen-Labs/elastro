@@ -77,7 +77,7 @@ class DatastreamManager:
                 name=name,
                 body=template_def
             )
-            return response
+            return response.body if hasattr(response, 'body') else dict(response)
         except ValidationError as e:
             raise e
         except Exception as e:
@@ -120,7 +120,7 @@ class DatastreamManager:
 
             # Create datastream
             response = self._client._client.indices.create_data_stream(**create_params)
-            return response
+            return response.body if hasattr(response, 'body') else dict(response)
         except Exception as e:
             raise DatastreamError(f"Failed to create datastream: {str(e)}")
 
@@ -148,8 +148,12 @@ class DatastreamManager:
                 
                 # Format the response
                 datastreams = []
-                if 'data_streams' in response:
-                    datastreams = response['data_streams']
+                # response['data_streams'] access works on ObjectApiResponse too, so this might be fine already
+                # but to be safe:
+                body = response.body if hasattr(response, 'body') else dict(response)
+                
+                if 'data_streams' in body:
+                    datastreams = body['data_streams']
                 
                 return datastreams
             except Exception as e:
@@ -185,10 +189,11 @@ class DatastreamManager:
 
             # Get the datastream
             response = self._client._client.indices.get_data_stream(name=name)
+            body = response.body if hasattr(response, 'body') else dict(response)
 
             # Format the response to match test expectations
-            if 'data_streams' in response and len(response['data_streams']) > 0:
-                datastream = response['data_streams'][0]
+            if 'data_streams' in body and len(body['data_streams']) > 0:
+                datastream = body['data_streams'][0]
                 # Transform to format expected by tests
                 return {
                     "name": datastream.get("name"),
@@ -270,7 +275,7 @@ class DatastreamManager:
                 # Ignore errors if template doesn't exist
                 pass
                 
-            return response
+            return response.body if hasattr(response, 'body') else dict(response)
         except ValidationError as e:
             raise e
         except Exception as e:
@@ -311,7 +316,7 @@ class DatastreamManager:
 
             # Execute rollover
             response = self._client._client.indices.rollover(**rollover_params)
-            return response
+            return response.body if hasattr(response, 'body') else dict(response)
         except ValidationError as e:
             raise e
         except Exception as e:

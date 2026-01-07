@@ -57,6 +57,7 @@ def load_config(config_path: Optional[str] = None, profile: str = "default") -> 
             os.path.join(os.getcwd(), "elastic.json"),
             os.path.expanduser("~/.elastic.yaml"),
             os.path.expanduser("~/.elastic.json"),
+            os.path.expanduser("~/.elastic/config.yaml"),
         ]
 
         for loc in standard_locations:
@@ -82,9 +83,12 @@ def load_config(config_path: Optional[str] = None, profile: str = "default") -> 
     return config
 
 
-def get_config() -> Dict[str, Any]:
+def get_config(profile: str = "default") -> Dict[str, Any]:
     """
     Get the current configuration.
+
+    Args:
+        profile: Configuration profile to use
 
     Returns:
         Dict containing configuration
@@ -96,7 +100,7 @@ def get_config() -> Dict[str, Any]:
 
     if _config is None:
         # Load configuration if not already loaded
-        return load_config()
+        return load_config(profile=profile)
 
     return _config
 
@@ -257,3 +261,39 @@ def _validate_config(config: Dict[str, Any]) -> None:
         valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if level not in valid_levels:
             raise ConfigurationError(f"Invalid logging level: {level}. Must be one of {valid_levels}")
+
+
+def save_config(config: Dict[str, Any], path: Optional[str] = None, profile: str = "default") -> None:
+    """
+    Save configuration to a file.
+
+    Args:
+        config: Configuration to save
+        path: Path to the configuration file (optional)
+        profile: Configuration profile to use (not used in simple save for now, assumes config is full structure)
+    """
+    # Use default path if not provided
+    if not path:
+        path = os.path.expanduser("~/.elastic/config.yaml")
+
+    path_obj = Path(path)
+    
+    # Create directory if it doesn't exist
+    if not path_obj.parent.exists():
+        path_obj.parent.mkdir(parents=True)
+
+    try:
+        with open(path_obj, 'w') as f:
+            yaml.dump(config, f, default_flow_style=False)
+    except Exception as e:
+        raise ConfigurationError(f"Failed to save configuration to {path}: {str(e)}")
+
+
+def default_config() -> Dict[str, Any]:
+    """
+    Get the default configuration.
+
+    Returns:
+        Dict containing default configuration
+    """
+    return DEFAULT_CONFIG.copy()

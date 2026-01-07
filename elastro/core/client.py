@@ -155,7 +155,7 @@ class ElasticsearchClient:
         # Handle authentication
         if self.auth:
             # Add basic_auth directly if username and password are present
-            if "username" in self.auth and "password" in self.auth:
+            if self.auth.get("username") and self.auth.get("password"):
                 client_params["basic_auth"] = (self.auth["username"], self.auth["password"])
             # Handle API key 
             elif "api_key" in self.auth:
@@ -163,6 +163,18 @@ class ElasticsearchClient:
             # Handle cloud ID
             elif "cloud_id" in self.auth:
                 client_params["cloud_id"] = self.auth["cloud_id"]
+
+        # Prepare safe loggable params
+        log_params = client_params.copy()
+        if "basic_auth" in log_params:
+            user = log_params["basic_auth"][0]
+            log_params["basic_auth"] = (user, "******")
+            
+        log_auth = self.auth.copy() if self.auth else {}
+        if "password" in log_auth:
+            log_auth["password"] = "******"
+            
+        logger.info(f"Connecting with params: hosts={client_params.get('hosts')}, auth={log_auth}, basic_auth={log_params.get('basic_auth')}")
 
         try:
             self._client = Elasticsearch(**client_params)  # type: ignore

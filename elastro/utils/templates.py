@@ -35,100 +35,59 @@ class TemplateManager:
         self._client = client
         self._es = client.client
 
-    def create(self, template_def: Union[Dict[str, Any], TemplateDefinition]) -> bool:
-        """Create a new index template.
-
-        Args:
-template_def: Template definition as a dict or TemplateDefinition instance.
-
-        Returns:
-            bool: True if template was created successfully.
-
-        Raises:
-            OperationError: If template creation fails.
-        """
+    
+    def create(self, name: str, body: Dict[str, Any], template_type: str = "index") -> bool:
+        """Create a new template (index or component)."""
         try:
-            if isinstance(template_def, dict):
-                template_def = TemplateDefinition(**template_def)
-
-            response = self._es.indices.put_index_template(
-                name=template_def.name,
-                body={
-                    "index_patterns": template_def.index_patterns,
-                    "template": template_def.template,
-                    "version": template_def.version,
-                    "priority": template_def.priority,
-                    "composed_of": template_def.composed_of,
-                    "_meta": template_def.meta
-                }
-            )
-            return response.get("acknowledged", False)
+            if template_type == "component":
+                resp = self._es.cluster.put_component_template(name=name, body=body)
+            else:
+                resp = self._es.indices.put_index_template(name=name, body=body)
+            return resp.get("acknowledged", False)
         except Exception as e:
-            raise OperationError(f"Failed to create template {template_def.name}: {str(e)}")
+            raise OperationError(f"Failed to create {template_type} template {name}: {str(e)}")
 
-    def get(self, name: str) -> Dict[str, Any]:
-        """Get an index template by name.
-
-        Args:
-            name: Name of the template to retrieve.
-
-        Returns:
-            dict: Template configuration.
-
-        Raises:
-            OperationError: If template retrieval fails.
-        """
+    def get(self, name: str, template_type: str = "index") -> Dict[str, Any]:
+        """Get a template by name."""
         try:
-            response = self._es.indices.get_index_template(name=name)
-            if "index_templates" in response and len(response["index_templates"]) > 0:
-                return response["index_templates"][0]
-            return {}
+            if template_type == "component":
+                resp = self._es.cluster.get_component_template(name=name)
+                # Response format: {'component_templates': [{'name': 'foo', 'component_template': {...}}]}
+                if "component_templates" in resp:
+                    for t in resp["component_templates"]:
+                        if t["name"] == name:
+                            return t
+                return {}
+            else:
+                resp = self._es.indices.get_index_template(name=name)
+                if "index_templates" in resp:
+                     for t in resp["index_templates"]:
+                        if t["name"] == name:
+                            return t
+                return {}
         except Exception as e:
-            raise OperationError(f"Failed to get template {name}: {str(e)}")
+            raise OperationError(f"Failed to get {template_type} template {name}: {str(e)}")
 
-    def exists(self, name: str) -> bool:
-        """Check if an index template exists.
-
-        Args:
-            name: Name of the template to check.
-
-        Returns:
-            bool: True if template exists, False otherwise.
-        """
+    def delete(self, name: str, template_type: str = "index") -> bool:
+        """Delete a template."""
         try:
-            return self._es.indices.exists_index_template(name=name)
-        except Exception:
-            return False
-
-    def delete(self, name: str) -> bool:
-        """Delete an index template.
-
-        Args:
-            name: Name of the template to delete.
-
-        Returns:
-            bool: True if template was deleted successfully.
-
-        Raises:
-            OperationError: If template deletion fails.
-        """
-        try:
-            response = self._es.indices.delete_index_template(name=name)
-            return response.get("acknowledged", False)
+            if template_type == "component":
+                resp = self._es.cluster.delete_component_template(name=name)
+            else:
+                resp = self._es.indices.delete_index_template(name=name)
+            return resp.get("acknowledged", False)
         except Exception as e:
-            raise OperationError(f"Failed to delete template {name}: {str(e)}")
+            raise OperationError(f"Failed to delete {template_type} template {name}: {str(e)}")
 
-    def list(self) -> List[str]:
-        """List all index templates.
-
-        Returns:
-            list: List of template names.
-
-        Raises:
-            OperationError: If listing templates fails.
-        """
+    def list(self, template_type: str = "index", name: str = None) -> List[Dict[str, Any]]:
+        """List templates."""
         try:
-            response = self._es.indices.get_index_template()
-            return [t["name"] for t in response.get("index_templates", [])]
+            pattern = name if name else "*"
+            if template_type == "component":
+                resp = self._es.cluster.get_component_template(name=pattern)
+                return resp.get("component_templates", [])
+            else:
+                resp = self._es.indices.get_index_template(name=pattern)
+                return resp.get("index_templates", [])
         except Exception as e:
-            raise OperationError(f"Failed to list templates: {str(e)}")
+            raise OperationError(f"Failed to list {template_type} templates: {str(e)}")

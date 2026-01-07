@@ -51,7 +51,6 @@ class DocumentManager:
         Returns:
             Indexing response
         """
-        # (keeping content same, just changing signature)
         # Validate inputs
         if not index:
             raise ValidationError("Index name cannot be empty")
@@ -74,7 +73,8 @@ class DocumentManager:
             
             logger.debug(f"Indexing document into '{index}' with ID '{id}'")
             # Execute the index operation
-            return self.client.client.index(**params)  # type: ignore
+            response = self.client.client.index(**params)  # type: ignore
+            return response.body if hasattr(response, 'body') else dict(response)
         except Exception as e:
             logger.error(f"Failed to index document info '{index}': {str(e)}")
             raise DocumentError(f"Failed to index document: {str(e)}")
@@ -149,9 +149,6 @@ class DocumentManager:
             logger.error(f"Failed to bulk index documents: {str(e)}")
             raise OperationError(f"Failed to bulk index documents: {str(e)}")
 
-    # Actually I will just target the methods that return client responses directly.
-    # index, get, update, delete, search.
-
     def get(self, index: str, id: str) -> Any:
         """
         Get a document by ID.
@@ -172,10 +169,9 @@ class DocumentManager:
 
         try:
             response = self.client.client.get(index=index, id=id)
-            return response
+            return response.body if hasattr(response, 'body') else dict(response)
         except Exception as e:
-            # Log only if it's an unexpected error, NOT if it's just not found? 
-            # Actually standard practice is to log errors.
+            # Log only if it's an unexpected error
             logger.error(f"Failed to get document '{id}' from '{index}': {str(e)}")
             raise DocumentError(f"Failed to get document: {str(e)}")
 
@@ -187,7 +183,6 @@ class DocumentManager:
         partial: bool = True,
         refresh: bool = False
     ) -> Any:
-        # ... signature change
         """
         Update a document.
 
@@ -216,12 +211,13 @@ class DocumentManager:
             if partial:
                 # For partial updates, wrap in "doc" field
                 body = {"doc": document}
-                return self.client.client.update(
+                response = self.client.client.update(
                     index=index,
                     id=id,
                     body=body,
                     refresh="true" if refresh else "false"
                 )
+                return response.body if hasattr(response, 'body') else dict(response)
             else:
                 # For full document updates, just index it again
                 return self.index(index=index, id=id, document=document, refresh=refresh)
@@ -235,7 +231,6 @@ class DocumentManager:
         id: str,
         refresh: bool = False
     ) -> Any:
-        # ... signature change
         """
         Delete a document by ID.
 
@@ -256,16 +251,15 @@ class DocumentManager:
 
         try:
             logger.info(f"Deleting document '{id}' from '{index}'")
-            return self.client.client.delete(
+            response = self.client.client.delete(
                 index=index,
                 id=id,
                 refresh="true" if refresh else "false"
             )
+            return response.body if hasattr(response, 'body') else dict(response)
         except Exception as e:
             logger.error(f"Failed to delete document '{id}': {str(e)}")
             raise DocumentError(f"Failed to delete document: {str(e)}")
-    
-    # bulk_delete returns Dict constructed by me, so it's fine.
 
     def search(
         self,
@@ -273,7 +267,6 @@ class DocumentManager:
         query: Dict[str, Any],
         options: Optional[Dict[str, Any]] = None
     ) -> Any:
-        # ... signature change
         """
         Search for documents.
 
@@ -293,7 +286,14 @@ class DocumentManager:
             raise ValidationError("Query cannot be empty")
 
         # Prepare search body
-        body = {"query": query}
+        # Check if query already has "query" key at top level to avoid double wrapping
+        if query and "query" in query and len(query) == 1:
+            # It might be a full body with just query
+            body = query.copy()
+        elif query:
+            body = {"query": query}
+        else:
+             body = {"query": {"match_all": {}}}
 
         # Add search options if provided
         if options:
@@ -307,7 +307,8 @@ class DocumentManager:
 
         try:
             logger.debug(f"Searching index '{index}'...")
-            return self.client.client.search(**search_params)  # type: ignore
+            response = self.client.client.search(**search_params)  # type: ignore
+            return response.body if hasattr(response, 'body') else dict(response)
         except Exception as e:
             logger.error(f"Failed to search documents in '{index}': {str(e)}")
             raise DocumentError(f"Failed to search documents: {str(e)}")

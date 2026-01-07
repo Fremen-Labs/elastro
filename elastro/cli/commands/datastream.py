@@ -7,6 +7,7 @@ import json
 from elastro.core.client import ElasticsearchClient
 from elastro.core.datastream import DatastreamManager
 from elastro.core.errors import OperationError
+from elastro.cli.completion import complete_datastreams
 
 @click.command("create")
 @click.argument("name", type=str)
@@ -45,7 +46,7 @@ def list_datastreams(client):
         exit(1)
 
 @click.command("get")
-@click.argument("name", type=str)
+@click.argument("name", type=str, shell_complete=complete_datastreams)
 @click.pass_obj
 def get_datastream(client, name):
     """Get information about a datastream."""
@@ -59,7 +60,7 @@ def get_datastream(client, name):
         exit(1)
 
 @click.command("delete")
-@click.argument("name", type=str)
+@click.argument("name", type=str, shell_complete=complete_datastreams)
 @click.option("--force", is_flag=True, help="Force deletion without confirmation")
 @click.pass_obj
 def delete_datastream(client, name, force):
@@ -82,7 +83,7 @@ def delete_datastream(client, name, force):
         exit(1)
 
 @click.command("rollover")
-@click.argument("name", type=str)
+@click.argument("name", type=str, shell_complete=complete_datastreams)
 @click.option("--max-age", type=str, help="Maximum age (e.g., '7d')")
 @click.option("--max-docs", type=int, help="Maximum number of documents")
 @click.option("--max-size", type=str, help="Maximum size (e.g., '5gb')")

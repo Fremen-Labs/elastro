@@ -1,5 +1,18 @@
 # Elastro
 
+```text
+    ______  __               __                 
+   / ____/ / /____ _ _____  / /_   _____  ____  
+  / __/   / // __ `// ___/ / __/  / ___/ / __ \ 
+ / /___  / // /_/ /(__  ) / /_   / /    / /_/ / 
+/_____/ /_/ \__,_//____/  \__/  /_/     \____/  
+```
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+
 A comprehensive Python module for managing Elasticsearch operations within pipeline processes.
 
 ## Overview
@@ -114,21 +127,83 @@ print(results)
 
 ```bash
 # Initialize configuration
-elastic-cli config init
+elastro config init
 
 # Create an index
-elastic-cli index create products --shards 3 --replicas 1 --mapping ./product-mapping.json
+elastro index create products --shards 3 --replicas 1
+
+# Interactive Template Wizard
+elastro template wizard
+
+# Interactive ILM Policy Wizard
+elastro ilm create my-policy
+
+# List ILM Policies (Table View)
+elastro ilm list
 
 # Add a document
-elastic-cli doc index products --id 1 --file ./product.json
+elastro doc index products --id 1 --file ./product.json
 
 # Search documents
-elastic-cli search products "name:laptop" --format json
+elastro doc search products --term category=laptop
 ```
 
-## Documentation
+### ILM (Index Lifecycle Management)
 
-For more detailed documentation, please refer to the [docs](https://github.com/Fremen-Labs/elastro/tree/main/docs) directory:
+Elastro provides a powerful CLI for managing ILM policies, including an interactive wizard.
+
+```bash
+# List all policies (Table View)
+elastro ilm list
+
+# List with full JSON details (limited to first 2)
+elastro ilm list --full
+
+# Create a policy using the Interactive Wizard (Recommended)
+elastro ilm create my-policy
+# Follow the prompts to configure Hot, Warm, Cold, and Delete phases.
+
+# Create a policy from a file
+elastro ilm create my-policy --file ./policy.json
+
+# Explain lifecycle status for an index (includes step info for debugging)
+elastro ilm explain my-index
+```
+
+### Snapshot & Restore
+
+Manage backup repositories and snapshots with ease.
+
+**Repositories:**
+```bash
+# List all repositories
+elastro snapshot repo list
+
+# Create a filesystem repository
+elastro snapshot repo create my_backup fs --setting location=/tmp/backups
+
+# Create an S3 repository
+elastro snapshot repo create my_s3_backup s3 --setting bucket=my-bucket --setting region=us-east-1
+```
+
+**Snapshots:**
+```bash
+# List snapshots in a repository
+elastro snapshot list my_backup
+
+# Create a snapshot (async default)
+elastro snapshot create my_backup snapshot_1
+
+# Create and wait for completion
+elastro snapshot create my_backup snapshot_2 --wait --indices "logs-*,metrics-*"
+
+# Restore a snapshot (Interactive Wizard)
+elastro snapshot restore
+# Launches a wizard to select repo -> snapshot -> indices -> rename pattern
+
+# Restore specific indices from CLI
+elastro snapshot restore my_backup snapshot_1 --indices "logs-*"
+```
 
 - [Getting Started](https://github.com/Fremen-Labs/elastro/blob/main/docs/getting_started.md)
 - [API Reference](https://github.com/Fremen-Labs/elastro/blob/main/docs/api_reference.md)
@@ -148,51 +223,8 @@ Check out the [examples](https://github.com/Fremen-Labs/elastro/tree/main/exampl
 
 ## Contributing
 
-We welcome contributions to Elastro! If you'd like to contribute, please follow these guidelines:
+We welcome contributions to Elastro! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started, code standards, and submission processes.
 
-### Development Setup
-
-1. Fork the repository
-2. Clone your fork: `git clone https://github.com/your-username/elastro.git`
-3. Install development dependencies: `pip install -e ".[dev]"`
-4. Create a branch for your changes: `git checkout -b feature/your-feature-name`
-
-### Code Standards
-
-- Follow PEP 8 style guidelines
-- Use type hints for all method signatures and return values
-- Write comprehensive docstrings (PEP 257) for all public classes and methods
-- Keep files under 300 lines of code maximum
-- Implement custom exception classes for different error categories
-- Validate inputs using Pydantic before processing
-
-### Architecture Guidelines
-
-- Maintain separation of concerns between core functionality and interfaces
-- Design modular components with single responsibilities
-- Follow SOLID principles
-- Implement dependency injection for better testability
-- Structure code by functionality rather than technology type
-
-### Testing
-
-- Write unit tests with pytest for all new functionality
-- Maintain test coverage of at least 80% for core functionality
-- Run tests using `./run_tests.sh` before submitting a PR
-
-### Submitting Changes
-
-1. Ensure your code follows the project's standards
-2. Write meaningful commit messages
-3. Push your changes to your fork
-4. Submit a pull request to the main repository
-5. Describe your changes and the problem they solve
-
-### Documentation
-
-- Update documentation for any changed functionality
-- Add examples for new features
-- Write clear, concise docstrings for all public APIs
 
 ## License
 
