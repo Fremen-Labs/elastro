@@ -62,7 +62,26 @@ def delete_template(client, name, type, force):
     except OperationError as e:
         click.echo(f"Error deleting template: {str(e)}", err=True)
         exit(1)
-
+@template_group.command("create")
+@click.argument("name", type=str)
+@click.option("--file", type=click.Path(exists=True, readable=True), required=True, help="Template definition file")
+@click.option("--type", type=click.Choice(["index", "component"]), default="index", help="Template type")
+@click.pass_obj
+def create_template(client, name, file, type):
+    """Create a template from file."""
+    manager = TemplateManager(client)
+    
+    with open(file, 'r') as f:
+        body = json.load(f)
+        
+    try:
+        if manager.create(name, body, template_type=type):
+            click.echo(f"Template '{name}' created.")
+        else:
+            click.echo("Creation not acknowledged.")
+    except OperationError as e:
+        click.echo(f"Error creating template: {str(e)}", err=True)
+        exit(1)
 @template_group.command("wizard")
 @click.pass_obj
 def wizard(client):

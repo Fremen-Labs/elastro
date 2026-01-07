@@ -82,7 +82,7 @@ class IndexManager:
             logger.info(f"Creating index '{name}'...")
             response = self.client.client.indices.create(index=name, body=body)
             logger.info(f"Index '{name}' created successfully")
-            return response
+            return response.body if hasattr(response, 'body') else dict(response)
         except Exception as e:
             logger.error(f"Failed to create index '{name}': {str(e)}")
             raise ElasticIndexError(f"Failed to create index '{name}': {str(e)}")
@@ -104,6 +104,9 @@ class IndexManager:
             # exists() returns a boolean in the python client usually, but types might say HeadApiResponse
             exists = self.client.client.indices.exists(index=name)
             logger.debug(f"Index '{name}' exists: {exists}")
+            # Ensure boolean return
+            if hasattr(exists, 'body'):
+                 return bool(exists.body)
             return bool(exists)
         except Exception as e:
             logger.error(f"Failed to check if index '{name}' exists: {str(e)}")
@@ -127,7 +130,7 @@ class IndexManager:
                 raise ElasticIndexError(f"Index '{name}' does not exist")
 
             response = self.client.client.indices.get(index=name)
-            return response
+            return response.body if hasattr(response, 'body') else dict(response)
         except ElasticIndexError:
             raise
         except Exception as e:
@@ -167,7 +170,7 @@ class IndexManager:
                 index=name,
                 body=settings
             )
-            return response
+            return response.body if hasattr(response, 'body') else dict(response)
         except ElasticIndexError:
             raise
         except Exception as e:
@@ -193,7 +196,7 @@ class IndexManager:
 
             logger.info(f"Deleting index '{name}'")
             response = self.client.client.indices.delete(index=name)
-            return response
+            return response.body if hasattr(response, 'body') else dict(response)
         except ElasticIndexError:
             raise
         except Exception as e:
@@ -219,7 +222,7 @@ class IndexManager:
 
             logger.info(f"Opening index '{name}'")
             response = self.client.client.indices.open(index=name)
-            return response
+            return response.body if hasattr(response, 'body') else dict(response)
         except ElasticIndexError:
             raise
         except Exception as e:
@@ -245,7 +248,7 @@ class IndexManager:
 
             logger.info(f"Closing index '{name}'")
             response = self.client.client.indices.close(index=name)
-            return response
+            return response.body if hasattr(response, 'body') else dict(response)
         except ElasticIndexError:
             raise
         except Exception as e:
