@@ -148,6 +148,14 @@ class QueryBuilder:
         """
         return self._query
 
+    def build(self) -> Dict[str, Any]:
+        """Build the query and return the dictionary representation.
+
+        Returns:
+            The complete query as a dictionary
+        """
+        return self.to_dict()
+
 
 class BoolQueryBuilder:
     """Builder for Elasticsearch bool queries."""
