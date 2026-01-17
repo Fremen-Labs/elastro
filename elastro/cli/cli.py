@@ -32,7 +32,7 @@ from elastro.core.client import ElasticsearchClient
 from elastro.cli.commands.index import (
     create_index, get_index, index_exists, update_index,
     delete_index, open_index, close_index,
-    list_indices, find_indices
+    list_indices, find_indices, index_wizard
 )
 from elastro.cli.commands.document import (
     index_document, bulk_index, get_document, search_documents,
@@ -155,6 +155,7 @@ index.add_command(open_index)
 index.add_command(close_index)
 index.add_command(list_indices)
 index.add_command(find_indices)
+index.add_command(index_wizard)
 
 
 @cli.group()

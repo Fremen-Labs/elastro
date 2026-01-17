@@ -39,7 +39,9 @@ class IndexMappings(BaseModel):
         valid_types = {
             "text", "keyword", "date", "long", "integer",
             "short", "byte", "double", "float", "boolean",
-            "object", "nested", "geo_point", "geo_shape"
+            "object", "nested", "geo_point", "geo_shape",
+            "ip", "scaled_float", "flattened", "half_float",
+            "binary", "search_as_you_type", "alias"
         }
 
         for field, config in v.items():

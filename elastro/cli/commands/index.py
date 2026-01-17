@@ -338,3 +338,117 @@ def find_indices(client, pattern):
     # Let's just call the same logic.
     ctx = click.get_current_context()
     ctx.invoke(list_indices, pattern=pattern)
+
+@click.command("wizard", no_args_is_help=False)
+@click.pass_obj
+def index_wizard(client):
+    """
+    Interactive index creation wizard.
+
+    Guides you through creating an index using "Certified Engineer" best practices.
+    Select from a list of optimized recipes for common use cases.
+
+    Examples:
+    
+    Launch the wizard:
+    ```bash
+    elastro index wizard
+    ```
+    """
+    from rich.prompt import Prompt, Confirm, IntPrompt
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.syntax import Syntax
+    from .index_recipes import RECIPES
+
+    console = Console()
+    index_manager = IndexManager(client)
+
+    console.print(Panel.fit(
+        "[bold cyan]Elastro Index Wizard[/]\n"
+        "Select a recipe to generate an optimized index configuration.",
+        border_style="cyan"
+    ))
+
+    # 1. Display Recipes
+    for key, recipe in RECIPES.items():
+        console.print(f"[bold green]{key}[/]. [bold white]{recipe.name}[/]")
+        console.print(f"   [dim]{recipe.description}[/]\n")
+
+    # 2. Select Recipe
+    choice = Prompt.ask(
+        "Select a recipe number", 
+        choices=list(RECIPES.keys()), 
+        default="1"
+    )
+    recipe = RECIPES[choice]
+
+    console.print(f"\n[bold]Selected:[/]: [cyan]{recipe.name}[/]")
+    console.print(f"[italic]{recipe.description}[/]\n")
+
+    # 3. Prompt for Basic Info
+    index_name = Prompt.ask("Enter index name", default="my-new-index")
+    
+    # 4. Prepare Configuration
+    settings = recipe.get_settings()
+    mappings = recipe.get_mappings()
+
+    # Allow simple overrides for shards/replicas
+    if Confirm.ask("Customize shards/replicas?", default=False):
+        settings["number_of_shards"] = IntPrompt.ask("Primary Shards", default=settings.get("number_of_shards", 1))
+        settings["number_of_replicas"] = IntPrompt.ask("Replica Copies", default=settings.get("number_of_replicas", 1))
+
+    # --- Feature: Dynamic Field Customization ---
+    
+    # A. Rename Default Fields
+    if recipe.customizable_fields:
+        console.print("\n[bold]Customize Default Fields:[/]")
+        for field in recipe.customizable_fields:
+            if field in mappings["properties"]:
+                new_name = Prompt.ask(f"Rename field '{field}'?", default=field)
+                if new_name != field:
+                    mappings["properties"][new_name] = mappings["properties"].pop(field)
+
+    # B. Add New Fields
+    console.print("\n[bold]Add Custom Fields:[/]")
+    valid_types = [
+        "text", "keyword", "date", "long", "integer", "boolean", 
+        "ip", "geo_point", "nested", "object"
+    ]
+    
+    while True:
+        if not Confirm.ask("Add a new field?", default=False):
+            break
+            
+        field_name = Prompt.ask("Field Name")
+        field_type = Prompt.ask("Field Type", choices=valid_types, default="keyword")
+        
+        mappings["properties"][field_name] = {"type": field_type}
+        console.print(f"[green]Added field '{field_name}' ({field_type})[/]")
+
+    # Construct Final Config
+    final_config = {
+        "settings": settings,
+        "mappings": mappings
+    }
+
+    # 5. Preview JSON
+    json_str = json.dumps(final_config, indent=2)
+    console.print("\n[bold]Configuration Preview:[/]")
+    console.print(Syntax(json_str, "json", theme="monokai", line_numbers=False))
+
+    # 6. Confirmation and Creation
+    if Confirm.ask(f"\nCreate index [bold cyan]{index_name}[/]?", default=True):
+        try:
+            result = index_manager.create(index_name, final_config)
+            console.print(Panel(
+                f"[bold green]Success![/]\nIndex [cyan]{index_name}[/] created.\n"
+                f"Response: {json.dumps(result)}",
+                title="Operation Complete",
+                border_style="green"
+            ))
+        except OperationError as e:
+            console.print(f"[bold red]Error:[/] {str(e)}")
+            exit(1)
+    else:
+        console.print("[yellow]Operation cancelled.[/]")
