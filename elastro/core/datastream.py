@@ -27,7 +27,9 @@ class DatastreamManager:
         self._client = client
         self.validator = Validator()
 
-    def create_index_template(self, name: str, pattern: str, settings: Dict[str, Any]) -> Dict[str, Any]:
+    def create_index_template(
+        self, name: str, pattern: str, settings: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Create an index template required for data streams in Elasticsearch 8.x.
 
@@ -50,9 +52,9 @@ class DatastreamManager:
             if not pattern:
                 raise ValidationError("Index pattern cannot be empty")
             if settings:
-                if 'mappings' in settings:
+                if "mappings" in settings:
                     self.validator.validate_index_mappings(settings)
-                if 'settings' in settings:
+                if "settings" in settings:
                     self.validator.validate_index_settings(settings)
 
             # Ensure the client is connected
@@ -63,21 +65,20 @@ class DatastreamManager:
             template_def = {
                 "index_patterns": [pattern],
                 "data_stream": {},  # Enable data stream
-                "priority": 500
+                "priority": 500,
             }
 
             # Add settings and mappings if provided
-            if 'settings' in settings:
+            if "settings" in settings:
                 template_def["settings"] = settings["settings"]
-            if 'mappings' in settings:
+            if "mappings" in settings:
                 template_def["mappings"] = settings["mappings"]
 
             # Create the template
             response = self._client._client.indices.put_index_template(
-                name=name,
-                body=template_def
+                name=name, body=template_def
             )
-            return response.body if hasattr(response, 'body') else dict(response)
+            return response.body if hasattr(response, "body") else dict(response)
         except ValidationError as e:
             raise e
         except Exception as e:
@@ -87,7 +88,7 @@ class DatastreamManager:
         """
         Create a new datastream.
 
-        Note: In Elasticsearch 8.x, a matching index template with data_stream enabled 
+        Note: In Elasticsearch 8.x, a matching index template with data_stream enabled
         must exist before creating the data stream. This method will create the data stream
         only; the index template must be created separately.
 
@@ -120,7 +121,7 @@ class DatastreamManager:
 
             # Create datastream
             response = self._client._client.indices.create_data_stream(**create_params)
-            return response.body if hasattr(response, 'body') else dict(response)
+            return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             raise DatastreamError(f"Failed to create datastream: {str(e)}")
 
@@ -145,23 +146,23 @@ class DatastreamManager:
             # Get datastreams matching the pattern
             try:
                 response = self._client._client.indices.get_data_stream(name=pattern)
-                
+
                 # Format the response
                 datastreams = []
                 # response['data_streams'] access works on ObjectApiResponse too, so this might be fine already
                 # but to be safe:
-                body = response.body if hasattr(response, 'body') else dict(response)
-                
-                if 'data_streams' in body:
-                    datastreams = body['data_streams']
-                
+                body = response.body if hasattr(response, "body") else dict(response)
+
+                if "data_streams" in body:
+                    datastreams = body["data_streams"]
+
                 return datastreams
             except Exception as e:
                 # Handle "index_not_found" error gracefully
                 if "index_not_found" in str(e):
                     return []  # Return empty list when no datastreams found
                 raise  # Re-raise other errors
-                
+
         except Exception as e:
             raise DatastreamError(f"Failed to list datastreams: {str(e)}")
 
@@ -189,17 +190,17 @@ class DatastreamManager:
 
             # Get the datastream
             response = self._client._client.indices.get_data_stream(name=name)
-            body = response.body if hasattr(response, 'body') else dict(response)
+            body = response.body if hasattr(response, "body") else dict(response)
 
             # Format the response to match test expectations
-            if 'data_streams' in body and len(body['data_streams']) > 0:
-                datastream = body['data_streams'][0]
+            if "data_streams" in body and len(body["data_streams"]) > 0:
+                datastream = body["data_streams"][0]
                 # Transform to format expected by tests
                 return {
                     "name": datastream.get("name"),
                     "generation": datastream.get("generation"),
                     "status": datastream.get("status", "GREEN"),
-                    "indices": datastream.get("indices", [])
+                    "indices": datastream.get("indices", []),
                 }
 
             raise DatastreamError(f"Datastream '{name}' not found")
@@ -240,7 +241,9 @@ class DatastreamManager:
         except ValidationError as e:
             raise e
         except Exception as e:
-            raise DatastreamError(f"Failed to check if datastream '{name}' exists: {str(e)}")
+            raise DatastreamError(
+                f"Failed to check if datastream '{name}' exists: {str(e)}"
+            )
 
     def delete(self, name: str) -> Dict[str, Any]:
         """
@@ -266,7 +269,7 @@ class DatastreamManager:
 
             # Delete the datastream
             response = self._client._client.indices.delete_data_stream(name=name)
-            
+
             # Delete associated index template if it exists
             template_name = f"{name}-template"
             try:
@@ -274,14 +277,16 @@ class DatastreamManager:
             except Exception:
                 # Ignore errors if template doesn't exist
                 pass
-                
-            return response.body if hasattr(response, 'body') else dict(response)
+
+            return response.body if hasattr(response, "body") else dict(response)
         except ValidationError as e:
             raise e
         except Exception as e:
             raise DatastreamError(f"Failed to delete datastream '{name}': {str(e)}")
 
-    def rollover(self, name: str, conditions: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def rollover(
+        self, name: str, conditions: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
         Rollover a datastream.
 
@@ -316,7 +321,7 @@ class DatastreamManager:
 
             # Execute rollover
             response = self._client._client.indices.rollover(**rollover_params)
-            return response.body if hasattr(response, 'body') else dict(response)
+            return response.body if hasattr(response, "body") else dict(response)
         except ValidationError as e:
             raise e
         except Exception as e:

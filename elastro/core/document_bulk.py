@@ -28,10 +28,7 @@ class BulkDocumentManager:
         self.validator = Validator()
 
     def bulk_index(
-        self,
-        index: str,
-        documents: List[Dict[str, Any]],
-        refresh: bool = False
+        self, index: str, documents: List[Dict[str, Any]], refresh: bool = False
     ) -> Dict[str, Any]:
         """
         Index multiple documents in bulk.
@@ -76,17 +73,13 @@ class BulkDocumentManager:
 
             # Execute bulk operation
             return self.client.client.bulk(
-                operations=operations,
-                refresh="true" if refresh else "false"
+                operations=operations, refresh="true" if refresh else "false"
             )
         except Exception as e:
             raise DocumentError(f"Failed to bulk index documents: {str(e)}")
 
     def bulk_delete(
-        self,
-        index: str,
-        ids: List[str],
-        refresh: bool = False
+        self, index: str, ids: List[str], refresh: bool = False
     ) -> Dict[str, Any]:
         """
         Delete multiple documents in bulk.
@@ -114,17 +107,11 @@ class BulkDocumentManager:
             # Prepare bulk operations for deletion
             operations = []
             for doc_id in ids:
-                operations.append({
-                    "delete": {
-                        "_index": index,
-                        "_id": doc_id
-                    }
-                })
+                operations.append({"delete": {"_index": index, "_id": doc_id}})
 
             # Execute bulk operation
             return self.client.client.bulk(
-                operations=operations,
-                refresh="true" if refresh else "false"
+                operations=operations, refresh="true" if refresh else "false"
             )
         except Exception as e:
-            raise DocumentError(f"Failed to bulk delete documents: {str(e)}") 
+            raise DocumentError(f"Failed to bulk delete documents: {str(e)}")

@@ -37,12 +37,12 @@ class IlmManager:
         try:
             logger.debug("Listing ILM policies")
             response = self.client.client.ilm.get_lifecycle()
-            body = response.body if hasattr(response, 'body') else dict(response)
-            
+            body = response.body if hasattr(response, "body") else dict(response)
+
             # Response is a dict {policy_name: {policy_def...}}
             policies = []
             for name, details in body.items():
-                details['name'] = name
+                details["name"] = name
                 policies.append(details)
             return policies
         except Exception as e:
@@ -65,8 +65,8 @@ class IlmManager:
         try:
             logger.debug(f"Getting ILM policy '{name}'")
             response = self.client.client.ilm.get_lifecycle(name=name)
-            body = response.body if hasattr(response, 'body') else dict(response)
-            
+            body = response.body if hasattr(response, "body") else dict(response)
+
             if name in body:
                 return body[name]
             return body
@@ -95,9 +95,9 @@ class IlmManager:
             # If the user passed the full wrapper {"policy": {...}}, unwrap it or pass as is?
             # put_lifecycle expects 'policy' arg to contain phases.
             # Usually strict JSON is {"policy": {"phases": ...}}
-            
+
             response = self.client.client.ilm.put_lifecycle(name=name, body=policy)
-            body = response.body if hasattr(response, 'body') else dict(response)
+            body = response.body if hasattr(response, "body") else dict(response)
             return body.get("acknowledged", False)
         except Exception as e:
             logger.error(f"Failed to create ILM policy '{name}': {str(e)}")
@@ -119,7 +119,7 @@ class IlmManager:
         try:
             logger.info(f"Deleting ILM policy '{name}'")
             response = self.client.client.ilm.delete_lifecycle(name=name)
-            body = response.body if hasattr(response, 'body') else dict(response)
+            body = response.body if hasattr(response, "body") else dict(response)
             return body.get("acknowledged", False)
         except Exception as e:
             logger.error(f"Failed to delete ILM policy '{name}': {str(e)}")
@@ -141,11 +141,11 @@ class IlmManager:
         try:
             logger.debug(f"Explaining lifecycle for index '{index}'")
             response = self.client.client.ilm.explain_lifecycle(index=index)
-            body = response.body if hasattr(response, 'body') else dict(response)
-            
+            body = response.body if hasattr(response, "body") else dict(response)
+
             # Usually returns {'indices': {'index_name': {...}}}
-            if 'indices' in body and index in body['indices']:
-                return body['indices'][index]
+            if "indices" in body and index in body["indices"]:
+                return body["indices"][index]
             return body
         except Exception as e:
             logger.error(f"Failed to explain lifecycle for '{index}': {str(e)}")
@@ -155,7 +155,7 @@ class IlmManager:
         """Start ILM service."""
         try:
             resp = self.client.client.ilm.start()
-            body = resp.body if hasattr(resp, 'body') else dict(resp)
+            body = resp.body if hasattr(resp, "body") else dict(resp)
             return body.get("acknowledged", False)
         except Exception as e:
             raise OperationError(f"Failed to start ILM: {e}")
@@ -164,7 +164,7 @@ class IlmManager:
         """Stop ILM service."""
         try:
             resp = self.client.client.ilm.stop()
-            body = resp.body if hasattr(resp, 'body') else dict(resp)
+            body = resp.body if hasattr(resp, "body") else dict(resp)
             return body.get("acknowledged", False)
         except Exception as e:
             raise OperationError(f"Failed to stop ILM: {e}")

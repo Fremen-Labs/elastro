@@ -9,9 +9,14 @@ from elastro.core.datastream import DatastreamManager
 from elastro.core.errors import OperationError
 from elastro.cli.completion import complete_datastreams
 
+
 @click.command("create", no_args_is_help=True)
 @click.argument("name", type=str)
-@click.option("--settings", type=click.Path(exists=True, readable=True), help="Path to settings file")
+@click.option(
+    "--settings",
+    type=click.Path(exists=True, readable=True),
+    help="Path to settings file",
+)
 @click.pass_obj
 def create_datastream(client, name, settings):
     """
@@ -20,7 +25,7 @@ def create_datastream(client, name, settings):
     Initializes a new data stream. Requires a matching index template to be created first.
 
     Examples:
-    
+
     Create a new datastream (requires matching template):
     ```bash
     elastro datastream create logs-my-app-prod
@@ -30,7 +35,7 @@ def create_datastream(client, name, settings):
 
     # Load settings if provided
     if settings:
-        with open(settings, 'r') as f:
+        with open(settings, "r") as f:
             settings_data = json.load(f)
     else:
         settings_data = {}
@@ -43,6 +48,7 @@ def create_datastream(client, name, settings):
         click.echo(f"Error creating datastream: {str(e)}", err=True)
         exit(1)
 
+
 @click.command("list")
 @click.pass_obj
 def list_datastreams(client):
@@ -52,7 +58,7 @@ def list_datastreams(client):
     Retrieves all data streams in the cluster.
 
     Examples:
-    
+
     List all datastreams:
     ```bash
     elastro datastream list
@@ -67,6 +73,7 @@ def list_datastreams(client):
         click.echo(f"Error listing datastreams: {str(e)}", err=True)
         exit(1)
 
+
 @click.command("get", no_args_is_help=True)
 @click.argument("name", type=str, shell_complete=complete_datastreams)
 @click.pass_obj
@@ -77,7 +84,7 @@ def get_datastream(client, name):
     Retrieves detailed metadata for a specific data stream including generation and indices.
 
     Examples:
-    
+
     Get details for datastreams matching pattern:
     ```bash
     elastro datastream get logs-*
@@ -92,6 +99,7 @@ def get_datastream(client, name):
         click.echo(f"Error retrieving datastream: {str(e)}", err=True)
         exit(1)
 
+
 @click.command("delete", no_args_is_help=True)
 @click.argument("name", type=str, shell_complete=complete_datastreams)
 @click.option("--force", is_flag=True, help="Force deletion without confirmation")
@@ -103,7 +111,7 @@ def delete_datastream(client, name, force):
     Permanently removes a data stream and its backing indices.
 
     Examples:
-    
+
     Delete a datastream and its backing indices:
     ```bash
     elastro datastream delete logs-my-app-debug
@@ -126,6 +134,7 @@ def delete_datastream(client, name, force):
         click.echo(f"Error deleting datastream: {str(e)}", err=True)
         exit(1)
 
+
 @click.command("rollover", no_args_is_help=True)
 @click.argument("name", type=str, shell_complete=complete_datastreams)
 @click.option("--max-age", type=str, help="Maximum age (e.g., '7d')")
@@ -140,7 +149,7 @@ def rollover_datastream(client, name, max_age, max_docs, max_size):
     You can optionally provide conditions to only rollover if met.
 
     Examples:
-    
+
     Unconditional rollover (force new index):
     ```bash
     elastro datastream rollover logs-my-app-prod

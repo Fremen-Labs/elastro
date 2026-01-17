@@ -30,7 +30,7 @@ def get_logger(name: str, log_level: Optional[str] = None) -> logging.Logger:
         Configured logging.Logger instance
     """
     logger = logging.getLogger(name)
-    
+
     # If logger is already configured, return it
     if logger.handlers:
         return logger
@@ -41,18 +41,18 @@ def get_logger(name: str, log_level: Optional[str] = None) -> logging.Logger:
     # 1. Console Handler (Colored)
     console_handler = logging.StreamHandler(sys.stderr)
     console_handler.setLevel(level)
-    
+
     color_formatter = colorlog.ColoredFormatter(
         COLOR_LOG_FORMAT,
         datefmt="%Y-%m-%d %H:%M:%S",
         reset=True,
         log_colors={
-            'DEBUG': 'cyan',
-            'INFO': 'green',
-            'WARNING': 'yellow',
-            'ERROR': 'red',
-            'CRITICAL': 'red,bg_white',
-        }
+            "DEBUG": "cyan",
+            "INFO": "green",
+            "WARNING": "yellow",
+            "ERROR": "red",
+            "CRITICAL": "red,bg_white",
+        },
     )
     console_handler.setFormatter(color_formatter)
     logger.addHandler(console_handler)
@@ -61,7 +61,7 @@ def get_logger(name: str, log_level: Optional[str] = None) -> logging.Logger:
     try:
         # 10MB per file, max 5 backup files
         file_handler = RotatingFileHandler(
-            LOG_FILE_PATH, maxBytes=10*1024*1024, backupCount=5
+            LOG_FILE_PATH, maxBytes=10 * 1024 * 1024, backupCount=5
         )
         file_handler.setLevel(level)
         file_formatter = logging.Formatter(LOG_FORMAT, datefmt="%Y-%m-%d %H:%M:%S")

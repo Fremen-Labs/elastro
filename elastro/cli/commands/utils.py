@@ -10,9 +10,14 @@ from elastro.utils.aliases import AliasManager
 from elastro.utils.health import HealthManager
 from elastro.core.errors import OperationError
 
+
 @click.command("health")
-@click.option("--level", type=click.Choice(["cluster", "indices", "shards"]), default="cluster",
-              help="Health check level")
+@click.option(
+    "--level",
+    type=click.Choice(["cluster", "indices", "shards"]),
+    default="cluster",
+    help="Health check level",
+)
 @click.option("--wait", type=str, help="Wait for specified status (green, yellow, red)")
 @click.option("--timeout", type=str, default="30s", help="Timeout for health check")
 @click.pass_obj
@@ -23,7 +28,7 @@ def health(client, level, wait, timeout):
     Display cluster health status (green, yellow, red).
 
     Examples:
-    
+
     Check cluster health:
     ```bash
     elastro utils health
@@ -43,11 +48,7 @@ def health(client, level, wait, timeout):
 
         # Format output based on status
         status = result.get("status", "unknown")
-        status_colors = {
-            "green": "green",
-            "yellow": "yellow",
-            "red": "red"
-        }
+        status_colors = {"green": "green", "yellow": "yellow", "red": "red"}
 
         click.echo(
             click.style(
@@ -55,7 +56,7 @@ def health(client, level, wait, timeout):
                 f"Status: {status} | "
                 f"Nodes: {result.get('number_of_nodes', 0)} | "
                 f"Data nodes: {result.get('number_of_data_nodes', 0)}",
-                fg=status_colors.get(status, "white")
+                fg=status_colors.get(status, "white"),
             )
         )
 
@@ -65,14 +66,16 @@ def health(client, level, wait, timeout):
         click.echo(f"Error checking health: {str(e)}", err=True)
         exit(1)
 
+
 @click.group("templates")
 def templates():
     """
     Manage index templates (Legacy).
-    
+
     Consider using 'elastro template' top-level command instead.
     """
     pass
+
 
 @templates.command("list")
 @click.option("--type", type=click.Choice(["index", "component"]), help="Template type")
@@ -89,9 +92,15 @@ def list_templates(client, type, name):
         click.echo(f"Error listing templates: {str(e)}", err=True)
         exit(1)
 
+
 @templates.command("get", no_args_is_help=True)
 @click.argument("name", type=str)
-@click.option("--type", type=click.Choice(["index", "component"]), default="index", help="Template type")
+@click.option(
+    "--type",
+    type=click.Choice(["index", "component"]),
+    default="index",
+    help="Template type",
+)
 @click.pass_obj
 def get_template(client, name, type):
     """Get an index template."""
@@ -104,17 +113,28 @@ def get_template(client, name, type):
         click.echo(f"Error retrieving template: {str(e)}", err=True)
         exit(1)
 
+
 @templates.command("create", no_args_is_help=True)
 @click.argument("name", type=str)
-@click.option("--file", type=click.Path(exists=True, readable=True), required=True, help="Template definition file")
-@click.option("--type", type=click.Choice(["index", "component"]), default="index", help="Template type")
+@click.option(
+    "--file",
+    type=click.Path(exists=True, readable=True),
+    required=True,
+    help="Template definition file",
+)
+@click.option(
+    "--type",
+    type=click.Choice(["index", "component"]),
+    default="index",
+    help="Template type",
+)
 @click.pass_obj
 def create_template(client, name, file, type):
     """Create an index template."""
     template_manager = TemplateManager(client)
 
     # Load template definition
-    with open(file, 'r') as f:
+    with open(file, "r") as f:
         template_def = json.load(f)
 
     try:
@@ -125,9 +145,15 @@ def create_template(client, name, file, type):
         click.echo(f"Error creating template: {str(e)}", err=True)
         exit(1)
 
+
 @templates.command("delete", no_args_is_help=True)
 @click.argument("name", type=str)
-@click.option("--type", type=click.Choice(["index", "component"]), default="index", help="Template type")
+@click.option(
+    "--type",
+    type=click.Choice(["index", "component"]),
+    default="index",
+    help="Template type",
+)
 @click.option("--force", is_flag=True, help="Force deletion without confirmation")
 @click.pass_obj
 def delete_template(client, name, type, force):
@@ -149,10 +175,12 @@ def delete_template(client, name, type, force):
         click.echo(f"Error deleting template: {str(e)}", err=True)
         exit(1)
 
+
 @click.group("aliases")
 def aliases():
     """Manage index aliases."""
     pass
+
 
 @aliases.command("list")
 @click.option("--index", type=str, help="Filter by index")
@@ -165,7 +193,7 @@ def list_aliases(client, index, name):
     Shows configured aliases, optionally filtering by index or alias name.
 
     Examples:
-    
+
     List all aliases:
     ```bash
     elastro utils aliases list
@@ -185,6 +213,7 @@ def list_aliases(client, index, name):
         click.echo(f"Error listing aliases: {str(e)}", err=True)
         exit(1)
 
+
 @aliases.command("create", no_args_is_help=True)
 @click.argument("name", type=str)
 @click.argument("index", type=str)
@@ -199,7 +228,7 @@ def create_alias(client, name, index, is_write_index, routing, filter):
     Adds an alias to an index.
 
     Examples:
-    
+
     Create a simple alias:
     ```bash
     elastro utils aliases create my-alias my-index
@@ -227,13 +256,14 @@ def create_alias(client, name, index, is_write_index, routing, filter):
             index,
             is_write_index=is_write_index,
             routing=routing,
-            filter=filter_query
+            filter=filter_query,
         )
         click.echo(json.dumps(result, indent=2))
         click.echo(f"Alias '{name}' created for index '{index}'.")
     except OperationError as e:
         click.echo(f"Error creating alias: {str(e)}", err=True)
         exit(1)
+
 
 @aliases.command("delete", no_args_is_help=True)
 @click.argument("name", type=str)
@@ -247,7 +277,7 @@ def delete_alias(client, name, index, force):
     Removes an alias from an index.
 
     Examples:
-    
+
     Delete an alias:
     ```bash
     elastro utils aliases delete my-alias my-index
@@ -257,7 +287,9 @@ def delete_alias(client, name, index, force):
 
     # Confirm deletion unless --force is provided
     if not force:
-        confirm = click.confirm(f"Are you sure you want to delete alias '{name}' from index '{index}'?")
+        confirm = click.confirm(
+            f"Are you sure you want to delete alias '{name}' from index '{index}'?"
+        )
         if not confirm:
             click.echo("Operation cancelled.")
             return

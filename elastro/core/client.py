@@ -38,7 +38,7 @@ class ElasticsearchClient:
         password: Optional[str] = None,
         api_key: Optional[str] = None,
         verify_certs: Optional[bool] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize the Elasticsearch client.
@@ -65,9 +65,19 @@ class ElasticsearchClient:
             self.hosts = hosts or es_config.get("hosts")
             self.auth = auth or es_config.get("auth") or {}
             self.timeout = timeout or es_config.get("timeout")
-            self.retry_on_timeout = retry_on_timeout if retry_on_timeout is not None else es_config.get("retry_on_timeout")
-            self.max_retries = max_retries if max_retries is not None else es_config.get("max_retries")
-            self.verify_certs = verify_certs if verify_certs is not None else es_config.get("verify_certs", True)
+            self.retry_on_timeout = (
+                retry_on_timeout
+                if retry_on_timeout is not None
+                else es_config.get("retry_on_timeout")
+            )
+            self.max_retries = (
+                max_retries if max_retries is not None else es_config.get("max_retries")
+            )
+            self.verify_certs = (
+                verify_certs
+                if verify_certs is not None
+                else es_config.get("verify_certs", True)
+            )
         else:
             # Use only explicitly provided parameters
             self.hosts = hosts
@@ -76,7 +86,7 @@ class ElasticsearchClient:
             self.retry_on_timeout = retry_on_timeout
             self.max_retries = max_retries
             self.verify_certs = verify_certs if verify_certs is not None else True
-            
+
         # Handle direct username/password/api_key parameters
         if username and password:
             if isinstance(self.auth, dict):
@@ -84,7 +94,7 @@ class ElasticsearchClient:
                 self.auth["password"] = password
             else:
                 self.auth = {"username": username, "password": password}
-                
+
         if api_key:
             if isinstance(self.auth, dict):
                 self.auth["api_key"] = api_key
@@ -94,7 +104,7 @@ class ElasticsearchClient:
         self.client_kwargs = kwargs
         self._client = None
         self._connected = False
-        
+
         logger.debug(f"Initialized ElasticsearchClient with hosts: {self.hosts}")
 
     @property
@@ -121,30 +131,35 @@ class ElasticsearchClient:
             AuthenticationError: If authentication fails
         """
         logger.info(f"Connecting to Elasticsearch at {self.hosts}...")
-        
+
         client_params = {
             "hosts": self.hosts,
         }
-        
+
         # Only add SSL params for HTTPS URLs
         if isinstance(self.hosts, list):
-            uses_https = any(h.startswith('https://') for h in self.hosts if isinstance(h, str))
+            uses_https = any(
+                h.startswith("https://") for h in self.hosts if isinstance(h, str)
+            )
         else:
-            uses_https = str(self.hosts).startswith('https://')
-            
+            uses_https = str(self.hosts).startswith("https://")
+
         if uses_https:
             client_params["verify_certs"] = self.verify_certs
             # Additional SSL settings when verify_certs is False
             if self.verify_certs is False:
-                logger.warning("SSL certificate verification is disabled. This is not secure for production.")
+                logger.warning(
+                    "SSL certificate verification is disabled. This is not secure for production."
+                )
                 import urllib3
+
                 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
                 client_params["ssl_assert_hostname"] = False
                 client_params["ssl_show_warn"] = False
-        
+
         # Add client kwargs
         client_params.update(self.client_kwargs)
-        
+
         # Add optional parameters if they are not None
         if self.retry_on_timeout is not None:
             client_params["retry_on_timeout"] = self.retry_on_timeout
@@ -156,8 +171,11 @@ class ElasticsearchClient:
         if self.auth:
             # Add basic_auth directly if username and password are present
             if self.auth.get("username") and self.auth.get("password"):
-                client_params["basic_auth"] = (self.auth["username"], self.auth["password"])
-            # Handle API key 
+                client_params["basic_auth"] = (
+                    self.auth["username"],
+                    self.auth["password"],
+                )
+            # Handle API key
             elif "api_key" in self.auth:
                 client_params["api_key"] = self.auth["api_key"]
             # Handle cloud ID
@@ -169,12 +187,14 @@ class ElasticsearchClient:
         if "basic_auth" in log_params:
             user = log_params["basic_auth"][0]
             log_params["basic_auth"] = (user, "******")
-            
+
         log_auth = self.auth.copy() if self.auth else {}
         if "password" in log_auth:
             log_auth["password"] = "******"
-            
-        logger.info(f"Connecting with params: hosts={client_params.get('hosts')}, auth={log_auth}, basic_auth={log_params.get('basic_auth')}")
+
+        logger.info(
+            f"Connecting with params: hosts={client_params.get('hosts')}, auth={log_auth}, basic_auth={log_params.get('basic_auth')}"
+        )
 
         try:
             self._client = Elasticsearch(**client_params)  # type: ignore
@@ -199,7 +219,9 @@ class ElasticsearchClient:
             self._connected = False
             self._client = None
             logger.exception(f"Unexpected connection error: {str(e)}")
-            raise ConnectionError(f"Unexpected error connecting to Elasticsearch: {str(e)}")
+            raise ConnectionError(
+                f"Unexpected error connecting to Elasticsearch: {str(e)}"
+            )
 
     def disconnect(self) -> None:
         """Disconnect from Elasticsearch and clean up resources."""
@@ -208,7 +230,7 @@ class ElasticsearchClient:
             logger.info("Disconnected from Elasticsearch")
         self._client = None
         self._connected = False
-        
+
     def get_client(self) -> Elasticsearch:
         """
         Get the underlying Elasticsearch client instance.
@@ -232,7 +254,7 @@ class ElasticsearchClient:
         """
         if self._client is None:
             return False
-        
+
         try:
             return self._client.ping()
         except Exception:
@@ -268,12 +290,14 @@ class ElasticsearchClient:
                 "initializing_shards": health.get("initializing_shards"),
                 "unassigned_shards": health.get("unassigned_shards"),
             }
-            
+
             logger.debug(f"Cluster health check: {result.get('status')}")
             return result
         except ESConnectionError:
             logger.error("Lost connection during health check")
-            raise ConnectionError("Lost connection to Elasticsearch during health check")
+            raise ConnectionError(
+                "Lost connection to Elasticsearch during health check"
+            )
         except TransportError as e:
             logger.error(f"Transport error during health check: {str(e)}")
             raise OperationError(f"Failed to retrieve cluster health: {str(e)}")

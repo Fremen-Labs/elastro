@@ -35,7 +35,7 @@ class IndexManager:
         self,
         name: str,
         settings: Optional[Dict[str, Any]] = None,
-        mappings: Optional[Dict[str, Any]] = None
+        mappings: Optional[Dict[str, Any]] = None,
     ) -> Any:
         """
         Create a new Elasticsearch index.
@@ -82,7 +82,7 @@ class IndexManager:
             logger.info(f"Creating index '{name}'...")
             response = self.client.client.indices.create(index=name, body=body)
             logger.info(f"Index '{name}' created successfully")
-            return response.body if hasattr(response, 'body') else dict(response)
+            return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             logger.error(f"Failed to create index '{name}': {str(e)}")
             raise ElasticIndexError(f"Failed to create index '{name}': {str(e)}")
@@ -105,12 +105,14 @@ class IndexManager:
             exists = self.client.client.indices.exists(index=name)
             logger.debug(f"Index '{name}' exists: {exists}")
             # Ensure boolean return
-            if hasattr(exists, 'body'):
-                 return bool(exists.body)
+            if hasattr(exists, "body"):
+                return bool(exists.body)
             return bool(exists)
         except Exception as e:
             logger.error(f"Failed to check if index '{name}' exists: {str(e)}")
-            raise ElasticIndexError(f"Failed to check if index '{name}' exists: {str(e)}")
+            raise ElasticIndexError(
+                f"Failed to check if index '{name}' exists: {str(e)}"
+            )
 
     def get(self, name: str) -> Any:
         """
@@ -130,7 +132,7 @@ class IndexManager:
                 raise ElasticIndexError(f"Index '{name}' does not exist")
 
             response = self.client.client.indices.get(index=name)
-            return response.body if hasattr(response, 'body') else dict(response)
+            return response.body if hasattr(response, "body") else dict(response)
         except ElasticIndexError:
             raise
         except Exception as e:
@@ -167,10 +169,9 @@ class IndexManager:
             logger.info(f"Updating settings for index '{name}'")
             # Unlike create, update expects the settings without the 'settings' wrapper
             response = self.client.client.indices.put_settings(
-                index=name,
-                body=settings
+                index=name, body=settings
             )
-            return response.body if hasattr(response, 'body') else dict(response)
+            return response.body if hasattr(response, "body") else dict(response)
         except ElasticIndexError:
             raise
         except Exception as e:
@@ -196,7 +197,7 @@ class IndexManager:
 
             logger.info(f"Deleting index '{name}'")
             response = self.client.client.indices.delete(index=name)
-            return response.body if hasattr(response, 'body') else dict(response)
+            return response.body if hasattr(response, "body") else dict(response)
         except ElasticIndexError:
             raise
         except Exception as e:
@@ -222,7 +223,7 @@ class IndexManager:
 
             logger.info(f"Opening index '{name}'")
             response = self.client.client.indices.open(index=name)
-            return response.body if hasattr(response, 'body') else dict(response)
+            return response.body if hasattr(response, "body") else dict(response)
         except ElasticIndexError:
             raise
         except Exception as e:
@@ -248,7 +249,7 @@ class IndexManager:
 
             logger.info(f"Closing index '{name}'")
             response = self.client.client.indices.close(index=name)
-            return response.body if hasattr(response, 'body') else dict(response)
+            return response.body if hasattr(response, "body") else dict(response)
         except ElasticIndexError:
             raise
         except Exception as e:
@@ -270,11 +271,11 @@ class IndexManager:
             # use cat.indices for efficient summary
             # headers: health, status, index, uuid, pri, rep, docs.count, docs.deleted, store.size, pri.store.size
             response = self.client.client.cat.indices(index=pattern, format="json")
-            
+
             # The Elasticsearch python client returns a ListAPIResponse which is a list-like object
             # Convert to standard list of dicts
             result = []
-            if hasattr(response, 'body'):
+            if hasattr(response, "body"):
                 raw_data = response.body
             else:
                 raw_data = response
@@ -282,7 +283,7 @@ class IndexManager:
             # If raw_data is just a list, great.
             if isinstance(raw_data, list):
                 result = raw_data
-            
+
             logger.debug(f"Listed {len(result)} indices with pattern '{pattern}'")
             return result
 

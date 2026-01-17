@@ -1,1 +1,1 @@
-"""Utility module unit tests for elastro.""" 
+"""Utility module unit tests for elastro."""

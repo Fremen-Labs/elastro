@@ -2,6 +2,7 @@
 Integration tests for the DatastreamManager class.
 These tests require a running Elasticsearch instance.
 """
+
 import pytest
 import time
 from elasticsearch import Elasticsearch
@@ -17,7 +18,7 @@ from tests.fixtures.datastream_fixtures import VALID_DATASTREAM_SETTINGS
 @pytest.mark.integration
 class TestDatastreamManagerIntegration:
     """Integration tests for DatastreamManager."""
-    
+
     @pytest.fixture(autouse=True)
     def setup_and_teardown(self):
         """Setup for each test.
@@ -28,7 +29,7 @@ class TestDatastreamManagerIntegration:
         self.client = ElasticsearchClient(
             hosts=hosts,
             auth={"username": "elastic", "password": "elastic_password"},
-            verify_certs=False  # Disable certificate verification
+            verify_certs=False,  # Disable certificate verification
         )
         # Connect the client before creating the manager
         self.client.connect()
@@ -37,7 +38,7 @@ class TestDatastreamManagerIntegration:
             hosts=hosts,
             basic_auth=("elastic", "elastic_password"),
             verify_certs=False,  # Disable certificate verification
-            ssl_show_warn=False  # Disable SSL warnings
+            ssl_show_warn=False,  # Disable SSL warnings
         )
         self.manager = DatastreamManager(self.client)
 
@@ -49,25 +50,24 @@ class TestDatastreamManagerIntegration:
         es_client = Elasticsearch(
             hosts=hosts,
             basic_auth=("elastic", "elastic_password"),
-            verify_certs=False  # Disable certificate verification
+            verify_certs=False,  # Disable certificate verification
         )
         index_template = {
             "index_patterns": ["test-datastream*"],
             "data_stream": {},
             "template": {
-                "settings": {
-                    "number_of_shards": 1,
-                    "number_of_replicas": 0
-                },
+                "settings": {"number_of_shards": 1, "number_of_replicas": 0},
                 "mappings": {
                     "properties": {
                         "@timestamp": {"type": "date"},
-                        "message": {"type": "text"}
+                        "message": {"type": "text"},
                     }
-                }
-            }
+                },
+            },
         }
-        es_client.indices.put_index_template(name="test-datastream-template", body=index_template)
+        es_client.indices.put_index_template(
+            name="test-datastream-template", body=index_template
+        )
 
         # Wait for template to be created
         time.sleep(1)
@@ -84,11 +84,11 @@ class TestDatastreamManagerIntegration:
                 for datastream in self.manager.list(pattern=ds_pattern):
                     ds_name = datastream.get("name")
                     self.manager.delete(name=ds_name)
-                
+
         except Exception as exc:
             # Don't fail if cleanup fails
             logging.warning(f"Failed to cleanup: {exc}")
-    
+
     def test_create_and_get_datastream(self):
         """Test create and get datastream."""
         # Create a datastream
@@ -98,7 +98,7 @@ class TestDatastreamManagerIntegration:
         # Get the datastream
         datastream = self.manager.get(name="test-datastream")
         assert datastream["name"] == "test-datastream"
-    
+
     def test_list_datastreams(self):
         """Test list datastreams."""
         # Create a datastream
@@ -109,7 +109,7 @@ class TestDatastreamManagerIntegration:
         datastreams = self.manager.list(pattern="test-datastream-list")
         assert len(datastreams) >= 1
         assert any(ds["name"] == "test-datastream-list" for ds in datastreams)
-    
+
     def test_delete_datastream(self):
         """Test delete datastream."""
         # Create a datastream
@@ -127,7 +127,7 @@ class TestDatastreamManagerIntegration:
         except Exception:
             # If datastream is truly deleted, we expect an error or empty list
             pass
-    
+
     def test_rollover_datastream(self):
         """Test rollover datastream."""
         # Create a datastream
@@ -142,9 +142,9 @@ class TestDatastreamManagerIntegration:
             id="test-doc-1",
             document={
                 "@timestamp": "2020-01-01T00:00:00.000Z",
-                "message": "Test message"
+                "message": "Test message",
             },
-            op_type="create"
+            op_type="create",
         )
         time.sleep(1)
 
@@ -154,7 +154,7 @@ class TestDatastreamManagerIntegration:
         assert "old_index" in response
         assert "new_index" in response
         assert response.get("rolled_over") is True
-    
+
     def test_index_and_search_datastream(self):
         """Test index and search in datastream."""
         # Create a datastream
@@ -168,21 +168,19 @@ class TestDatastreamManagerIntegration:
             id="test-doc-search-1",
             document={
                 "@timestamp": "2020-01-01T00:00:00.000Z",
-                "message": "Test message for search"
+                "message": "Test message for search",
             },
-            op_type="create"
+            op_type="create",
         )
         time.sleep(1)
 
         # Search the datastream
         document_mgr = DocumentManager(self.client)
         response = document_mgr.search(
-            index="test-datastream-search",
-            query={
-                "match": {
-                    "message": "search"
-                }
-            }
+            index="test-datastream-search", query={"match": {"message": "search"}}
         )
         assert response["hits"]["total"]["value"] == 1
-        assert response["hits"]["hits"][0]["_source"]["message"] == "Test message for search" 
+        assert (
+            response["hits"]["hits"][0]["_source"]["message"]
+            == "Test message for search"
+        )

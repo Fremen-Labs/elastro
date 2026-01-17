@@ -1,1 +1,1 @@
-"""Test fixtures for the elastro module.""" 
+"""Test fixtures for the elastro module."""

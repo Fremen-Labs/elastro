@@ -1,6 +1,7 @@
 """
 Unit tests for the loader module.
 """
+
 import os
 import yaml
 import json
@@ -32,18 +33,11 @@ def sample_config():
             "auth": {
                 "type": "basic",
                 "username": "test_user",
-                "password": "test_password"
-            }
+                "password": "test_password",
+            },
         },
-        "index": {
-            "default_settings": {
-                "number_of_shards": 2,
-                "number_of_replicas": 1
-            }
-        },
-        "logging": {
-            "level": "DEBUG"
-        }
+        "index": {"default_settings": {"number_of_shards": 2, "number_of_replicas": 1}},
+        "logging": {"level": "DEBUG"},
     }
 
 
@@ -63,17 +57,10 @@ def json_config_content(sample_config):
 def profile_config():
     """Config with profiles for testing."""
     return {
-        "default": {
-            "elasticsearch": {
-                "hosts": ["http://default-host:9200"]
-            }
-        },
+        "default": {"elasticsearch": {"hosts": ["http://default-host:9200"]}},
         "production": {
-            "elasticsearch": {
-                "hosts": ["http://prod-host:9200"],
-                "timeout": 120
-            }
-        }
+            "elasticsearch": {"hosts": ["http://prod-host:9200"], "timeout": 120}
+        },
     }
 
 
@@ -106,7 +93,9 @@ class TestLoadFromFile:
         """Test error for unsupported file format."""
         with patch("pathlib.Path.exists", return_value=True):
             with patch("pathlib.Path.suffix", ".txt"):
-                with pytest.raises(ConfigurationError, match="Unsupported configuration file format"):
+                with pytest.raises(
+                    ConfigurationError, match="Unsupported configuration file format"
+                ):
                     loader._load_from_file("config.txt")
 
     def test_file_loading_error(self):
@@ -115,7 +104,9 @@ class TestLoadFromFile:
             with patch("pathlib.Path.exists", return_value=True):
                 with patch("pathlib.Path.suffix", ".yaml"):
                     with patch("yaml.safe_load", side_effect=Exception("Test error")):
-                        with pytest.raises(ConfigurationError, match="Failed to load configuration"):
+                        with pytest.raises(
+                            ConfigurationError, match="Failed to load configuration"
+                        ):
                             loader._load_from_file("config.yaml")
 
 
@@ -125,11 +116,14 @@ class TestLoadFromEnv:
     def test_env_variables_override(self):
         """Test environment variables override config values."""
         config = {"elasticsearch": {"hosts": ["http://localhost:9200"], "timeout": 30}}
-        
-        with patch.dict(os.environ, {
-            "ELASTIC_ELASTICSEARCH_HOSTS": "http://env-host:9200",
-            "ELASTIC_ELASTICSEARCH_TIMEOUT": "60"
-        }):
+
+        with patch.dict(
+            os.environ,
+            {
+                "ELASTIC_ELASTICSEARCH_HOSTS": "http://env-host:9200",
+                "ELASTIC_ELASTICSEARCH_TIMEOUT": "60",
+            },
+        ):
             result = loader._load_from_env(config)
             assert result["elasticsearch"]["hosts"] == "http://env-host:9200"
             assert result["elasticsearch"]["timeout"] == 60
@@ -137,7 +131,7 @@ class TestLoadFromEnv:
     def test_env_boolean_conversion(self):
         """Test environment boolean values are properly converted."""
         config = {"feature": {"enabled": False}}
-        
+
         with patch.dict(os.environ, {"ELASTIC_FEATURE_ENABLED": "true"}):
             result = loader._load_from_env(config)
             assert result["feature"]["enabled"] is True
@@ -145,11 +139,10 @@ class TestLoadFromEnv:
     def test_env_numeric_conversion(self):
         """Test environment numeric values are properly converted."""
         config = {"values": {}}
-        
-        with patch.dict(os.environ, {
-            "ELASTIC_VALUES_INTEGER": "42",
-            "ELASTIC_VALUES_FLOAT": "3.14"
-        }):
+
+        with patch.dict(
+            os.environ, {"ELASTIC_VALUES_INTEGER": "42", "ELASTIC_VALUES_FLOAT": "3.14"}
+        ):
             result = loader._load_from_env(config)
             assert result["values"]["integer"] == 42
             assert result["values"]["float"] == 3.14
@@ -157,7 +150,7 @@ class TestLoadFromEnv:
     def test_env_nested_creation(self):
         """Test environment variables create nested structure."""
         config = {}
-        
+
         with patch.dict(os.environ, {"ELASTIC_SECTION_SUBSECTION_KEY": "value"}):
             result = loader._load_from_env(config)
             assert result["section"]["subsection"]["key"] == "value"
@@ -170,7 +163,7 @@ class TestMergeConfigs:
         """Test merging simple values."""
         base = {"key1": "value1", "key2": "value2"}
         override = {"key2": "new_value", "key3": "value3"}
-        
+
         result = loader._merge_configs(base, override)
         assert result == {"key1": "value1", "key2": "new_value", "key3": "value3"}
 
@@ -178,15 +171,17 @@ class TestMergeConfigs:
         """Test merging nested dictionaries."""
         base = {"section": {"key1": "value1", "key2": "value2"}}
         override = {"section": {"key2": "new_value", "key3": "value3"}}
-        
+
         result = loader._merge_configs(base, override)
-        assert result == {"section": {"key1": "value1", "key2": "new_value", "key3": "value3"}}
+        assert result == {
+            "section": {"key1": "value1", "key2": "new_value", "key3": "value3"}
+        }
 
     def test_merge_with_new_section(self):
         """Test merging with new section."""
         base = {"section1": {"key": "value"}}
         override = {"section2": {"key": "value"}}
-        
+
         result = loader._merge_configs(base, override)
         assert result == {"section1": {"key": "value"}, "section2": {"key": "value"}}
 
@@ -194,7 +189,7 @@ class TestMergeConfigs:
         """Test merging when types are different."""
         base = {"key": {"nested": "value"}}
         override = {"key": "simple_value"}
-        
+
         result = loader._merge_configs(base, override)
         assert result == {"key": "simple_value"}
 
@@ -204,33 +199,29 @@ class TestValidateConfig:
 
     def test_valid_config(self):
         """Test validation of a valid config."""
-        config = {
-            "elasticsearch": {
-                "hosts": ["http://localhost:9200"]
-            }
-        }
-        
+        config = {"elasticsearch": {"hosts": ["http://localhost:9200"]}}
+
         # Should not raise an exception
         loader._validate_config(config)
 
     def test_missing_elasticsearch_section(self):
         """Test validation with missing elasticsearch section."""
         config = {"some_section": {}}
-        
+
         with pytest.raises(ConfigurationError, match="Missing 'elasticsearch' section"):
             loader._validate_config(config)
 
     def test_missing_hosts(self):
         """Test validation with missing hosts."""
         config = {"elasticsearch": {}}
-        
+
         with pytest.raises(ConfigurationError, match="Missing or empty 'hosts'"):
             loader._validate_config(config)
 
     def test_empty_hosts(self):
         """Test validation with empty hosts list."""
         config = {"elasticsearch": {"hosts": []}}
-        
+
         with pytest.raises(ConfigurationError, match="Missing or empty 'hosts'"):
             loader._validate_config(config)
 
@@ -239,10 +230,10 @@ class TestValidateConfig:
         config = {
             "elasticsearch": {
                 "hosts": ["http://localhost:9200"],
-                "auth": {"type": "invalid"}
+                "auth": {"type": "invalid"},
             }
         }
-        
+
         with pytest.raises(ConfigurationError, match="Invalid authentication type"):
             loader._validate_config(config)
 
@@ -251,10 +242,10 @@ class TestValidateConfig:
         config = {
             "elasticsearch": {
                 "hosts": ["http://localhost:9200"],
-                "auth": {"type": "api_key"}
+                "auth": {"type": "api_key"},
             }
         }
-        
+
         with pytest.raises(ConfigurationError, match="Missing 'api_key'"):
             loader._validate_config(config)
 
@@ -263,11 +254,13 @@ class TestValidateConfig:
         config = {
             "elasticsearch": {
                 "hosts": ["http://localhost:9200"],
-                "auth": {"type": "basic"}
+                "auth": {"type": "basic"},
             }
         }
-        
-        with pytest.raises(ConfigurationError, match="Missing 'username' or 'password'"):
+
+        with pytest.raises(
+            ConfigurationError, match="Missing 'username' or 'password'"
+        ):
             loader._validate_config(config)
 
     def test_missing_cloud_id(self):
@@ -275,62 +268,53 @@ class TestValidateConfig:
         config = {
             "elasticsearch": {
                 "hosts": ["http://localhost:9200"],
-                "auth": {"type": "cloud"}
+                "auth": {"type": "cloud"},
             }
         }
-        
+
         with pytest.raises(ConfigurationError, match="Missing 'cloud_id'"):
             loader._validate_config(config)
 
     def test_invalid_timeout(self):
         """Test validation with invalid timeout."""
         config = {
-            "elasticsearch": {
-                "hosts": ["http://localhost:9200"],
-                "timeout": "invalid"
-            }
+            "elasticsearch": {"hosts": ["http://localhost:9200"], "timeout": "invalid"}
         }
-        
+
         with pytest.raises(ConfigurationError, match="'timeout' must be a number"):
             loader._validate_config(config)
 
     def test_invalid_max_retries(self):
         """Test validation with invalid max_retries."""
         config = {
-            "elasticsearch": {
-                "hosts": ["http://localhost:9200"],
-                "max_retries": 3.5
-            }
+            "elasticsearch": {"hosts": ["http://localhost:9200"], "max_retries": 3.5}
         }
-        
-        with pytest.raises(ConfigurationError, match="'max_retries' must be an integer"):
+
+        with pytest.raises(
+            ConfigurationError, match="'max_retries' must be an integer"
+        ):
             loader._validate_config(config)
 
     def test_invalid_index_settings(self):
         """Test validation with invalid index settings."""
         config = {
-            "elasticsearch": {
-                "hosts": ["http://localhost:9200"]
-            },
-            "index": {
-                "default_settings": "not a dict"
-            }
+            "elasticsearch": {"hosts": ["http://localhost:9200"]},
+            "index": {"default_settings": "not a dict"},
         }
-        
-        with pytest.raises(ConfigurationError, match="'default_settings' in index section must be a dictionary"):
+
+        with pytest.raises(
+            ConfigurationError,
+            match="'default_settings' in index section must be a dictionary",
+        ):
             loader._validate_config(config)
 
     def test_invalid_logging_level(self):
         """Test validation with invalid logging level."""
         config = {
-            "elasticsearch": {
-                "hosts": ["http://localhost:9200"]
-            },
-            "logging": {
-                "level": "INVALID_LEVEL"
-            }
+            "elasticsearch": {"hosts": ["http://localhost:9200"]},
+            "logging": {"level": "INVALID_LEVEL"},
         }
-        
+
         with pytest.raises(ConfigurationError, match="Invalid logging level"):
             loader._validate_config(config)
 
@@ -340,16 +324,25 @@ class TestLoadConfig:
 
     def test_load_with_explicit_config_path(self, reset_config, sample_config):
         """Test loading config with explicit config path."""
-        with patch("elastro.config.loader._load_from_file", return_value=sample_config) as mock_load:
-            with patch("elastro.config.loader._load_from_env", return_value=sample_config):
+        with patch(
+            "elastro.config.loader._load_from_file", return_value=sample_config
+        ) as mock_load:
+            with patch(
+                "elastro.config.loader._load_from_env", return_value=sample_config
+            ):
                 config = loader.load_config("explicit_path.yaml")
                 assert config == sample_config
                 mock_load.assert_called_once_with("explicit_path.yaml")
 
     def test_load_with_profile(self, reset_config, profile_config):
         """Test loading config with profile."""
-        with patch("elastro.config.loader._load_from_file", return_value=profile_config) as mock_load:
-            with patch("elastro.config.loader._load_from_env", return_value=profile_config["production"]):
+        with patch(
+            "elastro.config.loader._load_from_file", return_value=profile_config
+        ) as mock_load:
+            with patch(
+                "elastro.config.loader._load_from_env",
+                return_value=profile_config["production"],
+            ):
                 config = loader.load_config("profile_config.yaml", "production")
                 assert config["elasticsearch"]["hosts"] == ["http://prod-host:9200"]
                 mock_load.assert_called_once_with("profile_config.yaml")
@@ -357,8 +350,12 @@ class TestLoadConfig:
     def test_load_from_standard_locations(self, reset_config, sample_config):
         """Test loading config from standard locations."""
         with patch("os.path.exists", return_value=True):
-            with patch("elastro.config.loader._load_from_file", return_value=sample_config) as mock_load:
-                with patch("elastro.config.loader._load_from_env", return_value=sample_config):
+            with patch(
+                "elastro.config.loader._load_from_file", return_value=sample_config
+            ) as mock_load:
+                with patch(
+                    "elastro.config.loader._load_from_env", return_value=sample_config
+                ):
                     config = loader.load_config()
                     assert config == sample_config
                     # It should try to load from the first standard location (CWD/elastic.yaml)
@@ -367,7 +364,9 @@ class TestLoadConfig:
     def test_global_config_storage(self, reset_config, sample_config):
         """Test global config storage."""
         with patch("elastro.config.loader._load_from_file", return_value=sample_config):
-            with patch("elastro.config.loader._load_from_env", return_value=sample_config):
+            with patch(
+                "elastro.config.loader._load_from_env", return_value=sample_config
+            ):
                 # First load should set the global config
                 config1 = loader.load_config()
                 assert config1 == sample_config
@@ -385,7 +384,9 @@ class TestGetConfig:
 
     def test_get_config_load_if_not_loaded(self, reset_config, sample_config):
         """Test getting config loads it if not already loaded."""
-        with patch("elastro.config.loader.load_config", return_value=sample_config) as mock_load:
+        with patch(
+            "elastro.config.loader.load_config", return_value=sample_config
+        ) as mock_load:
             config = loader.get_config()
             assert config == sample_config
-            mock_load.assert_called_once() 
+            mock_load.assert_called_once()

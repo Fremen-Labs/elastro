@@ -20,7 +20,9 @@ click.rich_click.USE_MARKDOWN = True  # Enable Markdown in docstrings
 click.rich_click.SHOW_ARGUMENTS = True
 click.rich_click.GROUP_ARGUMENTS_OPTIONS = True
 click.rich_click.STYLE_ERRORS_SUGGESTION = "magenta italic"
-click.rich_click.ERRORS_SUGGESTION = "Missing arguments? Run with --help to see examples and usage."
+click.rich_click.ERRORS_SUGGESTION = (
+    "Missing arguments? Run with --help to see examples and usage."
+)
 click.rich_click.ERRORS_EPILOGUE = "To find out more, visit [link=https://github.com/Fremen-Labs/elastro]https://github.com/Fremen-Labs/elastro[/link]"
 click.rich_click.HEADER_TEXT = ELASTRO_ART
 
@@ -30,24 +32,40 @@ from elastro.core.client import ElasticsearchClient
 
 # Import command groups
 from elastro.cli.commands.index import (
-    create_index, get_index, index_exists, update_index,
-    delete_index, open_index, close_index,
-    list_indices, find_indices, index_wizard
+    create_index,
+    get_index,
+    index_exists,
+    update_index,
+    delete_index,
+    open_index,
+    close_index,
+    list_indices,
+    find_indices,
+    index_wizard,
 )
 from elastro.cli.commands.document import (
-    index_document, bulk_index, get_document, search_documents,
-    update_document, delete_document, bulk_delete
+    index_document,
+    bulk_index,
+    get_document,
+    search_documents,
+    update_document,
+    delete_document,
+    bulk_delete,
 )
 from elastro.cli.commands.datastream import (
-    create_datastream, list_datastreams, get_datastream,
-    delete_datastream, rollover_datastream
+    create_datastream,
+    list_datastreams,
+    get_datastream,
+    delete_datastream,
+    rollover_datastream,
 )
 from elastro.cli.commands.config import (
-    get_config_value, set_config_value, list_config, init_config
+    get_config_value,
+    set_config_value,
+    list_config,
+    init_config,
 )
-from elastro.cli.commands.utils import (
-    health, templates as utils_templates, aliases
-)
+from elastro.cli.commands.utils import health, templates as utils_templates, aliases
 from elastro.cli.commands.template import template_group
 from elastro.cli.commands.ilm import ilm_group
 from elastro.cli.commands.snapshot import snapshot_group
@@ -55,33 +73,25 @@ from elastro.cli.commands.snapshot import snapshot_group
 
 # Register Top-Level Groups
 
+
 @click.group()
 @click.option(
-    "--config", "-c",
+    "--config",
+    "-c",
     help="Path to configuration file",
-    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True)
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
 )
+@click.option("--profile", "-p", help="Configuration profile to use", default="default")
+@click.option("--host", "-h", help="Elasticsearch host(s)", multiple=True)
 @click.option(
-    "--profile", "-p",
-    help="Configuration profile to use",
-    default="default"
-)
-@click.option(
-    "--host", "-h",
-    help="Elasticsearch host(s)",
-    multiple=True
-)
-@click.option(
-    "--output", "-o",
+    "--output",
+    "-o",
     help="Output format (json, yaml, table)",
     type=click.Choice(["json", "yaml", "table"]),
-    default="json"
+    default="json",
 )
 @click.option(
-    "--verbose", "-v",
-    help="Enable verbose output",
-    is_flag=True,
-    default=False
+    "--verbose", "-v", help="Enable verbose output", is_flag=True, default=False
 )
 @click.version_option(version=__version__)
 @click.pass_context
@@ -91,7 +101,7 @@ def cli(
     profile: str,
     host: tuple,
     output: str,
-    verbose: bool
+    verbose: bool,
 ) -> None:
     """
     Elasticsearch management CLI.
@@ -118,16 +128,16 @@ def cli(
         auth=cfg["elasticsearch"]["auth"],
         timeout=cfg["elasticsearch"]["timeout"],
         retry_on_timeout=cfg["elasticsearch"]["retry_on_timeout"],
-        max_retries=cfg["elasticsearch"]["max_retries"]
+        max_retries=cfg["elasticsearch"]["max_retries"],
     )
-    
+
     # Establish connection
     try:
         client.connect()
     except Exception as e:
         if verbose:
             click.echo(f"Failed to connect to Elasticsearch: {e}", err=True)
-        # We don't exit here because some commands might not need connection (e.g. config), 
+        # We don't exit here because some commands might not need connection (e.g. config),
         # but most do. For now, let's let individual commands fail if they need connection,
         # or better, just Log it. client.connect() raises ConnectionError.
         # Actually, if we fail to connect, most commands will fail.
@@ -144,6 +154,7 @@ def index() -> None:
     Manage Elasticsearch indices.
     """
     pass
+
 
 # Register index commands
 index.add_command(create_index)
@@ -165,6 +176,7 @@ def doc() -> None:
     """
     pass
 
+
 # Register document commands
 doc.add_command(index_document)
 doc.add_command(bulk_index)
@@ -182,6 +194,7 @@ def datastream() -> None:
     """
     pass
 
+
 # Register datastream commands
 datastream.add_command(create_datastream)
 datastream.add_command(list_datastreams)
@@ -197,6 +210,7 @@ def config() -> None:
     """
     pass
 
+
 # Register config commands
 config.add_command(get_config_value)
 config.add_command(set_config_value)
@@ -211,6 +225,7 @@ def utils() -> None:
     """
     pass
 
+
 # Register utility commands
 utils.add_command(health)
 utils.add_command(utils_templates)
@@ -220,6 +235,7 @@ utils.add_command(aliases)
 cli.add_command(template_group)
 cli.add_command(ilm_group)
 cli.add_command(snapshot_group)
+
 
 def main():
     """Entry point for CLI."""

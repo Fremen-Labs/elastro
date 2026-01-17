@@ -1,6 +1,7 @@
 """
 Unit tests for the defaults module.
 """
+
 import pytest
 from elastro.config import defaults
 
@@ -39,12 +40,12 @@ def test_default_index_settings_exists():
     """Test that DEFAULT_INDEX_SETTINGS is defined and has the expected structure."""
     assert hasattr(defaults, "DEFAULT_INDEX_SETTINGS")
     assert isinstance(defaults.DEFAULT_INDEX_SETTINGS, dict)
-    
+
     # Check required keys
     expected_keys = ["number_of_shards", "number_of_replicas", "refresh_interval"]
     for key in expected_keys:
         assert key in defaults.DEFAULT_INDEX_SETTINGS
-    
+
     # Check values
     assert defaults.DEFAULT_INDEX_SETTINGS["number_of_shards"] == 1
     assert defaults.DEFAULT_INDEX_SETTINGS["number_of_replicas"] == 1
@@ -62,12 +63,12 @@ def test_default_datastream_settings_exists():
     """Test that DEFAULT_DATASTREAM_SETTINGS is defined and has the expected structure."""
     assert hasattr(defaults, "DEFAULT_DATASTREAM_SETTINGS")
     assert isinstance(defaults.DEFAULT_DATASTREAM_SETTINGS, dict)
-    
+
     # Check required keys and nested structure
     assert "retention" in defaults.DEFAULT_DATASTREAM_SETTINGS
     assert isinstance(defaults.DEFAULT_DATASTREAM_SETTINGS["retention"], dict)
     assert "max_age" in defaults.DEFAULT_DATASTREAM_SETTINGS["retention"]
-    
+
     # Check values
     assert defaults.DEFAULT_DATASTREAM_SETTINGS["retention"]["max_age"] == "30d"
 
@@ -90,14 +91,19 @@ def test_default_config_exists():
     """Test that DEFAULT_CONFIG is defined and has the expected structure."""
     assert hasattr(defaults, "DEFAULT_CONFIG")
     assert isinstance(defaults.DEFAULT_CONFIG, dict)
-    
+
     # Check top-level keys
     expected_top_level_keys = [
-        "elasticsearch", "index", "document", "datastream", "cli", "logging"
+        "elasticsearch",
+        "index",
+        "document",
+        "datastream",
+        "cli",
+        "logging",
     ]
     for key in expected_top_level_keys:
         assert key in defaults.DEFAULT_CONFIG
-    
+
     # Check elasticsearch section
     es_config = defaults.DEFAULT_CONFIG["elasticsearch"]
     assert "hosts" in es_config
@@ -110,27 +116,42 @@ def test_default_config_exists():
     assert es_config["max_retries"] == defaults.DEFAULT_MAX_RETRIES
     assert "auth" in es_config
     assert isinstance(es_config["auth"], dict)
-    
+
     # Check index section
     assert "default_settings" in defaults.DEFAULT_CONFIG["index"]
-    assert defaults.DEFAULT_CONFIG["index"]["default_settings"] == defaults.DEFAULT_INDEX_SETTINGS
-    
+    assert (
+        defaults.DEFAULT_CONFIG["index"]["default_settings"]
+        == defaults.DEFAULT_INDEX_SETTINGS
+    )
+
     # Check document section
     assert "default_refresh" in defaults.DEFAULT_CONFIG["document"]
-    assert defaults.DEFAULT_CONFIG["document"]["default_refresh"] == defaults.DEFAULT_DOCUMENT_REFRESH
-    
+    assert (
+        defaults.DEFAULT_CONFIG["document"]["default_refresh"]
+        == defaults.DEFAULT_DOCUMENT_REFRESH
+    )
+
     # Check datastream section
     assert "default_settings" in defaults.DEFAULT_CONFIG["datastream"]
-    assert defaults.DEFAULT_CONFIG["datastream"]["default_settings"] == defaults.DEFAULT_DATASTREAM_SETTINGS
-    
+    assert (
+        defaults.DEFAULT_CONFIG["datastream"]["default_settings"]
+        == defaults.DEFAULT_DATASTREAM_SETTINGS
+    )
+
     # Check cli section
     assert "output_format" in defaults.DEFAULT_CONFIG["cli"]
-    assert defaults.DEFAULT_CONFIG["cli"]["output_format"] == defaults.DEFAULT_CLI_OUTPUT_FORMAT
+    assert (
+        defaults.DEFAULT_CONFIG["cli"]["output_format"]
+        == defaults.DEFAULT_CLI_OUTPUT_FORMAT
+    )
     assert "verbose" in defaults.DEFAULT_CONFIG["cli"]
     assert defaults.DEFAULT_CONFIG["cli"]["verbose"] == defaults.DEFAULT_CLI_VERBOSE
-    
+
     # Check logging section
     assert "level" in defaults.DEFAULT_CONFIG["logging"]
     assert defaults.DEFAULT_CONFIG["logging"]["level"] == "INFO"
     assert "format" in defaults.DEFAULT_CONFIG["logging"]
-    assert defaults.DEFAULT_CONFIG["logging"]["format"] == "%(asctime)s - %(name)s - %(levelname)s - %(message)s" 
+    assert (
+        defaults.DEFAULT_CONFIG["logging"]["format"]
+        == "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )

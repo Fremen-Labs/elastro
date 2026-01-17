@@ -15,18 +15,14 @@ DEFAULT_MAX_RETRIES = 3
 DEFAULT_INDEX_SETTINGS = {
     "number_of_shards": 1,
     "number_of_replicas": 1,
-    "refresh_interval": "1s"
+    "refresh_interval": "1s",
 }
 
 # Default document settings
 DEFAULT_DOCUMENT_REFRESH = False
 
 # Default datastream settings
-DEFAULT_DATASTREAM_SETTINGS = {
-    "retention": {
-        "max_age": "30d"
-    }
-}
+DEFAULT_DATASTREAM_SETTINGS = {"retention": {"max_age": "30d"}}
 
 # Default CLI settings
 DEFAULT_CLI_OUTPUT_FORMAT = "json"
@@ -43,24 +39,15 @@ DEFAULT_CONFIG = {
             "type": None,  # "api_key", "basic"
             "username": None,
             "password": None,
-            "api_key": None
-        }
+            "api_key": None,
+        },
     },
-    "index": {
-        "default_settings": DEFAULT_INDEX_SETTINGS
-    },
-    "document": {
-        "default_refresh": DEFAULT_DOCUMENT_REFRESH
-    },
-    "datastream": {
-        "default_settings": DEFAULT_DATASTREAM_SETTINGS
-    },
-    "cli": {
-        "output_format": DEFAULT_CLI_OUTPUT_FORMAT,
-        "verbose": DEFAULT_CLI_VERBOSE
-    },
+    "index": {"default_settings": DEFAULT_INDEX_SETTINGS},
+    "document": {"default_refresh": DEFAULT_DOCUMENT_REFRESH},
+    "datastream": {"default_settings": DEFAULT_DATASTREAM_SETTINGS},
+    "cli": {"output_format": DEFAULT_CLI_OUTPUT_FORMAT, "verbose": DEFAULT_CLI_VERBOSE},
     "logging": {
         "level": "INFO",
-        "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    }
+        "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    },
 }

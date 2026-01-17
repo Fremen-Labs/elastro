@@ -1,1 +1,1 @@
-"""Integration tests for the elastro module.""" 
+"""Integration tests for the elastro module."""

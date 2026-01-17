@@ -108,4 +108,4 @@ class TestErrorClasses:
             # This is the expected path
             pass
         except Exception:
-            pytest.fail("DocumentError should be caught by ElasticModuleError") 
+            pytest.fail("DocumentError should be caught by ElasticModuleError")

@@ -18,7 +18,7 @@ from elastro.core.validation import (
     BoolQuery,
     RangeQuery,
     DatastreamSettings,
-    Validator
+    Validator,
 )
 from elastro.core.errors import ValidationError
 
@@ -32,7 +32,7 @@ class TestIndexSettings:
             "number_of_shards": 3,
             "number_of_replicas": 2,
             "refresh_interval": "5s",
-            "max_result_window": 5000
+            "max_result_window": 5000,
         }
         validated = IndexSettings(**settings)
         assert validated.number_of_shards == 3
@@ -76,7 +76,7 @@ class TestMappingProperty:
         property_data = {
             "type": "text",
             "analyzer": "english",
-            "fields": {"keyword": {"type": "keyword"}}
+            "fields": {"keyword": {"type": "keyword"}},
         }
         validated = MappingProperty(**property_data)
         assert validated.type == "text"
@@ -100,7 +100,7 @@ class TestIndexMappings:
                 "title": {"type": "text", "analyzer": "english"},
                 "content": {"type": "text"},
                 "date": {"type": "date", "format": "yyyy-MM-dd"},
-                "tags": {"type": "keyword"}
+                "tags": {"type": "keyword"},
             }
         }
         validated = IndexMappings(**mappings)
@@ -109,11 +109,7 @@ class TestIndexMappings:
 
     def test_invalid_field_type(self):
         """Test that invalid field type raises validation error."""
-        mappings = {
-            "properties": {
-                "title": {"type": "invalid_type"}
-            }
-        }
+        mappings = {"properties": {"title": {"type": "invalid_type"}}}
         with pytest.raises(ValueError):
             IndexMappings(**mappings)
 
@@ -138,7 +134,7 @@ class TestQueryModels:
         query = {
             "bool": {
                 "must": [{"match": {"title": "search"}}],
-                "filter": [{"term": {"status": "active"}}]
+                "filter": [{"term": {"status": "active"}}],
             }
         }
         validated = BoolQuery(**query)
@@ -159,7 +155,7 @@ class TestDatastreamSettings:
         """Test that valid datastream settings pass validation."""
         settings = {
             "indices_config": {"number_of_shards": 1},
-            "retention_config": {"min_age": "7d"}
+            "retention_config": {"min_age": "7d"},
         }
         validated = DatastreamSettings(**settings)
         assert validated.indices_config == {"number_of_shards": 1}
@@ -184,12 +180,7 @@ class TestValidator:
     def test_validate_index_settings_valid(self, validator):
         """Test validating valid index settings."""
         settings = {
-            "settings": {
-                "index": {
-                    "number_of_shards": 3,
-                    "number_of_replicas": 2
-                }
-            }
+            "settings": {"index": {"number_of_shards": 3, "number_of_replicas": 2}}
         }
         validated = validator.validate_index_settings(settings)
         assert validated["number_of_shards"] == 3
@@ -197,23 +188,14 @@ class TestValidator:
 
     def test_validate_index_settings_flat(self, validator):
         """Test validating flat index settings structure."""
-        settings = {
-            "number_of_shards": 3,
-            "number_of_replicas": 2
-        }
+        settings = {"number_of_shards": 3, "number_of_replicas": 2}
         validated = validator.validate_index_settings(settings)
         assert validated["number_of_shards"] == 3
         assert validated["number_of_replicas"] == 2
 
     def test_validate_index_settings_invalid(self, validator):
         """Test validating invalid index settings."""
-        settings = {
-            "settings": {
-                "index": {
-                    "number_of_shards": 0  # Invalid
-                }
-            }
-        }
+        settings = {"settings": {"index": {"number_of_shards": 0}}}  # Invalid
         with pytest.raises(ValidationError):
             validator.validate_index_settings(settings)
 
@@ -221,10 +203,7 @@ class TestValidator:
         """Test validating valid index mappings."""
         mappings = {
             "mappings": {
-                "properties": {
-                    "title": {"type": "text"},
-                    "created": {"type": "date"}
-                }
+                "properties": {"title": {"type": "text"}, "created": {"type": "date"}}
             }
         }
         validated = validator.validate_index_mappings(mappings)
@@ -234,10 +213,7 @@ class TestValidator:
     def test_validate_index_mappings_flat(self, validator):
         """Test validating flat index mappings structure."""
         mappings = {
-            "properties": {
-                "title": {"type": "text"},
-                "created": {"type": "date"}
-            }
+            "properties": {"title": {"type": "text"}, "created": {"type": "date"}}
         }
         validated = validator.validate_index_mappings(mappings)
         assert "properties" in validated
@@ -247,9 +223,7 @@ class TestValidator:
         """Test validating invalid index mappings."""
         mappings = {
             "mappings": {
-                "properties": {
-                    "status": {"type": "invalid_type"}  # Invalid type
-                }
+                "properties": {"status": {"type": "invalid_type"}}  # Invalid type
             }
         }
         with pytest.raises(ValidationError):
@@ -272,7 +246,7 @@ class TestValidator:
         schema = {
             "title": {"type": "text"},
             "count": {"type": "integer"},
-            "active": {"type": "boolean"}
+            "active": {"type": "boolean"},
         }
         document = {"title": "Test", "count": 5, "active": True}
         validated = validator.validate_document_schema(document, schema)
@@ -282,9 +256,7 @@ class TestValidator:
 
     def test_validate_document_schema_failure(self, validator):
         """Test validation failure with schema."""
-        schema = {
-            "count": {"type": "integer"}
-        }
+        schema = {"count": {"type": "integer"}}
         document = {"count": "not an integer"}
         with pytest.raises(ValidationError):
             validator.validate_document_schema(document, schema)
@@ -306,7 +278,7 @@ class TestValidator:
         query = {
             "bool": {
                 "must": [{"match": {"title": "test"}}],
-                "must_not": [{"term": {"status": "inactive"}}]
+                "must_not": [{"term": {"status": "inactive"}}],
             }
         }
         validated = validator.validate_query(query)
@@ -329,7 +301,7 @@ class TestValidator:
         """Test validating valid datastream settings."""
         settings = {
             "indices_config": {"number_of_shards": 1},
-            "retention_config": {"min_age": "7d"}
+            "retention_config": {"min_age": "7d"},
         }
         validated = validator.validate_datastream_settings(settings)
         assert validated["indices_config"] == {"number_of_shards": 1}
@@ -340,4 +312,4 @@ class TestValidator:
         settings = {}
         validated = validator.validate_datastream_settings(settings)
         assert validated["indices_config"] == {}
-        assert validated["retention_config"] is None 
+        assert validated["retention_config"] is None

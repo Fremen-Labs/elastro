@@ -14,8 +14,9 @@ class AggregationBuilder:
         """Initialize an empty aggregation builder."""
         self._aggregations: Dict[str, Dict[str, Any]] = {}
 
-    def terms(self, name: str, field: str, size: int = 10,
-              min_doc_count: Optional[int] = None) -> "AggregationBuilder":
+    def terms(
+        self, name: str, field: str, size: int = 10, min_doc_count: Optional[int] = None
+    ) -> "AggregationBuilder":
         """Add a terms aggregation.
 
         Args:
@@ -34,8 +35,9 @@ class AggregationBuilder:
         self._aggregations[name] = {"terms": agg}
         return self
 
-    def date_histogram(self, name: str, field: str, interval: str,
-                       format: Optional[str] = None) -> "AggregationBuilder":
+    def date_histogram(
+        self, name: str, field: str, interval: str, format: Optional[str] = None
+    ) -> "AggregationBuilder":
         """Add a date_histogram aggregation.
 
         Args:
@@ -65,15 +67,12 @@ class AggregationBuilder:
         Returns:
             Self for method chaining
         """
-        self._aggregations[name] = {
-            "histogram": {
-                "field": field,
-                "interval": interval
-            }
-        }
+        self._aggregations[name] = {"histogram": {"field": field, "interval": interval}}
         return self
 
-    def range(self, name: str, field: str, ranges: List[Dict[str, Any]]) -> "AggregationBuilder":
+    def range(
+        self, name: str, field: str, ranges: List[Dict[str, Any]]
+    ) -> "AggregationBuilder":
         """Add a range aggregation.
 
         Args:
@@ -84,12 +83,7 @@ class AggregationBuilder:
         Returns:
             Self for method chaining
         """
-        self._aggregations[name] = {
-            "range": {
-                "field": field,
-                "ranges": ranges
-            }
-        }
+        self._aggregations[name] = {"range": {"field": field, "ranges": ranges}}
         return self
 
     def avg(self, name: str, field: str) -> "AggregationBuilder":
@@ -157,7 +151,9 @@ class AggregationBuilder:
         self._aggregations[name] = {"cardinality": {"field": field}}
         return self
 
-    def nested_agg(self, parent_name: str, child_builder: "AggregationBuilder") -> "AggregationBuilder":
+    def nested_agg(
+        self, parent_name: str, child_builder: "AggregationBuilder"
+    ) -> "AggregationBuilder":
         """Add nested aggregations to a parent aggregation.
 
         Args:
