@@ -2,7 +2,7 @@
 Index management commands for the CLI.
 """
 
-import click
+import rich_click as click
 import json
 from elastro.core.client import ElasticsearchClient
 from elastro.core.index import IndexManager
@@ -11,8 +11,8 @@ from elastro.cli.completion import complete_indices
 
 @click.command("create", no_args_is_help=True)
 @click.argument("name", type=str)
-@click.option("--shards", type=int, default=1, help="Number of shards")
-@click.option("--replicas", type=int, default=1, help="Number of replicas")
+@click.option("--shards", type=int, default=1, help="Number of shards", show_default=True)
+@click.option("--replicas", type=int, default=1, help="Number of replicas", show_default=True)
 @click.option("--mapping", type=click.Path(exists=True, readable=True), help="Path to mapping file")
 @click.option("--settings", type=click.Path(exists=True, readable=True), help="Path to settings file")
 @click.pass_obj
@@ -24,14 +24,21 @@ def create_index(client, name, shards, replicas, mapping, settings):
     You can also provide a JSON file for mappings or full settings.
 
     Examples:
-        # Create a simple index
-        $ elastro index create my-logs --shards 3 --replicas 2
+    
+    Create a simple index with custom shards and replicas:
+    ```bash
+    elastro index create my-logs --shards 3 --replicas 2
+    ```
 
-        # Create using a mapping file
-        $ elastro index create users --mapping ./user_mapping.json
+    Create using a mapping file:
+    ```bash
+    elastro index create users --mapping ./user_mapping.json
+    ```
 
-        # Create using full settings
-        $ elastro index create products --settings ./index_settings.json
+    Create using full settings:
+    ```bash
+    elastro index create products --settings ./index_settings.json
+    ```
     """
     index_manager = IndexManager(client)
 
@@ -74,7 +81,11 @@ def get_index(client, name):
     Retrieves the full settings, mappings, and metadata for a specific index.
 
     Examples:
-        $ elastro index get my-logs
+    
+    Get details for a specific index:
+    ```bash
+    elastro index get my-logs
+    ```
     """
     index_manager = IndexManager(client)
 
@@ -95,7 +106,11 @@ def index_exists(client, name):
     Returns a simple JSON boolean indicating presence.
 
     Examples:
-        $ elastro index exists my-logs
+    
+    Check if an index exists:
+    ```bash
+    elastro index exists my-logs
+    ```
     """
     index_manager = IndexManager(client)
 
@@ -118,7 +133,11 @@ def update_index(client, name, settings):
     Note: Some settings (like analysis) require closing the index first.
 
     Examples:
-        $ elastro index update my-logs --settings ./new_settings.json
+    
+    Update index settings from a file:
+    ```bash
+    elastro index update my-logs --settings ./new_settings.json
+    ```
     """
     index_manager = IndexManager(client)
 
@@ -146,8 +165,16 @@ def delete_index(client, name, force):
     Requires confirmation unless --force is used.
 
     Examples:
-        $ elastro index delete my-logs
-        $ elastro index delete my-logs --force
+    
+    Delete an index (prompts for confirmation):
+    ```bash
+    elastro index delete my-logs
+    ```
+
+    Force delete without confirmation:
+    ```bash
+    elastro index delete my-logs --force
+    ```
     """
     index_manager = IndexManager(client)
 
@@ -176,7 +203,11 @@ def open_index(client, name):
     Opens a closed index, making it available for search and indexing again.
 
     Examples:
-        $ elastro index open my-logs
+    
+    Open a closed index:
+    ```bash
+    elastro index open my-logs
+    ```
     """
     index_manager = IndexManager(client)
 
@@ -199,7 +230,11 @@ def close_index(client, name):
     Closed indices consume disk space but no memory.
 
     Examples:
-        $ elastro index close my-logs
+    
+    Close an index to save resources:
+    ```bash
+    elastro index close my-logs
+    ```
     """
     index_manager = IndexManager(client)
 
@@ -222,9 +257,16 @@ def list_indices(client, pattern):
     Displays a formatted table of index statuses.
 
     Examples:
-        $ elastro index list
-        $ elastro index list "logs-*"
-        $ elastro index list "syslog-2024*"
+    
+    List all indices:
+    ```bash
+    elastro index list
+    ```
+
+    List indices matching a pattern:
+    ```bash
+    elastro index list "logs-*"
+    ```
     """
     from rich.console import Console
     from rich.table import Table
@@ -277,8 +319,16 @@ def find_indices(client, pattern):
     Wrapper for 'list' that requires a pattern argument.
 
     Examples:
-        $ elastro index find "users-*"
-        $ elastro index find "*.kibana"
+    
+    Find indices starting with 'users-':
+    ```bash
+    elastro index find "users-*"
+    ```
+
+    Find all Kibana system indices:
+    ```bash
+    elastro index find "*.kibana"
+    ```
     """
     # Simply delegate to the list implementation
     # We invoke it manually passing the context object 'client' and the pattern

@@ -2,7 +2,7 @@
 Configuration management commands for the CLI.
 """
 
-import click
+import rich_click as click
 import json
 import os
 import yaml
@@ -21,7 +21,11 @@ def get_config_value(key, profile):
     Retrieves a specific setting from the configuration file.
 
     Examples:
-        $ elastro config get elasticsearch.hosts
+    
+    Get a specific config value:
+    ```bash
+    elastro config get elasticsearch.hosts
+    ```
     """
     config = get_config(profile=profile)
 
@@ -51,11 +55,16 @@ def set_config_value(key, value, profile):
     Updates a setting in the configuration file. Supports nested keys and JSON values.
 
     Examples:
-        # Set simple value
-        $ elastro config set elasticsearch.timeout 60s
+    
+    Set a simple value:
+    ```bash
+    elastro config set elasticsearch.timeout 60s
+    ```
 
-        # Set JSON array
-        $ elastro config set elasticsearch.hosts '["http://localhost:9200"]'
+    Set a complex value (JSON array):
+    ```bash
+    elastro config set elasticsearch.hosts '["http://localhost:9200"]'
+    ```
     """
     config = get_config(profile=profile)
 
@@ -89,7 +98,11 @@ def list_config(profile):
     Displays the full configuration for the selected profile in YAML format.
 
     Examples:
-        $ elastro config list
+    
+    List all configuration values:
+    ```bash
+    elastro config list
+    ```
     """
     config = get_config(profile=profile)
     click.echo(yaml.dump(config, default_flow_style=False))
@@ -104,7 +117,11 @@ def init_config(force, profile):
     Launches an interactive wizard to help you configure Elastro.
 
     Examples:
-        $ elastro config init
+    
+    Initialize configuration (interactive wizard):
+    ```bash
+    elastro config init
+    ```
     """
     config_dir = os.path.dirname(CONFIG_PATH)
 

@@ -2,7 +2,7 @@
 Document management commands for the CLI.
 """
 
-import click
+import rich_click as click
 import json
 import sys
 from elastro.core.client import ElasticsearchClient
@@ -24,14 +24,21 @@ def index_document(client, index, id, file):
     Indexes a single JSON document. You can provide the document body via a file or standard input.
 
     Examples:
-        # Index from file
-        $ elastro doc index my-logs --file ./event.json
+    
+    Index from file:
+    ```bash
+    elastro doc index my-logs --file ./event.json
+    ```
 
-        # Index from stdin
-        $ echo '{"user": "jon", "action": "login"}' | elastro doc index my-logs
+    Index from stdin:
+    ```bash
+    echo '{"user": "jon", "action": "login"}' | elastro doc index my-logs
+    ```
 
-        # Specify explicit ID
-        $ elastro doc index my-logs --id 123 --file ./user.json
+    Specify explicit ID:
+    ```bash
+    elastro doc index my-logs --id 123 --file ./user.json
+    ```
     """
     document_manager = DocumentManager(client)
 
@@ -63,7 +70,11 @@ def bulk_index(client, index, file):
     Indexes multiple documents from a JSON array file.
 
     Examples:
-        $ elastro doc bulk my-logs --file ./bulk_data.json
+    
+    Bulk index from a JSON array file:
+    ```bash
+    elastro doc bulk my-logs --file ./bulk_data.json
+    ```
     """
     document_manager = DocumentManager(client)
 
@@ -95,7 +106,11 @@ def get_document(client, index, id):
     Retrieves a single document source and metadata.
 
     Examples:
-        $ elastro doc get my-logs 123
+    
+    Get document by ID:
+    ```bash
+    elastro doc get my-logs 123
+    ```
     """
     document_manager = DocumentManager(client)
 
@@ -140,14 +155,21 @@ def search_documents(
     Or provide a raw query body via --file.
 
     Examples:
-        # Simple match query
-        $ elastro doc search my-logs --match status=error
+    
+    Simple match query:
+    ```bash
+    elastro doc search my-logs --match status=error
+    ```
 
-        # Combine queries
-        $ elastro doc search my-logs --match status=error --range timestamp=gte:now-1h
+    Combine queries (AND operations):
+    ```bash
+    elastro doc search my-logs --match status=error --range timestamp=gte:now-1h
+    ```
 
-        # Use full Query DSL from file
-        $ elastro doc search my-logs --file ./advanced_query.json
+    Use full Query DSL from file:
+    ```bash
+    elastro doc search my-logs --file ./advanced_query.json
+    ```
     """
     document_manager = DocumentManager(client)
 
@@ -206,11 +228,16 @@ def update_document(client, index, id, file, partial):
     Updates an existing document. Use --partial to update only specific fields.
 
     Examples:
-        # Full replace
-        $ elastro doc update my-logs 123 --file ./new_doc.json
+    
+    Full document replacement:
+    ```bash
+    elastro doc update my-logs 123 --file ./new_doc.json
+    ```
 
-        # Partial update
-        $ elastro doc update my-logs 123 --file ./fields.json --partial
+    Partial update (only specified fields):
+    ```bash
+    elastro doc update my-logs 123 --file ./fields.json --partial
+    ```
     """
     document_manager = DocumentManager(client)
 
@@ -238,7 +265,11 @@ def delete_document(client, index, id):
     Permanently removes a single document by ID.
 
     Examples:
-        $ elastro doc delete my-logs 123
+    
+    Delete a document by ID:
+    ```bash
+    elastro doc delete my-logs 123
+    ```
     """
     document_manager = DocumentManager(client)
 
@@ -262,7 +293,11 @@ def bulk_delete(client, index, file):
     Deletes multiple documents using a JSON array of IDs.
 
     Examples:
-        $ elastro doc bulk-delete my-logs --file ./ids_to_delete.json
+    
+    Bulk delete using a list of IDs:
+    ```bash
+    elastro doc bulk-delete my-logs --file ./ids_to_delete.json
+    ```
     """
     document_manager = DocumentManager(client)
 

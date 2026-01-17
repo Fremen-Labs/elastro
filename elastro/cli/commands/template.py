@@ -1,4 +1,4 @@
-import click
+import rich_click as click
 import json
 from rich.prompt import Prompt, Confirm, IntPrompt
 from rich.console import Console
@@ -26,11 +26,16 @@ def list_templates(client, type, name):
     Lists all index or component templates, optionally filtering by name.
 
     Examples:
-        # List all index templates
-        $ elastro template list
+    
+    List all index templates:
+    ```bash
+    elastro template list
+    ```
 
-        # List component templates
-        $ elastro template list --type component
+    List component templates:
+    ```bash
+    elastro template list --type component
+    ```
     """
     manager = TemplateManager(client)
     try:
@@ -51,7 +56,11 @@ def get_template(client, name, type):
     Retrieves the definition of a specific template.
 
     Examples:
-        $ elastro template get my-template
+    
+    Get definition of a specific template:
+    ```bash
+    elastro template get my-template
+    ```
     """
     manager = TemplateManager(client)
     try:
@@ -73,7 +82,11 @@ def delete_template(client, name, type, force):
     Permanently removes a template.
 
     Examples:
-        $ elastro template delete my-template
+    
+    Delete a template:
+    ```bash
+    elastro template delete my-template
+    ```
     """
     manager = TemplateManager(client)
     if not force and not click.confirm(f"Delete {type} template '{name}'?"):
@@ -100,7 +113,11 @@ def create_template(client, name, file, type):
     Creates or updates a template using a JSON definition file.
 
     Examples:
-        $ elastro template create my-template --file ./template.json
+    
+    Create a template from a JSON file:
+    ```bash
+    elastro template create my-template --file ./template.json
+    ```
     """
     manager = TemplateManager(client)
     
@@ -125,7 +142,11 @@ def wizard(client):
     Guides you through creating a new component or index template.
 
     Examples:
-        $ elastro template wizard
+    
+    Launch the interactive template wizard:
+    ```bash
+    elastro template wizard
+    ```
     """
 
     manager = TemplateManager(client)

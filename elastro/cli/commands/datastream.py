@@ -2,7 +2,7 @@
 Datastream management commands for the CLI.
 """
 
-import click
+import rich_click as click
 import json
 from elastro.core.client import ElasticsearchClient
 from elastro.core.datastream import DatastreamManager
@@ -20,7 +20,11 @@ def create_datastream(client, name, settings):
     Initializes a new data stream. Requires a matching index template to be created first.
 
     Examples:
-        $ elastro datastream create logs-my-app-prod
+    
+    Create a new datastream (requires matching template):
+    ```bash
+    elastro datastream create logs-my-app-prod
+    ```
     """
     datastream_manager = DatastreamManager(client)
 
@@ -48,7 +52,11 @@ def list_datastreams(client):
     Retrieves all data streams in the cluster.
 
     Examples:
-        $ elastro datastream list
+    
+    List all datastreams:
+    ```bash
+    elastro datastream list
+    ```
     """
     datastream_manager = DatastreamManager(client)
 
@@ -69,7 +77,11 @@ def get_datastream(client, name):
     Retrieves detailed metadata for a specific data stream including generation and indices.
 
     Examples:
-        $ elastro datastream get logs-*
+    
+    Get details for datastreams matching pattern:
+    ```bash
+    elastro datastream get logs-*
+    ```
     """
     datastream_manager = DatastreamManager(client)
 
@@ -91,7 +103,11 @@ def delete_datastream(client, name, force):
     Permanently removes a data stream and its backing indices.
 
     Examples:
-        $ elastro datastream delete logs-my-app-debug
+    
+    Delete a datastream and its backing indices:
+    ```bash
+    elastro datastream delete logs-my-app-debug
+    ```
     """
     datastream_manager = DatastreamManager(client)
 
@@ -124,11 +140,16 @@ def rollover_datastream(client, name, max_age, max_docs, max_size):
     You can optionally provide conditions to only rollover if met.
 
     Examples:
-        # Unconditional rollover
-        $ elastro datastream rollover logs-my-app-prod
+    
+    Unconditional rollover (force new index):
+    ```bash
+    elastro datastream rollover logs-my-app-prod
+    ```
 
-        # Conditional rollover
-        $ elastro datastream rollover logs-my-app-prod --max-size 50gb
+    Conditional rollover (only if condition met):
+    ```bash
+    elastro datastream rollover logs-my-app-prod --max-size 50gb
+    ```
     """
     datastream_manager = DatastreamManager(client)
 

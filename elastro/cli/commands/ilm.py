@@ -1,4 +1,4 @@
-import click
+import rich_click as click
 import json
 from typing import Dict, Any
 from rich.console import Console
@@ -27,11 +27,16 @@ def list_policies(client, full):
     Shows a summary of all Index Lifecycle Management policies.
 
     Examples:
-        # Summary table
-        $ elastro ilm list
+    
+    List all policies (summary table):
+    ```bash
+    elastro ilm list
+    ```
 
-        # Full JSON details
-        $ elastro ilm list --full
+    Show full JSON details (limited to first 2):
+    ```bash
+    elastro ilm list --full
+    ```
     """
     manager = IlmManager(client)
     try:
@@ -75,7 +80,11 @@ def get_policy(client, name):
     Retrieves the full JSON definition of a specific lifecycle policy.
 
     Examples:
-        $ elastro ilm get my-lifecycle-policy
+    
+    Get full definition of a policy:
+    ```bash
+    elastro ilm get my-lifecycle-policy
+    ```
     """
     manager = IlmManager(client)
     try:
@@ -97,11 +106,16 @@ def create_policy(client, name, file):
     Otherwise, an interactive wizard will launch to help you build the policy.
 
     Examples:
-        # Interactive Wizard
-        $ elastro ilm create my-new-policy
+    
+    Launch Interactive Wizard:
+    ```bash
+    elastro ilm create my-new-policy
+    ```
 
-        # From File
-        $ elastro ilm create my-policy --file ./policy.json
+    Create from JSON file:
+    ```bash
+    elastro ilm create my-policy --file ./policy.json
+    ```
     """
     manager = IlmManager(client)
     
@@ -203,7 +217,11 @@ def delete_policy(client, name, force):
     Removes a lifecycle policy. Note: Indices using this policy may continue to move through phases unless updated.
 
     Examples:
-        $ elastro ilm delete my-old-policy
+    
+    Delete a policy:
+    ```bash
+    elastro ilm delete my-old-policy
+    ```
     """
     manager = IlmManager(client)
     if not force and not click.confirm(f"Delete policy '{name}'?"):
@@ -228,7 +246,11 @@ def explain_lifecycle(client, index):
     Detailed breakdown of step, phase, and any errors in lifecycle execution for a specific index.
 
     Examples:
-        $ elastro ilm explain my-logs-00001
+    
+    Explain lifecycle status for an index:
+    ```bash
+    elastro ilm explain my-logs-00001
+    ```
     """
     manager = IlmManager(client)
     try:
@@ -255,7 +277,11 @@ def start_ilm(client):
     Starts the Index Lifecycle Management feature if it is stopped.
 
     Examples:
-        $ elastro ilm start
+    
+    Start ILM service:
+    ```bash
+    elastro ilm start
+    ```
     """
     manager = IlmManager(client)
     try:
@@ -276,7 +302,11 @@ def stop_ilm(client):
     Halts all lifecycle management operations.
 
     Examples:
-        $ elastro ilm stop
+    
+    Stop ILM service:
+    ```bash
+    elastro ilm stop
+    ```
     """
     manager = IlmManager(client)
     try:
