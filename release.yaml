@@ -1,0 +1,112 @@
+schemaVersion: v1
+project:
+  name: elastro
+  owner: fremenlabs
+  repo:
+    provider: generic
+    url: https://github.com/Fremen-Labs/elastro
+    defaultBranch: main
+    branch: ""
+  releaseFlowRepo:
+    provider: ""
+    url: https://dev.azure.com/mentat-automation/vorsam/_git/ReleaseFlow
+    defaultBranch: ""
+    branch: main
+versioning:
+  model: semver
+  tagPrefix: v
+  sourceOfTruth: release-flow
+  allowManualLevelOnMaster: false
+  releaseLevels: {}
+registry:
+  type: acr
+  host: your.azurecr.io
+  auth:
+    method: ""
+    reference: ""
+services:
+  - name: api
+    type: repository
+    image: ""
+    platforms: []
+    path: .
+    dockerfile: ""
+    build:
+      args: {}
+      labels: {}
+    publish:
+      enabled: false
+      tags: []
+    security:
+      sbom:
+        enabled: false
+        format: ""
+        outputPath: .json.zst
+      scan:
+        enabled: true
+        tool: trivy
+        severityFail:
+          - CRITICAL
+          - HIGH
+        ignoreFile: ""
+        outputPath: security/scans/{{.Service}}-{{.Version}}.trivy.json.zst
+        reportStorage:
+          type: ""
+          git:
+            url: ""
+            branch: ""
+            path: ""
+      compression:
+        enabled: true
+        algorithm: zstd
+        level: 3
+manifest:
+  enabled: true
+  latestPath: manifests/release-manifest.yaml
+  versionedPath: manifests/releases/release-{{.Version}}.yaml
+  include:
+    git: true
+    appCommit: true
+    security: true
+    signatures: true
+signing:
+  git:
+    enabled: false
+    method: ""
+    keyIdEnv: ""
+    passphraseEnv: ""
+    privateKeyEnv: ""
+  images:
+    enabled: true
+    method: cosign
+    keyProvider: azurekms
+    keyRef: azurekms://fremen-vault.vault.azure.net/cosign
+    tlogUpload: false
+    annotations: {}
+secrets:
+  provider: azure-keyvault
+  vaultName: fremen-vault
+notes:
+  internal:
+    sourceDir: ""
+    outputPath: ""
+  external:
+    sourceDir: ""
+    outputPath: ""
+  changelog:
+    mode: ""
+    conventionalCommits: false
+policy:
+  enabled: true
+  gates:
+    requireSignedGitTag: false
+    requireSignedImages: true
+    requireSbom: true
+    requireScan: true
+    failOnSeverities:
+      - CRITICAL
+  exceptions:
+    active: []
+promotion:
+  enabled: false
+  environments: []

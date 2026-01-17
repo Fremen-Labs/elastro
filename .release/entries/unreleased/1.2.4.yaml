@@ -1,0 +1,23 @@
+# Release Note Entry Template
+# Copy this file to a new name (e.g. my-feature.yaml) to add a note.
+
+# Type: feature, fix, chore, docs, style, refactor, perf, test, build, ci
+type: feature
+
+# Component this change affects (e.g. backend, frontend, api)
+component: backend
+
+# Title: Short summary for internal reports and changelogs
+title: Short description of the change
+
+# CustomerImpact: User-facing description for external release notes
+# If empty, this entry might be excluded from external notes depending on config.
+customerImpact: |
+  Users can now...
+
+# Author: Your Name or ID
+author: user
+
+# Description: Detailed technical description (optional, for internal audit)
+description: |
+  Implementation details...
