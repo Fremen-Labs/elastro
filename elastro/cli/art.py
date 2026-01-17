@@ -3,6 +3,7 @@ from rich.panel import Panel
 from rich.align import Align
 
 ELASTRO_ART = r"""
+```text
       .   *   .       .   *   .      .
     .   _   .   *   .    *    .   *
   _ __| | __ _ ___| |_ _ __ ___    .
@@ -10,6 +11,7 @@ ELASTRO_ART = r"""
  |  __/ | (_| \__ \ |_| | | (_) |  .
   \___|_|\__,_|___/\__|_|  \___/ .
       .    *     .      *    .   *
+```
 """
 
 def get_banner() -> str:
