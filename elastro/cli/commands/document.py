@@ -12,13 +12,27 @@ from elastro.core.query_builder import QueryBuilder
 from elastro.cli.output import format_output
 from elastro.cli.completion import complete_indices
 
-@click.command("index")
+@click.command("index", no_args_is_help=True)
 @click.argument("index", type=str, shell_complete=complete_indices)
 @click.option("--id", type=str, help="Document ID")
 @click.option("--file", type=click.Path(exists=True, readable=True), help="Path to document file")
 @click.pass_obj
 def index_document(client, index, id, file):
-    """Index a document."""
+    """
+    Index a document.
+
+    Indexes a single JSON document. You can provide the document body via a file or standard input.
+
+    Examples:
+        # Index from file
+        $ elastro doc index my-logs --file ./event.json
+
+        # Index from stdin
+        $ echo '{"user": "jon", "action": "login"}' | elastro doc index my-logs
+
+        # Specify explicit ID
+        $ elastro doc index my-logs --id 123 --file ./user.json
+    """
     document_manager = DocumentManager(client)
 
     # Load document data
@@ -38,12 +52,19 @@ def index_document(client, index, id, file):
         click.echo(f"Error indexing document: {str(e)}", err=True)
         exit(1)
 
-@click.command("bulk")
+@click.command("bulk", no_args_is_help=True)
 @click.argument("index", type=str, shell_complete=complete_indices)
 @click.option("--file", type=click.Path(exists=True, readable=True), required=True, help="Path to bulk documents file")
 @click.pass_obj
 def bulk_index(client, index, file):
-    """Bulk index documents."""
+    """
+    Bulk index documents.
+
+    Indexes multiple documents from a JSON array file.
+
+    Examples:
+        $ elastro doc bulk my-logs --file ./bulk_data.json
+    """
     document_manager = DocumentManager(client)
 
     # Load documents data
@@ -63,12 +84,19 @@ def bulk_index(client, index, file):
         click.echo(f"Error in bulk indexing: {str(e)}", err=True)
         exit(1)
 
-@click.command("get")
+@click.command("get", no_args_is_help=True)
 @click.argument("index", type=str, shell_complete=complete_indices)
 @click.argument("id", type=str)
 @click.pass_obj
 def get_document(client, index, id):
-    """Get a document by ID."""
+    """
+    Get a document by ID.
+
+    Retrieves a single document source and metadata.
+
+    Examples:
+        $ elastro doc get my-logs 123
+    """
     document_manager = DocumentManager(client)
 
     try:
@@ -109,6 +137,17 @@ def search_documents(
     Search for documents using explicit flags or a query string.
     
     Supports combining multiple flags to build a bool query (AND by default).
+    Or provide a raw query body via --file.
+
+    Examples:
+        # Simple match query
+        $ elastro doc search my-logs --match status=error
+
+        # Combine queries
+        $ elastro doc search my-logs --match status=error --range timestamp=gte:now-1h
+
+        # Use full Query DSL from file
+        $ elastro doc search my-logs --file ./advanced_query.json
     """
     document_manager = DocumentManager(client)
 
@@ -154,14 +193,25 @@ def search_documents(
         click.echo(f"Error searching documents: {str(e)}", err=True)
         exit(1)
 
-@click.command("update")
+@click.command("update", no_args_is_help=True)
 @click.argument("index", type=str, shell_complete=complete_indices)
 @click.argument("id", type=str)
 @click.option("--file", type=click.Path(exists=True, readable=True), required=True, help="Path to document file")
 @click.option("--partial", is_flag=True, help="Perform partial update")
 @click.pass_obj
 def update_document(client, index, id, file, partial):
-    """Update a document."""
+    """
+    Update a document.
+
+    Updates an existing document. Use --partial to update only specific fields.
+
+    Examples:
+        # Full replace
+        $ elastro doc update my-logs 123 --file ./new_doc.json
+
+        # Partial update
+        $ elastro doc update my-logs 123 --file ./fields.json --partial
+    """
     document_manager = DocumentManager(client)
 
     # Load document data
@@ -177,12 +227,19 @@ def update_document(client, index, id, file, partial):
         click.echo(f"Error updating document: {str(e)}", err=True)
         exit(1)
 
-@click.command("delete")
+@click.command("delete", no_args_is_help=True)
 @click.argument("index", type=str, shell_complete=complete_indices)
 @click.argument("id", type=str)
 @click.pass_obj
 def delete_document(client, index, id):
-    """Delete a document."""
+    """
+    Delete a document.
+
+    Permanently removes a single document by ID.
+
+    Examples:
+        $ elastro doc delete my-logs 123
+    """
     document_manager = DocumentManager(client)
 
     try:
@@ -194,12 +251,19 @@ def delete_document(client, index, id):
         click.echo(f"Error deleting document: {str(e)}", err=True)
         exit(1)
 
-@click.command("bulk-delete")
+@click.command("bulk-delete", no_args_is_help=True)
 @click.argument("index", type=str, shell_complete=complete_indices)
 @click.option("--file", type=click.Path(exists=True, readable=True), required=True, help="Path to IDs file")
 @click.pass_obj
 def bulk_delete(client, index, file):
-    """Bulk delete documents."""
+    """
+    Bulk delete documents.
+
+    Deletes multiple documents using a JSON array of IDs.
+
+    Examples:
+        $ elastro doc bulk-delete my-logs --file ./ids_to_delete.json
+    """
     document_manager = DocumentManager(client)
 
     # Load document IDs

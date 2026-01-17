@@ -254,3 +254,38 @@ class IndexManager:
         except Exception as e:
             logger.error(f"Failed to close index '{name}': {str(e)}")
             raise ElasticIndexError(f"Failed to close index '{name}': {str(e)}")
+
+    def list(self, pattern: str = "*", verbose: bool = False) -> List[Dict[str, Any]]:
+        """
+        List indices matching a pattern.
+
+        Args:
+            pattern: Index pattern to match (default: "*")
+            verbose: Whether to include extensive index details (default: False)
+
+        Returns:
+            List of dictionaries containing index details (name, health, status, docs.count, etc.)
+        """
+        try:
+            # use cat.indices for efficient summary
+            # headers: health, status, index, uuid, pri, rep, docs.count, docs.deleted, store.size, pri.store.size
+            response = self.client.client.cat.indices(index=pattern, format="json")
+            
+            # The Elasticsearch python client returns a ListAPIResponse which is a list-like object
+            # Convert to standard list of dicts
+            result = []
+            if hasattr(response, 'body'):
+                raw_data = response.body
+            else:
+                raw_data = response
+
+            # If raw_data is just a list, great.
+            if isinstance(raw_data, list):
+                result = raw_data
+            
+            logger.debug(f"Listed {len(result)} indices with pattern '{pattern}'")
+            return result
+
+        except Exception as e:
+            logger.error(f"Failed to list indices with pattern '{pattern}': {str(e)}")
+            raise ElasticIndexError(f"Failed to list indices: {str(e)}")

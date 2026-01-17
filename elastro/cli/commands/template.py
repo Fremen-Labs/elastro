@@ -20,7 +20,18 @@ def template_group():
 @click.option("--name", type=str, help="Template name pattern")
 @click.pass_obj
 def list_templates(client, type, name):
-    """List templates."""
+    """
+    List templates.
+
+    Lists all index or component templates, optionally filtering by name.
+
+    Examples:
+        # List all index templates
+        $ elastro template list
+
+        # List component templates
+        $ elastro template list --type component
+    """
     manager = TemplateManager(client)
     try:
         result = manager.list(template_type=type, name=name)
@@ -29,12 +40,19 @@ def list_templates(client, type, name):
         click.echo(f"Error listing templates: {str(e)}", err=True)
         exit(1)
 
-@template_group.command("get")
+@template_group.command("get", no_args_is_help=True)
 @click.argument("name", type=str, shell_complete=complete_templates)
 @click.option("--type", type=click.Choice(["index", "component"]), default="index", help="Template type")
 @click.pass_obj
 def get_template(client, name, type):
-    """Get a template."""
+    """
+    Get a template.
+
+    Retrieves the definition of a specific template.
+
+    Examples:
+        $ elastro template get my-template
+    """
     manager = TemplateManager(client)
     try:
         result = manager.get(name, template_type=type)
@@ -43,13 +61,20 @@ def get_template(client, name, type):
         click.echo(f"Error getting template: {str(e)}", err=True)
         exit(1)
 
-@template_group.command("delete")
+@template_group.command("delete", no_args_is_help=True)
 @click.argument("name", type=str, shell_complete=complete_templates)
 @click.option("--type", type=click.Choice(["index", "component"]), default="index", help="Template type")
 @click.option("--force", is_flag=True, help="Force deletion")
 @click.pass_obj
 def delete_template(client, name, type, force):
-    """Delete a template."""
+    """
+    Delete a template.
+
+    Permanently removes a template.
+
+    Examples:
+        $ elastro template delete my-template
+    """
     manager = TemplateManager(client)
     if not force and not click.confirm(f"Delete {type} template '{name}'?"):
         return
@@ -62,13 +87,21 @@ def delete_template(client, name, type, force):
     except OperationError as e:
         click.echo(f"Error deleting template: {str(e)}", err=True)
         exit(1)
-@template_group.command("create")
+
+@template_group.command("create", no_args_is_help=True)
 @click.argument("name", type=str)
 @click.option("--file", type=click.Path(exists=True, readable=True), required=True, help="Template definition file")
 @click.option("--type", type=click.Choice(["index", "component"]), default="index", help="Template type")
 @click.pass_obj
 def create_template(client, name, file, type):
-    """Create a template from file."""
+    """
+    Create a template from file.
+
+    Creates or updates a template using a JSON definition file.
+
+    Examples:
+        $ elastro template create my-template --file ./template.json
+    """
     manager = TemplateManager(client)
     
     with open(file, 'r') as f:
@@ -82,10 +115,19 @@ def create_template(client, name, file, type):
     except OperationError as e:
         click.echo(f"Error creating template: {str(e)}", err=True)
         exit(1)
+
 @template_group.command("wizard")
 @click.pass_obj
 def wizard(client):
-    """Interactive template builder wizard."""
+    """
+    Interactive template builder wizard.
+
+    Guides you through creating a new component or index template.
+
+    Examples:
+        $ elastro template wizard
+    """
+
     manager = TemplateManager(client)
     
     console.print(Panel.fit("🧙‍♂️ Index Architect Wizard", style="bold blue"))

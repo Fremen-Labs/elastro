@@ -16,10 +16,11 @@ from elastro.cli.art import ELASTRO_ART
 
 # Configure rich-click
 click.rich_click.USE_RICH_MARKUP = True
+click.rich_click.USE_MARKDOWN = True  # Enable Markdown in docstrings
 click.rich_click.SHOW_ARGUMENTS = True
 click.rich_click.GROUP_ARGUMENTS_OPTIONS = True
 click.rich_click.STYLE_ERRORS_SUGGESTION = "magenta italic"
-click.rich_click.ERRORS_SUGGESTION = "Try running the command again with --help for more information."
+click.rich_click.ERRORS_SUGGESTION = "Missing arguments? Run with --help to see examples and usage."
 click.rich_click.ERRORS_EPILOGUE = "To find out more, visit [link=https://github.com/Fremen-Labs/elastro]https://github.com/Fremen-Labs/elastro[/link]"
 click.rich_click.HEADER_TEXT = ELASTRO_ART
 
@@ -30,7 +31,8 @@ from elastro.core.client import ElasticsearchClient
 # Import command groups
 from elastro.cli.commands.index import (
     create_index, get_index, index_exists, update_index,
-    delete_index, open_index, close_index
+    delete_index, open_index, close_index,
+    list_indices, find_indices
 )
 from elastro.cli.commands.document import (
     index_document, bulk_index, get_document, search_documents,
@@ -50,7 +52,6 @@ from elastro.cli.commands.template import template_group
 from elastro.cli.commands.ilm import ilm_group
 from elastro.cli.commands.snapshot import snapshot_group
 
-# ... (omitted) ...
 
 # Register Top-Level Groups
 
@@ -152,6 +153,8 @@ index.add_command(update_index)
 index.add_command(delete_index)
 index.add_command(open_index)
 index.add_command(close_index)
+index.add_command(list_indices)
+index.add_command(find_indices)
 
 
 @cli.group()

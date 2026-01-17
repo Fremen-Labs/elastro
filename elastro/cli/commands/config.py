@@ -11,11 +11,18 @@ from elastro.config import get_config, save_config, default_config
 
 CONFIG_PATH = os.path.expanduser("~/.elastic/config.yaml")
 
-@click.command("get")
+@click.command("get", no_args_is_help=True)
 @click.argument("key", type=str)
 @click.option("--profile", "-p", default="default", help="Configuration profile")
 def get_config_value(key, profile):
-    """Get a configuration value."""
+    """
+    Get a configuration value.
+
+    Retrieves a specific setting from the configuration file.
+
+    Examples:
+        $ elastro config get elasticsearch.hosts
+    """
     config = get_config(profile=profile)
 
     # Handle nested keys (e.g., "elasticsearch.hosts")
@@ -33,12 +40,23 @@ def get_config_value(key, profile):
         click.echo(f"Configuration key '{key}' not found.", err=True)
         exit(1)
 
-@click.command("set")
+@click.command("set", no_args_is_help=True)
 @click.argument("key", type=str)
 @click.argument("value", type=str)
 @click.option("--profile", "-p", default="default", help="Configuration profile")
 def set_config_value(key, value, profile):
-    """Set a configuration value."""
+    """
+    Set a configuration value.
+
+    Updates a setting in the configuration file. Supports nested keys and JSON values.
+
+    Examples:
+        # Set simple value
+        $ elastro config set elasticsearch.timeout 60s
+
+        # Set JSON array
+        $ elastro config set elasticsearch.hosts '["http://localhost:9200"]'
+    """
     config = get_config(profile=profile)
 
     # Parse the value if it looks like JSON
@@ -65,7 +83,14 @@ def set_config_value(key, value, profile):
 @click.command("list")
 @click.option("--profile", "-p", default="default", help="Configuration profile")
 def list_config(profile):
-    """List all configuration values."""
+    """
+    List all configuration values.
+
+    Displays the full configuration for the selected profile in YAML format.
+
+    Examples:
+        $ elastro config list
+    """
     config = get_config(profile=profile)
     click.echo(yaml.dump(config, default_flow_style=False))
 
@@ -77,6 +102,9 @@ def init_config(force, profile):
     Initialize the configuration file.
     
     Launches an interactive wizard to help you configure Elastro.
+
+    Examples:
+        $ elastro config init
     """
     config_dir = os.path.dirname(CONFIG_PATH)
 

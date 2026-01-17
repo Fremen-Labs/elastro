@@ -26,7 +26,14 @@ def repo_group():
 @repo_group.command("list")
 @click.pass_obj
 def list_repositories(client):
-    """List all snapshot repositories."""
+    """
+    List all snapshot repositories.
+
+    Shows the configured snapshot repositories (e.g. fs, s3).
+
+    Examples:
+        $ elastro snapshot repo list
+    """
     manager = SnapshotManager(client)
     try:
         repos = manager.list_repositories()
@@ -47,7 +54,7 @@ def list_repositories(client):
         console.print(f"[bold red]Error listing repositories:[/] {str(e)}")
         exit(1)
 
-@repo_group.command("create")
+@repo_group.command("create", no_args_is_help=True)
 @click.argument("name", type=str)
 @click.argument("type", type=str) # fs, s3, etc
 @click.option("--setting", "-s", multiple=True, help="Repo settings key=value (e.g. location=/tmp)")
@@ -55,9 +62,15 @@ def list_repositories(client):
 def create_repository(client, name, type, setting):
     """
     Create a snapshot repository.
-    
-    Usage:
-      elastro snapshot repo create my-fs-repo fs --setting location=/tmp/repo
+
+    Registers a new repository for storing snapshots. Common types are 'fs' (FileSystem) and 's3'.
+
+    Examples:
+        # Create a FileSystem repository
+        $ elastro snapshot repo create my_backup fs --setting location=/mnt/backups
+
+        # Create an S3 repository
+        $ elastro snapshot repo create s3_backup s3 --setting bucket=my-bucket --setting region=us-east-1
     """
     manager = SnapshotManager(client)
     
@@ -77,11 +90,18 @@ def create_repository(client, name, type, setting):
         console.print(f"[bold red]Error creating repository:[/] {str(e)}")
         exit(1)
         
-@repo_group.command("delete")
+@repo_group.command("delete", no_args_is_help=True)
 @click.argument("name", type=str)
 @click.pass_obj
 def delete_repository(client, name):
-    """Delete a snapshot repository."""
+    """
+    Delete a snapshot repository.
+    
+    Unregisters a repository. This does NOT delete the actual snapshot data from storage, only the reference.
+
+    Examples:
+        $ elastro snapshot repo delete my_backup
+    """
     manager = SnapshotManager(client)
     if not click.confirm(f"Delete repository '{name}'?"):
         return
@@ -98,11 +118,18 @@ def delete_repository(client, name):
 
 # --- SNAPSHOT COMMANDS ---
 
-@snapshot_group.command("list")
+@snapshot_group.command("list", no_args_is_help=True)
 @click.argument("repository", type=str)
 @click.pass_obj
 def list_snapshots(client, repository):
-    """List snapshots in a repository."""
+    """
+    List snapshots in a repository.
+
+    Shows details of all snapshots stored in the specified repository.
+
+    Examples:
+        $ elastro snapshot list my_backup
+    """
     manager = SnapshotManager(client)
     try:
         snapshots = manager.list_snapshots(repository)
@@ -128,14 +155,25 @@ def list_snapshots(client, repository):
         console.print(f"[bold red]Error listing snapshots:[/] {str(e)}")
         exit(1)
 
-@snapshot_group.command("create")
+@snapshot_group.command("create", no_args_is_help=True)
 @click.argument("repository", type=str)
 @click.argument("snapshot", type=str)
 @click.option("--indices", default="_all", help="Indices to snapshot")
 @click.option("--wait", is_flag=True, help="Wait for completion")
 @click.pass_obj
 def create_snapshot(client, repository, snapshot, indices, wait):
-    """Create a snapshot."""
+    """
+    Create a snapshot.
+
+    Takes a snapshot of specified indices (default: all) and stores it in the repository.
+
+    Examples:
+        # Snapshot all indices
+        $ elastro snapshot create my_backup snap_1
+
+        # Snapshot specific index
+        $ elastro snapshot create my_backup snap_users --indices users,logs-*
+    """
     manager = SnapshotManager(client)
     try:
         resp = manager.create_snapshot(repository, snapshot, indices=indices, wait_for_completion=wait)
@@ -157,7 +195,17 @@ def create_snapshot(client, repository, snapshot, indices, wait):
 @click.pass_obj
 def restore_snapshot(client, repository, snapshot):
     """
-    Restore a snapshot (Interactive Wizard if args missing).
+    Restore a snapshot.
+
+    Restores indices from a snapshot.
+    If no arguments are provided, launches an INTERACTIVE WIZARD to select repo and snapshot.
+
+    Examples:
+        # Interactive Wizard
+        $ elastro snapshot restore
+
+        # Direct Restore
+        $ elastro snapshot restore my_backup snap_1
     """
     manager = SnapshotManager(client)
     from rich.prompt import Prompt, Confirm
@@ -252,21 +300,16 @@ def restore_snapshot(client, repository, snapshot):
         console.print(f"[bold red]Error restoring snapshot:[/] {str(e)}")
         exit(1)
 
-@snapshot_group.command("delete")
+@snapshot_group.command("delete", no_args_is_help=True)
 @click.argument("repository", type=str)
 @click.argument("snapshot", type=str)
 @click.pass_obj
 def delete_snapshot(client, repository, snapshot):
-    """Delete a snapshot."""
-    manager = SnapshotManager(client)
-    if not click.confirm(f"Delete snapshot '{snapshot}' from '{repository}'?"):
-        return
-        
-    try:
-        if manager.delete_snapshot(repository, snapshot):
-             console.print(f"[bold green]Snapshot '{snapshot}' deleted.[/]")
-        else:
-             console.print("[yellow]Deletion not acknowledged.[/]")
-    except OperationError as e:
-        console.print(f"[bold red]Error deleting snapshot:[/] {str(e)}")
-        exit(1)
+    """
+    Delete a snapshot.
+
+    Permanently deletes a snapshot from the repository.
+
+    Examples:
+        $ elastro snapshot delete my_backup snap_old
+    """
