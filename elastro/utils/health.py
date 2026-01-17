@@ -1,4 +1,5 @@
 """Health check and diagnostics utilities for Elasticsearch."""
+
 from typing import Dict, List, Any, Optional, Union
 
 from elastro.core.client import ElasticsearchClient
@@ -21,28 +22,28 @@ class HealthManager:
         self._client = client
         self._es = client.client
 
-    def cluster_health(self, index: Optional[str] = None,
-                     level: str = "cluster",
-                     timeout: str = "30s",
-                     wait_for_status: Optional[str] = None) -> Dict[str, Any]:
+    def cluster_health(
+        self,
+        index: Optional[str] = None,
+        level: str = "cluster",
+        timeout: str = "30s",
+        wait_for_status: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """Get cluster health information.
 
-        Args:
-            index: Optional index to get health for.
-level: Health information detail level ('cluster', 'indices', or 'shards').
-            timeout: Request timeout.
+                Args:
+                    index: Optional index to get health for.
+        level: Health information detail level ('cluster', 'indices', or 'shards').
+                    timeout: Request timeout.
 
-        Returns:
-            dict: Cluster health information.
+                Returns:
+                    dict: Cluster health information.
 
-        Raises:
-            OperationError: If health retrieval fails.
+                Raises:
+                    OperationError: If health retrieval fails.
         """
         try:
-            params = {
-                "level": level,
-                "timeout": timeout
-            }
+            params = {"level": level, "timeout": timeout}
 
             if wait_for_status:
                 params["wait_for_status"] = wait_for_status
@@ -54,8 +55,9 @@ level: Health information detail level ('cluster', 'indices', or 'shards').
         except Exception as e:
             raise OperationError(f"Failed to get cluster health: {str(e)}")
 
-    def node_stats(self, node_id: Optional[str] = None,
-                 metrics: Optional[List[str]] = None) -> Dict[str, Any]:
+    def node_stats(
+        self, node_id: Optional[str] = None, metrics: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
         """Get node statistics.
 
         Args:
@@ -80,8 +82,9 @@ level: Health information detail level ('cluster', 'indices', or 'shards').
         except Exception as e:
             raise OperationError(f"Failed to get node stats: {str(e)}")
 
-    def node_info(self, node_id: Optional[str] = None,
-                metrics: Optional[List[str]] = None) -> Dict[str, Any]:
+    def node_info(
+        self, node_id: Optional[str] = None, metrics: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
         """Get node information.
 
         Args:
@@ -134,9 +137,12 @@ level: Health information detail level ('cluster', 'indices', or 'shards').
         except Exception as e:
             raise OperationError(f"Failed to get pending tasks: {str(e)}")
 
-    def allocation_explain(self, index: Optional[str] = None,
-                         shard: Optional[int] = None,
-                         primary: bool = False) -> Dict[str, Any]:
+    def allocation_explain(
+        self,
+        index: Optional[str] = None,
+        shard: Optional[int] = None,
+        primary: bool = False,
+    ) -> Dict[str, Any]:
         """Explain shard allocation decisions.
 
         Args:
@@ -235,7 +241,7 @@ level: Health information detail level ('cluster', 'indices', or 'shards').
                 "cluster_health": self.cluster_health(),
                 "nodes_count": len(self._es.nodes.info().get("nodes", {})),
                 "indices_count": len(self._es.indices.get("*").keys()),
-                "pending_tasks": len(self.pending_tasks())
+                "pending_tasks": len(self.pending_tasks()),
             }
 
             # Add status assessment
@@ -243,7 +249,7 @@ level: Health information detail level ('cluster', 'indices', or 'shards').
             diagnostic["status"] = {
                 "is_healthy": health_status == "green",
                 "health_status": health_status,
-                "has_pending_tasks": diagnostic["pending_tasks"] > 0
+                "has_pending_tasks": diagnostic["pending_tasks"] > 0,
             }
 
             return diagnostic

@@ -11,6 +11,7 @@ from elastro.config import get_config, save_config, default_config
 
 CONFIG_PATH = os.path.expanduser("~/.elastic/config.yaml")
 
+
 @click.command("get", no_args_is_help=True)
 @click.argument("key", type=str)
 @click.option("--profile", "-p", default="default", help="Configuration profile")
@@ -21,7 +22,7 @@ def get_config_value(key, profile):
     Retrieves a specific setting from the configuration file.
 
     Examples:
-    
+
     Get a specific config value:
     ```bash
     elastro config get elasticsearch.hosts
@@ -44,6 +45,7 @@ def get_config_value(key, profile):
         click.echo(f"Configuration key '{key}' not found.", err=True)
         exit(1)
 
+
 @click.command("set", no_args_is_help=True)
 @click.argument("key", type=str)
 @click.argument("value", type=str)
@@ -55,7 +57,7 @@ def set_config_value(key, value, profile):
     Updates a setting in the configuration file. Supports nested keys and JSON values.
 
     Examples:
-    
+
     Set a simple value:
     ```bash
     elastro config set elasticsearch.timeout 60s
@@ -89,6 +91,7 @@ def set_config_value(key, value, profile):
     save_config(config, profile=profile)
     click.echo(f"Configuration key '{key}' set successfully.")
 
+
 @click.command("list")
 @click.option("--profile", "-p", default="default", help="Configuration profile")
 def list_config(profile):
@@ -98,7 +101,7 @@ def list_config(profile):
     Displays the full configuration for the selected profile in YAML format.
 
     Examples:
-    
+
     List all configuration values:
     ```bash
     elastro config list
@@ -107,17 +110,18 @@ def list_config(profile):
     config = get_config(profile=profile)
     click.echo(yaml.dump(config, default_flow_style=False))
 
+
 @click.command("init")
 @click.option("--force", is_flag=True, help="Force initialization (overwrite existing)")
 @click.option("--profile", "-p", default="default", help="Configuration profile")
 def init_config(force, profile):
     """
     Initialize the configuration file.
-    
+
     Launches an interactive wizard to help you configure Elastro.
 
     Examples:
-    
+
     Initialize configuration (interactive wizard):
     ```bash
     elastro config init
@@ -133,7 +137,9 @@ def init_config(force, profile):
     config_exists = os.path.exists(CONFIG_PATH)
 
     if config_exists and not force:
-        click.echo("Configuration file already exists. Use --force to overwrite or launch the wizard.")
+        click.echo(
+            "Configuration file already exists. Use --force to overwrite or launch the wizard."
+        )
         if not click.confirm("Do you want to overwrite it and run the wizard?"):
             return
 
@@ -148,29 +154,31 @@ def init_config(force, profile):
     if profile != "default":
         # Check if we are merging into existing config
         if config_exists:
-             existing = get_config(profile=profile) # Takes care of loading base config
-             # Load raw current config to be safe
-             if os.path.exists(CONFIG_PATH):
-                 with open(CONFIG_PATH, 'r') as f:
-                     full_config = yaml.safe_load(f) or {}
-             else:
-                 full_config = {}
-                 
-             if "profiles" not in full_config:
-                 full_config["profiles"] = {}
-             full_config["profiles"][profile] = config
-             config = full_config
+            existing = get_config(profile=profile)  # Takes care of loading base config
+            # Load raw current config to be safe
+            if os.path.exists(CONFIG_PATH):
+                with open(CONFIG_PATH, "r") as f:
+                    full_config = yaml.safe_load(f) or {}
+            else:
+                full_config = {}
+
+            if "profiles" not in full_config:
+                full_config["profiles"] = {}
+            full_config["profiles"][profile] = config
+            config = full_config
         else:
             config = {"profiles": {profile: config}}
 
     # Save config
     # Use direct yaml dump for full structure control during init
-    with open(CONFIG_PATH, 'w') as f:
+    with open(CONFIG_PATH, "w") as f:
         yaml.dump(config, f, default_flow_style=False)
 
     from rich.console import Console
+
     console = Console()
     console.print(f"[green]Configuration initialized at {CONFIG_PATH}[/]")
+
 
 def run_config_wizard() -> Dict[str, Any]:
     """Run interactive wizard to build configuration."""
@@ -181,8 +189,13 @@ def run_config_wizard() -> Dict[str, Any]:
     from elastro.core.errors import ConnectionError, AuthenticationError
 
     console = Console()
-    console.print(Panel("🧙 [bold blue]Elastro Configuration Wizard[/]\nLet's get you connected to Elasticsearch.", border_style="blue"))
-    
+    console.print(
+        Panel(
+            "🧙 [bold blue]Elastro Configuration Wizard[/]\nLet's get you connected to Elasticsearch.",
+            border_style="blue",
+        )
+    )
+
     # 1. Hosts
     default_host = "http://localhost:9200"
     hosts_input = Prompt.ask("🔌 [bold]Elasticsearch Host[/]", default=default_host)
@@ -190,8 +203,10 @@ def run_config_wizard() -> Dict[str, Any]:
 
     # 2. Authentication
     console.print("\n🔑 [bold]Authentication[/]")
-    auth_type = Prompt.ask("   Method", choices=["basic", "api_key", "none"], default="none")
-    
+    auth_type = Prompt.ask(
+        "   Method", choices=["basic", "api_key", "none"], default="none"
+    )
+
     auth = {}
     if auth_type == "basic":
         username = Prompt.ask("   Username", default="elastic")
@@ -200,25 +215,24 @@ def run_config_wizard() -> Dict[str, Any]:
     elif auth_type == "api_key":
         api_key = Prompt.ask("   API Key", password=True)
         auth = {"type": "api_key", "api_key": api_key}
-    
+
     # 3. Connection Test
     console.print("\n📡 [bold]Testing Connection...[/]")
     try:
         # Create a temporary client to test connection
         client = ElasticsearchClient(
-            hosts=hosts,
-            auth=auth,
-            verify_certs=False,
-            use_config=False
+            hosts=hosts, auth=auth, verify_certs=False, use_config=False
         )
         client.connect()
         info = client.get_client().info()
         version = info.get("version", {}).get("number", "Unknown")
         cluster_name = info.get("cluster_name", "Unknown")
-        
-        console.print(f"[bold green]✅ Success! Connected to '{cluster_name}' (v{version})[/]")
+
+        console.print(
+            f"[bold green]✅ Success! Connected to '{cluster_name}' (v{version})[/]"
+        )
         client.disconnect()
-        
+
     except (ConnectionError, AuthenticationError) as e:
         console.print(f"[bold red]❌ Connection Failed:[/]\n   {str(e)}")
         if not Confirm.ask("   Save configuration anyway?", default=False):
@@ -228,5 +242,5 @@ def run_config_wizard() -> Dict[str, Any]:
     config = default_config()
     config["elasticsearch"]["hosts"] = hosts
     config["elasticsearch"]["auth"] = auth
-    
+
     return config

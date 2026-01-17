@@ -40,7 +40,7 @@ class SnapshotManager:
             logger.debug("Listing snapshot repositories")
             # Get all repositories
             response = self.client.client.snapshot.get_repository(name="_all")
-            return response.body if hasattr(response, 'body') else dict(response)
+            return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             logger.error(f"Failed to list repositories: {str(e)}")
             raise OperationError(f"Failed to list repositories: {str(e)}")
@@ -61,12 +61,14 @@ class SnapshotManager:
         try:
             logger.debug(f"Getting repository '{name}'")
             response = self.client.client.snapshot.get_repository(name=name)
-            return response.body if hasattr(response, 'body') else dict(response)
+            return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             logger.error(f"Failed to get repository '{name}': {str(e)}")
             raise OperationError(f"Failed to get repository '{name}': {str(e)}")
 
-    def create_repository(self, name: str, repo_type: str, settings: Dict[str, Any]) -> bool:
+    def create_repository(
+        self, name: str, repo_type: str, settings: Dict[str, Any]
+    ) -> bool:
         """
         Create or update a snapshot repository.
 
@@ -83,12 +85,11 @@ class SnapshotManager:
 
         try:
             logger.info(f"Creating repository '{name}' (type={repo_type})")
-            body = {
-                "type": repo_type,
-                "settings": settings
-            }
-            response = self.client.client.snapshot.create_repository(name=name, body=body)
-            body_resp = response.body if hasattr(response, 'body') else dict(response)
+            body = {"type": repo_type, "settings": settings}
+            response = self.client.client.snapshot.create_repository(
+                name=name, body=body
+            )
+            body_resp = response.body if hasattr(response, "body") else dict(response)
             return body_resp.get("acknowledged", False)
         except Exception as e:
             logger.error(f"Failed to create repository '{name}': {str(e)}")
@@ -110,7 +111,7 @@ class SnapshotManager:
         try:
             logger.info(f"Deleting repository '{name}'")
             response = self.client.client.snapshot.delete_repository(name=name)
-            body_resp = response.body if hasattr(response, 'body') else dict(response)
+            body_resp = response.body if hasattr(response, "body") else dict(response)
             return body_resp.get("acknowledged", False)
         except Exception as e:
             logger.error(f"Failed to delete repository '{name}': {str(e)}")
@@ -133,12 +134,16 @@ class SnapshotManager:
 
         try:
             logger.debug(f"Listing snapshots in '{repository}'")
-            response = self.client.client.snapshot.get(repository=repository, snapshot="_all")
-            body = response.body if hasattr(response, 'body') else dict(response)
+            response = self.client.client.snapshot.get(
+                repository=repository, snapshot="_all"
+            )
+            body = response.body if hasattr(response, "body") else dict(response)
             return body.get("snapshots", [])
         except Exception as e:
             logger.error(f"Failed to list snapshots in '{repository}': {str(e)}")
-            raise OperationError(f"Failed to list snapshots in '{repository}': {str(e)}")
+            raise OperationError(
+                f"Failed to list snapshots in '{repository}': {str(e)}"
+            )
 
     def get_snapshot(self, repository: str, snapshot: str) -> Dict[str, Any]:
         """
@@ -156,8 +161,10 @@ class SnapshotManager:
 
         try:
             logger.debug(f"Getting snapshot '{snapshot}' from '{repository}'")
-            response = self.client.client.snapshot.get(repository=repository, snapshot=snapshot)
-            body = response.body if hasattr(response, 'body') else dict(response)
+            response = self.client.client.snapshot.get(
+                repository=repository, snapshot=snapshot
+            )
+            body = response.body if hasattr(response, "body") else dict(response)
             snapshots = body.get("snapshots", [])
             if snapshots:
                 return snapshots[0]
@@ -167,14 +174,14 @@ class SnapshotManager:
             raise OperationError(f"Failed to get snapshot '{snapshot}': {str(e)}")
 
     def create_snapshot(
-        self, 
-        repository: str, 
-        snapshot: str, 
-        indices: str = "_all", 
+        self,
+        repository: str,
+        snapshot: str,
+        indices: str = "_all",
         ignore_unavailable: bool = False,
         include_global_state: bool = False,
         wait_for_completion: bool = False,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Create a snapshot.
@@ -192,7 +199,7 @@ class SnapshotManager:
             Snapshot response (status or info)
         """
         if not repository or not snapshot:
-             raise ValidationError("Repository and Snapshot names are required")
+            raise ValidationError("Repository and Snapshot names are required")
 
         try:
             logger.info(f"Creating snapshot '{snapshot}' in '{repository}'")
@@ -205,12 +212,12 @@ class SnapshotManager:
                 body["metadata"] = metadata
 
             response = self.client.client.snapshot.create(
-                repository=repository, 
-                snapshot=snapshot, 
+                repository=repository,
+                snapshot=snapshot,
                 body=body,
-                wait_for_completion=wait_for_completion
+                wait_for_completion=wait_for_completion,
             )
-            return response.body if hasattr(response, 'body') else dict(response)
+            return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             logger.error(f"Failed to create snapshot '{snapshot}': {str(e)}")
             raise OperationError(f"Failed to create snapshot '{snapshot}': {str(e)}")
@@ -231,21 +238,23 @@ class SnapshotManager:
 
         try:
             logger.info(f"Deleting snapshot '{snapshot}' from '{repository}'")
-            response = self.client.client.snapshot.delete(repository=repository, snapshot=snapshot)
-            body = response.body if hasattr(response, 'body') else dict(response)
+            response = self.client.client.snapshot.delete(
+                repository=repository, snapshot=snapshot
+            )
+            body = response.body if hasattr(response, "body") else dict(response)
             return body.get("acknowledged", False)
         except Exception as e:
             logger.error(f"Failed to delete snapshot '{snapshot}': {str(e)}")
             raise OperationError(f"Failed to delete snapshot '{snapshot}': {str(e)}")
 
     def restore_snapshot(
-        self, 
-        repository: str, 
-        snapshot: str, 
-        indices: str = "_all", 
-        rename_pattern: str = None, 
+        self,
+        repository: str,
+        snapshot: str,
+        indices: str = "_all",
+        rename_pattern: str = None,
         rename_replacement: str = None,
-        wait_for_completion: bool = False
+        wait_for_completion: bool = False,
     ) -> Dict[str, Any]:
         """
         Restore a snapshot.
@@ -277,9 +286,9 @@ class SnapshotManager:
                 repository=repository,
                 snapshot=snapshot,
                 body=body,
-                wait_for_completion=wait_for_completion
+                wait_for_completion=wait_for_completion,
             )
-            return response.body if hasattr(response, 'body') else dict(response)
+            return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             logger.error(f"Failed to restore snapshot '{snapshot}': {str(e)}")
             raise OperationError(f"Failed to restore snapshot '{snapshot}': {str(e)}")

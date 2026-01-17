@@ -1,1 +1,1 @@
-"""Core unit tests for elastro.""" 
+"""Core unit tests for elastro."""

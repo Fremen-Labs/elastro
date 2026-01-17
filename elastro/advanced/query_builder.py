@@ -14,7 +14,13 @@ class QueryBuilder:
         """Initialize an empty query builder."""
         self._query: Dict[str, Any] = {}
 
-    def match(self, field: str, value: Any, operator: str = "or", fuzziness: Optional[str] = None) -> "QueryBuilder":
+    def match(
+        self,
+        field: str,
+        value: Any,
+        operator: str = "or",
+        fuzziness: Optional[str] = None,
+    ) -> "QueryBuilder":
         """Create a match query.
 
         Args:
@@ -26,7 +32,9 @@ class QueryBuilder:
         Returns:
             Self for method chaining
         """
-        match_query: Dict[str, Any] = {"match": {field: {"query": value, "operator": operator}}}
+        match_query: Dict[str, Any] = {
+            "match": {field: {"query": value, "operator": operator}}
+        }
         if fuzziness:
             match_query["match"][field]["fuzziness"] = fuzziness
 
@@ -44,14 +52,7 @@ class QueryBuilder:
         Returns:
             Self for method chaining
         """
-        self._query = {
-            "match_phrase": {
-                field: {
-                    "query": value,
-                    "slop": slop
-                }
-            }
-        }
+        self._query = {"match_phrase": {field: {"query": value, "slop": slop}}}
         return self
 
     def term(self, field: str, value: Any) -> "QueryBuilder":
@@ -80,8 +81,14 @@ class QueryBuilder:
         self._query = {"terms": {field: values}}
         return self
 
-    def range(self, field: str, gte: Optional[Any] = None, lte: Optional[Any] = None,
-              gt: Optional[Any] = None, lt: Optional[Any] = None) -> "QueryBuilder":
+    def range(
+        self,
+        field: str,
+        gte: Optional[Any] = None,
+        lte: Optional[Any] = None,
+        gt: Optional[Any] = None,
+        lt: Optional[Any] = None,
+    ) -> "QueryBuilder":
         """Create a range query.
 
         Args:
@@ -188,7 +195,9 @@ class BoolQueryBuilder:
             self._must.append(query)
         return self
 
-    def must_not(self, query: Union[QueryBuilder, Dict[str, Any]]) -> "BoolQueryBuilder":
+    def must_not(
+        self, query: Union[QueryBuilder, Dict[str, Any]]
+    ) -> "BoolQueryBuilder":
         """Add a must_not clause to the bool query.
 
         Args:

@@ -1,5 +1,6 @@
 from typing import Dict, Any, List, Optional, Union
 
+
 class QueryBuilder:
     """Helper class to build Elasticsearch DSL queries from simplified inputs."""
 
@@ -8,15 +9,15 @@ class QueryBuilder:
         """
         Parse range string like 'gte:10,lte:20' or 'gt:now-1d' into dict.
         """
-        parts = value.split(',')
+        parts = value.split(",")
         range_query = {}
         for part in parts:
-            if ':' in part:
-                op, val = part.split(':', 1)
-                if op in ['gt', 'gte', 'lt', 'lte', 'format', 'boost', 'time_zone']:
+            if ":" in part:
+                op, val = part.split(":", 1)
+                if op in ["gt", "gte", "lt", "lte", "format", "boost", "time_zone"]:
                     # Try to convert to number if possible
                     try:
-                        if '.' in val:
+                        if "." in val:
                             range_query[op] = float(val)
                         else:
                             range_query[op] = int(val)
@@ -39,7 +40,7 @@ class QueryBuilder:
         must_fuzzy: List[str] = None,
         exclude_match: List[str] = None,
         exclude_term: List[str] = None,
-        query_string: str = None
+        query_string: str = None,
     ) -> Dict[str, Any]:
         """
         Construct a boolean query from various lists of constraints.
@@ -47,11 +48,11 @@ class QueryBuilder:
         """
         must_clauses = []
         must_not_clauses = []
-        
+
         # Helper to parse field=value
         def parse_kv(item: str) -> Optional[tuple]:
-            if '=' in item:
-                return item.split('=', 1)
+            if "=" in item:
+                return item.split("=", 1)
             return None
 
         # 1. Match (Text)
@@ -60,7 +61,7 @@ class QueryBuilder:
                 kv = parse_kv(m)
                 if kv:
                     must_clauses.append({"match": {kv[0]: kv[1]}})
-        
+
         # 2. Match Phrase
         if must_match_phrase:
             for m in must_match_phrase:
@@ -80,7 +81,7 @@ class QueryBuilder:
             for m in must_terms:
                 kv = parse_kv(m)
                 if kv:
-                    values = [v.strip() for v in kv[1].split(',')]
+                    values = [v.strip() for v in kv[1].split(",")]
                     must_clauses.append({"terms": {kv[0]: values}})
 
         # 5. Range
@@ -105,7 +106,7 @@ class QueryBuilder:
                 kv = parse_kv(m)
                 if kv:
                     must_clauses.append({"wildcard": {kv[0]: kv[1]}})
-        
+
         # 8. Exists
         if must_exists:
             for field in must_exists:
@@ -119,7 +120,7 @@ class QueryBuilder:
             # If user does --ids id1,id2, we get ('id1,id2',)
             all_ids = []
             for chunk in must_ids:
-                all_ids.extend([i.strip() for i in chunk.split(',')])
+                all_ids.extend([i.strip() for i in chunk.split(",")])
             if all_ids:
                 must_clauses.append({"ids": {"values": all_ids}})
 
@@ -140,7 +141,7 @@ class QueryBuilder:
                 kv = parse_kv(m)
                 if kv:
                     must_not_clauses.append({"match": {kv[0]: kv[1]}})
-        
+
         if exclude_term:
             for m in exclude_term:
                 kv = parse_kv(m)
@@ -154,10 +155,10 @@ class QueryBuilder:
         if must_not_clauses:
             bool_query["must_not"] = must_not_clauses
 
-        # If simplifiable (only 1 clause and no must_not), unwrap? 
+        # If simplifiable (only 1 clause and no must_not), unwrap?
         # No, consistent "bool" return is safer unless empty.
-        
+
         if not bool_query:
             return {"match_all": {}}
-            
+
         return {"bool": bool_query}

@@ -1,1 +1,1 @@
-"""Unit tests for advanced module.""" 
+"""Unit tests for advanced module."""

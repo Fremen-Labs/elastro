@@ -3,6 +3,7 @@ import os
 import json
 from elastro import ElasticsearchClient, IndexManager, DocumentManager
 
+
 def test_api_actions():
     print("----------------------------------------------------------------")
     print("Starting API Verification")
@@ -14,7 +15,7 @@ def test_api_actions():
         client = ElasticsearchClient(
             hosts=["http://localhost:9200"],
             auth={"username": "elastic", "password": "elastic_password"},
-            verify_certs=False
+            verify_certs=False,
         )
         client.connect()
         print("✅ Client connected successfully")
@@ -41,9 +42,9 @@ def test_api_actions():
                 "properties": {
                     "name": {"type": "text"},
                     "price": {"type": "float"},
-                    "created": {"type": "date"}
+                    "created": {"type": "date"},
                 }
-            }
+            },
         )
         print("✅ Index created successfully")
     except Exception as e:
@@ -68,8 +69,8 @@ def test_api_actions():
             document={
                 "name": "Test Laptop",
                 "price": 999.99,
-                "created": "2023-01-01T12:00:00"
-            }
+                "created": "2023-01-01T12:00:00",
+            },
         )
         print("✅ Document indexed successfully")
     except Exception as e:
@@ -85,11 +86,10 @@ def test_api_actions():
     # Search
     try:
         results = doc_manager.search(
-            index=test_index,
-            query={"match": {"name": "Laptop"}}
+            index=test_index, query={"match": {"name": "Laptop"}}
         )
         # Handle different response structures if necessary, assuming standard SearchResponse
-        hits = results.get('hits', {}).get('hits', [])
+        hits = results.get("hits", {}).get("hits", [])
         if len(hits) > 0:
             print(f"✅ Search successful. Found {len(hits)} documents")
         else:
@@ -105,10 +105,11 @@ def test_api_actions():
     except Exception as e:
         print(f"❌ Cleanup failed: {e}")
 
+
 if __name__ == "__main__":
     try:
         test_api_actions()
     except ImportError as e:
-         print(f"❌ Import Error: {e}. Make sure 'elastro' is installed.")
+        print(f"❌ Import Error: {e}. Make sure 'elastro' is installed.")
     except Exception as e:
         print(f"❌ Unexpected error: {e}")

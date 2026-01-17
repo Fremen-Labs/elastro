@@ -7,6 +7,7 @@ from rich import box
 from io import StringIO
 from elastro.config import get_config
 
+
 def format_output(data: Any, output_format: str = None) -> str:
     """
     Format output data based on the specified format.
@@ -27,34 +28,36 @@ def format_output(data: Any, output_format: str = None) -> str:
             output_format = "json"
 
     display_console = Console(file=StringIO(), force_terminal=True)
-    
+
     if output_format == "json":
         # Handle objects that are not directly JSON serializable
         if hasattr(data, "body"):
-             data = data.body
-        
+            data = data.body
+
         json_str = json.dumps(data, indent=2, default=str)
         # Use Rich Syntax for highlighting
         from rich.syntax import Syntax
+
         syntax = Syntax(json_str, "json", theme="monokai", word_wrap=True)
-        
+
         display_console.print(syntax)
         return display_console.file.getvalue()
 
     elif output_format == "yaml":
         if hasattr(data, "body"):
-             data = data.body
+            data = data.body
         yaml_str = yaml.dump(data, default_flow_style=False)
         from rich.syntax import Syntax
+
         syntax = Syntax(yaml_str, "yaml", theme="monokai", word_wrap=True)
-        
+
         display_console.print(syntax)
         return display_console.file.getvalue()
     elif output_format == "table":
         console = Console()
-        
+
         if hasattr(data, "body"):
-             data = data.body
+            data = data.body
 
         # Handle different data types
         rows = []
@@ -76,8 +79,8 @@ def format_output(data: Any, output_format: str = None) -> str:
 
         # Determine columns
         if not isinstance(rows[0], dict):
-             return str(data)
-             
+            return str(data)
+
         # Get all unique keys for columns
         headers = set()
         for row in rows:
@@ -86,14 +89,14 @@ def format_output(data: Any, output_format: str = None) -> str:
 
         buf = StringIO()
         console = Console(file=buf, force_terminal=False)
-        
+
         table = Table(box=box.ROUNDED)
         for header in sorted_headers:
             table.add_column(str(header), style="cyan")
-            
+
         for row in rows:
             table.add_row(*[str(row.get(h, "")) for h in sorted_headers])
-            
+
         console.print(table)
         return buf.getvalue()
 

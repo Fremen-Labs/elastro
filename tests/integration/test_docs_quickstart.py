@@ -12,6 +12,7 @@ except ImportError as e:
     print(f"FAILED to import elastro: {e}")
     sys.exit(1)
 
+
 def verify_quick_start():
     print("\n--- Verifying Quick Start ---")
     try:
@@ -21,7 +22,7 @@ def verify_quick_start():
             hosts=["http://localhost:9200"],
             username="elastic",
             password="changeme",
-            verify_certs=False # Local dev usually self-signed or HTTP
+            verify_certs=False,  # Local dev usually self-signed or HTTP
         )
         client.connect()
         print("   ✅ Connected")
@@ -29,7 +30,7 @@ def verify_quick_start():
         # Index Management
         print("2. Creating Index...")
         index_manager = IndexManager(client)
-        
+
         # Cleanup first
         try:
             if client.client.indices.exists(index="products"):
@@ -45,9 +46,9 @@ def verify_quick_start():
                     "name": {"type": "text"},
                     "price": {"type": "float"},
                     "category": {"type": "keyword"},
-                    "rating": {"type": "float"}
+                    "rating": {"type": "float"},
                 }
-            }
+            },
         )
         print("   ✅ Index 'products' created")
 
@@ -61,11 +62,11 @@ def verify_quick_start():
                 "name": "Laptop Pro",
                 "price": 1299.99,
                 "category": "electronics",
-                "rating": 4.8
-            }
+                "rating": 4.8,
+            },
         )
         print("   ✅ Document indexed")
-        
+
         # Determine if we need to refresh (ES is near real-time)
         print("   (Refreshing index for search availability...)")
         client.client.indices.refresh(index="products")
@@ -78,24 +79,24 @@ def verify_quick_start():
         query = query_builder.build()
 
         results = doc_manager.search(
-            "products",
-            query,
-            {"sort": [{"rating": {"order": "desc"}}], "size": 10}
+            "products", query, {"sort": [{"rating": {"order": "desc"}}], "size": 10}
         )
-        
+
         hits = results["hits"]["hits"]
         if len(hits) == 1 and hits[0]["_source"]["name"] == "Laptop Pro":
-             print(f"   ✅ Search successful. Found: {hits[0]['_source']['name']}")
+            print(f"   ✅ Search successful. Found: {hits[0]['_source']['name']}")
         else:
-             print(f"   ❌ Search failed or unexpected results: {hits}")
+            print(f"   ❌ Search failed or unexpected results: {hits}")
 
         return True
 
     except Exception as e:
         print(f"   ❌ FAILED: {e}")
         import traceback
+
         traceback.print_exc()
         return False
+
 
 if __name__ == "__main__":
     if verify_quick_start():

@@ -9,12 +9,25 @@ from elastro.core.index import IndexManager
 from elastro.core.errors import OperationError
 from elastro.cli.completion import complete_indices
 
+
 @click.command("create", no_args_is_help=True)
 @click.argument("name", type=str)
-@click.option("--shards", type=int, default=1, help="Number of shards", show_default=True)
-@click.option("--replicas", type=int, default=1, help="Number of replicas", show_default=True)
-@click.option("--mapping", type=click.Path(exists=True, readable=True), help="Path to mapping file")
-@click.option("--settings", type=click.Path(exists=True, readable=True), help="Path to settings file")
+@click.option(
+    "--shards", type=int, default=1, help="Number of shards", show_default=True
+)
+@click.option(
+    "--replicas", type=int, default=1, help="Number of replicas", show_default=True
+)
+@click.option(
+    "--mapping",
+    type=click.Path(exists=True, readable=True),
+    help="Path to mapping file",
+)
+@click.option(
+    "--settings",
+    type=click.Path(exists=True, readable=True),
+    help="Path to settings file",
+)
 @click.pass_obj
 def create_index(client, name, shards, replicas, mapping, settings):
     """
@@ -24,7 +37,7 @@ def create_index(client, name, shards, replicas, mapping, settings):
     You can also provide a JSON file for mappings or full settings.
 
     Examples:
-    
+
     Create a simple index with custom shards and replicas:
     ```bash
     elastro index create my-logs --shards 3 --replicas 2
@@ -44,22 +57,19 @@ def create_index(client, name, shards, replicas, mapping, settings):
 
     # Prepare settings dictionary
     index_settings = {
-        "settings": {
-            "number_of_shards": shards,
-            "number_of_replicas": replicas
-        },
-        "mappings": {}
+        "settings": {"number_of_shards": shards, "number_of_replicas": replicas},
+        "mappings": {},
     }
 
     # Load mappings from file if provided
     if mapping:
-        with open(mapping, 'r') as f:
+        with open(mapping, "r") as f:
             mapping_data = json.load(f)
             index_settings["mappings"] = mapping_data
 
     # Load settings from file if provided (overriding defaults)
     if settings:
-        with open(settings, 'r') as f:
+        with open(settings, "r") as f:
             settings_data = json.load(f)
             index_settings["settings"].update(settings_data)
 
@@ -71,6 +81,7 @@ def create_index(client, name, shards, replicas, mapping, settings):
         click.echo(f"Error creating index: {str(e)}", err=True)
         exit(1)
 
+
 @click.command("get")
 @click.argument("name", type=str, shell_complete=complete_indices)
 @click.pass_obj
@@ -81,7 +92,7 @@ def get_index(client, name):
     Retrieves the full settings, mappings, and metadata for a specific index.
 
     Examples:
-    
+
     Get details for a specific index:
     ```bash
     elastro index get my-logs
@@ -96,6 +107,7 @@ def get_index(client, name):
         click.echo(f"Error retrieving index: {str(e)}", err=True)
         exit(1)
 
+
 @click.command("exists")
 @click.argument("name", type=str, shell_complete=complete_indices)
 @click.pass_obj
@@ -106,7 +118,7 @@ def index_exists(client, name):
     Returns a simple JSON boolean indicating presence.
 
     Examples:
-    
+
     Check if an index exists:
     ```bash
     elastro index exists my-logs
@@ -121,9 +133,15 @@ def index_exists(client, name):
         click.echo(f"Error checking index: {str(e)}", err=True)
         exit(1)
 
+
 @click.command("update", no_args_is_help=True)
 @click.argument("name", type=str, shell_complete=complete_indices)
-@click.option("--settings", type=click.Path(exists=True, readable=True), required=True, help="Path to settings file")
+@click.option(
+    "--settings",
+    type=click.Path(exists=True, readable=True),
+    required=True,
+    help="Path to settings file",
+)
 @click.pass_obj
 def update_index(client, name, settings):
     """
@@ -133,7 +151,7 @@ def update_index(client, name, settings):
     Note: Some settings (like analysis) require closing the index first.
 
     Examples:
-    
+
     Update index settings from a file:
     ```bash
     elastro index update my-logs --settings ./new_settings.json
@@ -142,7 +160,7 @@ def update_index(client, name, settings):
     index_manager = IndexManager(client)
 
     # Load settings from file
-    with open(settings, 'r') as f:
+    with open(settings, "r") as f:
         settings_data = json.load(f)
 
     try:
@@ -152,6 +170,7 @@ def update_index(client, name, settings):
     except OperationError as e:
         click.echo(f"Error updating index: {str(e)}", err=True)
         exit(1)
+
 
 @click.command("delete", no_args_is_help=True)
 @click.argument("name", type=str, shell_complete=complete_indices)
@@ -165,7 +184,7 @@ def delete_index(client, name, force):
     Requires confirmation unless --force is used.
 
     Examples:
-    
+
     Delete an index (prompts for confirmation):
     ```bash
     elastro index delete my-logs
@@ -193,6 +212,7 @@ def delete_index(client, name, force):
         click.echo(f"Error deleting index: {str(e)}", err=True)
         exit(1)
 
+
 @click.command("open")
 @click.argument("name", type=str, shell_complete=complete_indices)
 @click.pass_obj
@@ -203,7 +223,7 @@ def open_index(client, name):
     Opens a closed index, making it available for search and indexing again.
 
     Examples:
-    
+
     Open a closed index:
     ```bash
     elastro index open my-logs
@@ -219,6 +239,7 @@ def open_index(client, name):
         click.echo(f"Error opening index: {str(e)}", err=True)
         exit(1)
 
+
 @click.command("close")
 @click.argument("name", type=str, shell_complete=complete_indices)
 @click.pass_obj
@@ -230,7 +251,7 @@ def close_index(client, name):
     Closed indices consume disk space but no memory.
 
     Examples:
-    
+
     Close an index to save resources:
     ```bash
     elastro index close my-logs
@@ -246,18 +267,19 @@ def close_index(client, name):
         click.echo(f"Error closing index: {str(e)}", err=True)
         exit(1)
 
+
 @click.command("list")
 @click.argument("pattern", type=str, default="*", required=False)
 @click.pass_obj
 def list_indices(client, pattern):
     """
     List indices.
-    
+
     Optionally provide a PATTERN to filter matching indices.
     Displays a formatted table of index statuses.
 
     Examples:
-    
+
     List all indices:
     ```bash
     elastro index list
@@ -271,16 +293,16 @@ def list_indices(client, pattern):
     from rich.console import Console
     from rich.table import Table
     from rich import box
-    
+
     index_manager = IndexManager(client)
     console = Console()
 
     try:
         indices = index_manager.list(pattern=pattern)
-        
+
         if not indices:
-             console.print(f"[yellow]No indices found matching pattern '{pattern}'[/]")
-             return
+            console.print(f"[yellow]No indices found matching pattern '{pattern}'[/]")
+            return
 
         table = Table(title=f"Indices ({len(indices)})", box=box.ROUNDED)
         table.add_column("Health", justify="center")
@@ -292,22 +314,27 @@ def list_indices(client, pattern):
 
         for idx in indices:
             health = idx.get("health", "unknown")
-            color = "green" if health == "green" else "yellow" if health == "yellow" else "red"
-            
+            color = (
+                "green"
+                if health == "green"
+                else "yellow" if health == "yellow" else "red"
+            )
+
             table.add_row(
                 f"[{color}]{health}[/]",
                 idx.get("status", ""),
                 idx.get("index", ""),
                 idx.get("docs.count", "0"),
                 idx.get("store.size", "0b"),
-                f"{idx.get('pri', '0')}/{idx.get('rep', '0')}"
+                f"{idx.get('pri', '0')}/{idx.get('rep', '0')}",
             )
-            
+
         console.print(table)
-        
+
     except OperationError as e:
         click.echo(f"Error listing indices: {str(e)}", err=True)
         exit(1)
+
 
 @click.command("find", no_args_is_help=True)
 @click.argument("pattern", type=str)
@@ -315,11 +342,11 @@ def list_indices(client, pattern):
 def find_indices(client, pattern):
     """
     Find indices matching a pattern.
-    
+
     Wrapper for 'list' that requires a pattern argument.
 
     Examples:
-    
+
     Find indices starting with 'users-':
     ```bash
     elastro index find "users-*"
@@ -333,11 +360,12 @@ def find_indices(client, pattern):
     # Simply delegate to the list implementation
     # We invoke it manually passing the context object 'client' and the pattern
     # But since Click commands are wrapped, it's easier to just call the logic directly or duplicating minimal logic.
-    # Duplicating minimal logic for clarity and specific 'Find' header if we wanted, 
-    # but re-using the exact same function body is DRY. 
+    # Duplicating minimal logic for clarity and specific 'Find' header if we wanted,
+    # but re-using the exact same function body is DRY.
     # Let's just call the same logic.
     ctx = click.get_current_context()
     ctx.invoke(list_indices, pattern=pattern)
+
 
 @click.command("wizard", no_args_is_help=False)
 @click.pass_obj
@@ -349,7 +377,7 @@ def index_wizard(client):
     Select from a list of optimized recipes for common use cases.
 
     Examples:
-    
+
     Launch the wizard:
     ```bash
     elastro index wizard
@@ -364,11 +392,13 @@ def index_wizard(client):
     console = Console()
     index_manager = IndexManager(client)
 
-    console.print(Panel.fit(
-        "[bold cyan]Elastro Index Wizard[/]\n"
-        "Select a recipe to generate an optimized index configuration.",
-        border_style="cyan"
-    ))
+    console.print(
+        Panel.fit(
+            "[bold cyan]Elastro Index Wizard[/]\n"
+            "Select a recipe to generate an optimized index configuration.",
+            border_style="cyan",
+        )
+    )
 
     # 1. Display Recipes
     for key, recipe in RECIPES.items():
@@ -377,9 +407,7 @@ def index_wizard(client):
 
     # 2. Select Recipe
     choice = Prompt.ask(
-        "Select a recipe number", 
-        choices=list(RECIPES.keys()), 
-        default="1"
+        "Select a recipe number", choices=list(RECIPES.keys()), default="1"
     )
     recipe = RECIPES[choice]
 
@@ -388,18 +416,22 @@ def index_wizard(client):
 
     # 3. Prompt for Basic Info
     index_name = Prompt.ask("Enter index name", default="my-new-index")
-    
+
     # 4. Prepare Configuration
     settings = recipe.get_settings()
     mappings = recipe.get_mappings()
 
     # Allow simple overrides for shards/replicas
     if Confirm.ask("Customize shards/replicas?", default=False):
-        settings["number_of_shards"] = IntPrompt.ask("Primary Shards", default=settings.get("number_of_shards", 1))
-        settings["number_of_replicas"] = IntPrompt.ask("Replica Copies", default=settings.get("number_of_replicas", 1))
+        settings["number_of_shards"] = IntPrompt.ask(
+            "Primary Shards", default=settings.get("number_of_shards", 1)
+        )
+        settings["number_of_replicas"] = IntPrompt.ask(
+            "Replica Copies", default=settings.get("number_of_replicas", 1)
+        )
 
     # --- Feature: Dynamic Field Customization ---
-    
+
     # A. Rename Default Fields
     if recipe.customizable_fields:
         console.print("\n[bold]Customize Default Fields:[/]")
@@ -412,25 +444,30 @@ def index_wizard(client):
     # B. Add New Fields
     console.print("\n[bold]Add Custom Fields:[/]")
     valid_types = [
-        "text", "keyword", "date", "long", "integer", "boolean", 
-        "ip", "geo_point", "nested", "object"
+        "text",
+        "keyword",
+        "date",
+        "long",
+        "integer",
+        "boolean",
+        "ip",
+        "geo_point",
+        "nested",
+        "object",
     ]
-    
+
     while True:
         if not Confirm.ask("Add a new field?", default=False):
             break
-            
+
         field_name = Prompt.ask("Field Name")
         field_type = Prompt.ask("Field Type", choices=valid_types, default="keyword")
-        
+
         mappings["properties"][field_name] = {"type": field_type}
         console.print(f"[green]Added field '{field_name}' ({field_type})[/]")
 
     # Construct Final Config
-    final_config = {
-        "settings": settings,
-        "mappings": mappings
-    }
+    final_config = {"settings": settings, "mappings": mappings}
 
     # 5. Preview JSON
     json_str = json.dumps(final_config, indent=2)
@@ -441,12 +478,14 @@ def index_wizard(client):
     if Confirm.ask(f"\nCreate index [bold cyan]{index_name}[/]?", default=True):
         try:
             result = index_manager.create(index_name, final_config)
-            console.print(Panel(
-                f"[bold green]Success![/]\nIndex [cyan]{index_name}[/] created.\n"
-                f"Response: {json.dumps(result)}",
-                title="Operation Complete",
-                border_style="green"
-            ))
+            console.print(
+                Panel(
+                    f"[bold green]Success![/]\nIndex [cyan]{index_name}[/] created.\n"
+                    f"Response: {json.dumps(result)}",
+                    title="Operation Complete",
+                    border_style="green",
+                )
+            )
         except OperationError as e:
             console.print(f"[bold red]Error:[/] {str(e)}")
             exit(1)

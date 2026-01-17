@@ -14,10 +14,13 @@ ELASTRO_ART = r"""
 ```
 """
 
+
 def get_banner() -> str:
     return ELASTRO_ART
 
+
 def print_banner():
     from rich.console import Console
+
     console = Console()
     console.print(ELASTRO_ART, style="bold blue")

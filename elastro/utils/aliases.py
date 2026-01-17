@@ -1,4 +1,5 @@
 """Alias management utilities for Elasticsearch."""
+
 from typing import Dict, List, Any, Union, Optional
 
 from pydantic import BaseModel, Field, ConfigDict
@@ -9,9 +10,10 @@ from elastro.core.errors import OperationError
 
 class AliasAction(BaseModel):
     """Pydantic model for alias action validation."""
+
     add: Optional[Dict[str, Any]] = None
     remove: Optional[Dict[str, Any]] = None
-    
+
     model_config = ConfigDict(extra="allow")
 
 
@@ -30,8 +32,13 @@ class AliasManager:
         self._client = client
         self._es = client.client
 
-    def create(self, name: str, index: str, filter_query: Optional[Dict[str, Any]] = None,
-              routing: Optional[str] = None) -> bool:
+    def create(
+        self,
+        name: str,
+        index: str,
+        filter_query: Optional[Dict[str, Any]] = None,
+        routing: Optional[str] = None,
+    ) -> bool:
         """Create a new index alias.
 
         Args:
@@ -53,11 +60,7 @@ class AliasManager:
             if routing:
                 body["routing"] = routing
 
-            response = self._es.indices.put_alias(
-                index=index,
-                name=name,
-                body=body
-            )
+            response = self._es.indices.put_alias(index=index, name=name, body=body)
             return response.get("acknowledged", False)
         except Exception as e:
             raise OperationError(f"Failed to create alias {name}: {str(e)}")
@@ -65,15 +68,15 @@ class AliasManager:
     def get(self, name: str = None, index: str = None) -> Dict[str, Any]:
         """Get alias information.
 
-        Args:
-name: Optional alias name. If not provided, all aliases will be returned.
-            index: Optional index name to filter by.
+                Args:
+        name: Optional alias name. If not provided, all aliases will be returned.
+                    index: Optional index name to filter by.
 
-        Returns:
-            dict: Alias information mapped by index.
+                Returns:
+                    dict: Alias information mapped by index.
 
-        Raises:
-            OperationError: If alias retrieval fails.
+                Raises:
+                    OperationError: If alias retrieval fails.
         """
         try:
             if name and index:
@@ -120,8 +123,7 @@ name: Optional alias name. If not provided, all aliases will be returned.
         """
         try:
             response = self._es.indices.delete_alias(
-                name=name,
-                index=index if index else "*"
+                name=name, index=index if index else "*"
             )
             return response.get("acknowledged", False)
         except Exception as e:
@@ -149,7 +151,9 @@ name: Optional alias name. If not provided, all aliases will be returned.
                 if action.remove:
                     validated_actions.append({"remove": action.remove})
 
-            response = self._es.indices.update_aliases(body={"actions": validated_actions})
+            response = self._es.indices.update_aliases(
+                body={"actions": validated_actions}
+            )
             return response.get("acknowledged", False)
         except Exception as e:
             raise OperationError(f"Failed to update aliases: {str(e)}")

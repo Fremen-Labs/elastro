@@ -22,7 +22,9 @@ load_dotenv()
 _config = None
 
 
-def load_config(config_path: Optional[str] = None, profile: str = "default") -> Dict[str, Any]:
+def load_config(
+    config_path: Optional[str] = None, profile: str = "default"
+) -> Dict[str, Any]:
     """
     Load configuration from file and environment variables.
 
@@ -131,9 +133,13 @@ def _load_from_file(file_path: str) -> Dict[str, Any]:
             with open(file_path, "r") as f:
                 return json.load(f)
         else:
-            raise ConfigurationError(f"Unsupported configuration file format: {file_path.suffix}")
+            raise ConfigurationError(
+                f"Unsupported configuration file format: {file_path.suffix}"
+            )
     except Exception as e:
-        raise ConfigurationError(f"Failed to load configuration from {file_path}: {str(e)}")
+        raise ConfigurationError(
+            f"Failed to load configuration from {file_path}: {str(e)}"
+        )
 
 
 def _load_from_env(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -154,7 +160,7 @@ def _load_from_env(config: Dict[str, Any]) -> Dict[str, Any]:
     for env_var, value in os.environ.items():
         if env_var.startswith(prefix):
             # Remove prefix and split into sections
-            path = env_var[len(prefix):].lower().split("_")
+            path = env_var[len(prefix) :].lower().split("_")
 
             # Navigate to the correct config section
             current = config
@@ -221,7 +227,9 @@ def _validate_config(config: Dict[str, Any]) -> None:
 
     # Validate hosts
     if "hosts" not in es_config or not es_config["hosts"]:
-        raise ConfigurationError("Missing or empty 'hosts' in elasticsearch configuration")
+        raise ConfigurationError(
+            "Missing or empty 'hosts' in elasticsearch configuration"
+        )
 
     # Validate authentication if provided
     if "auth" in es_config and es_config["auth"]:
@@ -236,8 +244,12 @@ def _validate_config(config: Dict[str, Any]) -> None:
             # Validate required auth parameters based on type
             if auth_type == "api_key" and "api_key" not in auth:
                 raise ConfigurationError("Missing 'api_key' for API key authentication")
-            elif auth_type == "basic" and ("username" not in auth or "password" not in auth):
-                raise ConfigurationError("Missing 'username' or 'password' for basic authentication")
+            elif auth_type == "basic" and (
+                "username" not in auth or "password" not in auth
+            ):
+                raise ConfigurationError(
+                    "Missing 'username' or 'password' for basic authentication"
+                )
             elif auth_type == "cloud" and "cloud_id" not in auth:
                 raise ConfigurationError("Missing 'cloud_id' for cloud authentication")
 
@@ -253,17 +265,23 @@ def _validate_config(config: Dict[str, Any]) -> None:
     if "index" in config and "default_settings" in config["index"]:
         settings = config["index"]["default_settings"]
         if not isinstance(settings, dict):
-            raise ConfigurationError("'default_settings' in index section must be a dictionary")
+            raise ConfigurationError(
+                "'default_settings' in index section must be a dictionary"
+            )
 
     # Validate logging level
     if "logging" in config and "level" in config["logging"]:
         level = config["logging"]["level"]
         valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if level not in valid_levels:
-            raise ConfigurationError(f"Invalid logging level: {level}. Must be one of {valid_levels}")
+            raise ConfigurationError(
+                f"Invalid logging level: {level}. Must be one of {valid_levels}"
+            )
 
 
-def save_config(config: Dict[str, Any], path: Optional[str] = None, profile: str = "default") -> None:
+def save_config(
+    config: Dict[str, Any], path: Optional[str] = None, profile: str = "default"
+) -> None:
     """
     Save configuration to a file.
 
@@ -277,13 +295,13 @@ def save_config(config: Dict[str, Any], path: Optional[str] = None, profile: str
         path = os.path.expanduser("~/.elastic/config.yaml")
 
     path_obj = Path(path)
-    
+
     # Create directory if it doesn't exist
     if not path_obj.parent.exists():
         path_obj.parent.mkdir(parents=True)
 
     try:
-        with open(path_obj, 'w') as f:
+        with open(path_obj, "w") as f:
             yaml.dump(config, f, default_flow_style=False)
     except Exception as e:
         raise ConfigurationError(f"Failed to save configuration to {path}: {str(e)}")

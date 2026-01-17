@@ -7,7 +7,7 @@ VALID_INDEX_SETTINGS = {
     "settings": {
         "number_of_shards": 3,
         "number_of_replicas": 1,
-        "refresh_interval": "1s"
+        "refresh_interval": "1s",
     }
 }
 
@@ -19,30 +19,24 @@ VALID_INDEX_MAPPINGS = {
             "content": {"type": "text"},
             "date": {"type": "date"},
             "tags": {"type": "keyword"},
-            "views": {"type": "integer"}
+            "views": {"type": "integer"},
         }
     }
 }
 
 # Combined valid index creation body
-VALID_INDEX_BODY = {
-    **VALID_INDEX_SETTINGS,
-    **VALID_INDEX_MAPPINGS
-}
+VALID_INDEX_BODY = {**VALID_INDEX_SETTINGS, **VALID_INDEX_MAPPINGS}
 
 # Invalid index settings (wrong type)
 INVALID_INDEX_SETTINGS = {
-    "settings": {
-        "number_of_shards": "not_a_number",
-        "number_of_replicas": 1
-    }
+    "settings": {"number_of_shards": "not_a_number", "number_of_replicas": 1}
 }
 
 # Mock index response from Elasticsearch
 MOCK_INDEX_CREATION_RESPONSE = {
     "acknowledged": True,
     "shards_acknowledged": True,
-    "index": "test-index"
+    "index": "test-index",
 }
 
 # Mock get index response
@@ -57,10 +51,8 @@ MOCK_GET_INDEX_RESPONSE = {
                 "refresh_interval": "1s",
                 "creation_date": "1619712000000",
                 "uuid": "jHrKDYjTSSmSBIvd7Kn1AQ",
-                "version": {
-                    "created": "7100099"
-                }
+                "version": {"created": "7100099"},
             }
-        }
+        },
     }
-} 
+}

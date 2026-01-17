@@ -12,7 +12,7 @@ from elastro.core.datastream import DatastreamManager
 @pytest.fixture
 def mock_elasticsearch():
     """Return a mocked Elasticsearch client."""
-    with patch('elasticsearch.Elasticsearch') as mock_es:
+    with patch("elasticsearch.Elasticsearch") as mock_es:
         mock_client = MagicMock()
         mock_es.return_value = mock_client
         yield mock_client
@@ -56,16 +56,16 @@ def real_elasticsearch():
         hosts=["http://localhost:9200"],
         basic_auth=("elastic", "elastic_password"),
         verify_certs=False,
-        ssl_show_warn=False
+        ssl_show_warn=False,
     )
-    
+
     # Check if Elasticsearch is available
     try:
         if not client.ping():
             pytest.skip("Elasticsearch server is not available")
     except Exception as e:
         pytest.skip(f"Elasticsearch server is not available: {str(e)}")
-        
+
     return client
 
 
@@ -76,4 +76,4 @@ def real_es_client(real_elasticsearch):
     # Force client to use the real_elasticsearch instance
     client._client = real_elasticsearch
     client._connected = True
-    return client 
+    return client

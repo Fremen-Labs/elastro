@@ -37,7 +37,7 @@ class DocumentManager:
         index: str,
         id: Optional[str],
         document: Dict[str, Any],
-        refresh: bool = False
+        refresh: bool = False,
     ) -> Any:
         """
         Index a document.
@@ -64,26 +64,23 @@ class DocumentManager:
             params = {
                 "index": index,
                 "document": document,
-                "refresh": "true" if refresh else "false"
+                "refresh": "true" if refresh else "false",
             }
 
             # Add ID if provided
             if id:
                 params["id"] = id
-            
+
             logger.debug(f"Indexing document into '{index}' with ID '{id}'")
             # Execute the index operation
             response = self.client.client.index(**params)  # type: ignore
-            return response.body if hasattr(response, 'body') else dict(response)
+            return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             logger.error(f"Failed to index document info '{index}': {str(e)}")
             raise DocumentError(f"Failed to index document: {str(e)}")
 
     def bulk_index(
-        self,
-        index: str,
-        documents: List[Dict[str, Any]],
-        refresh: bool = False
+        self, index: str, documents: List[Dict[str, Any]], refresh: bool = False
     ) -> Dict[str, Any]:
         """
         Bulk index multiple documents.
@@ -112,11 +109,8 @@ class DocumentManager:
             actions = []
             for doc in documents:
                 # Create action dict
-                action = {
-                    "_index": index,
-                    "_source": doc
-                }
-                
+                action = {"_index": index, "_source": doc}
+
                 # If document has an ID field, separate it
                 if "_id" in doc:
                     action["_id"] = doc["_id"]
@@ -124,25 +118,25 @@ class DocumentManager:
                     doc_copy = doc.copy()
                     doc_copy.pop("_id", None)
                     action["_source"] = doc_copy
-                
+
                 actions.append(action)
 
             logger.info(f"Bulk indexing {len(actions)} documents into '{index}'...")
-            
+
             # Use helpers.bulk for optimized streaming
             success_count, errors = helpers.bulk(
                 self.client.client,
                 actions,
                 refresh="true" if refresh else "false",
-                stats_only=False, # We want details if needed, but summary is usually returned
-                raise_on_error=True
+                stats_only=False,  # We want details if needed, but summary is usually returned
+                raise_on_error=True,
             )
-            
+
             logger.info(f"Bulk index complete: {success_count} successful")
-            
+
             return {
                 "success_count": success_count,
-                "errors": errors if isinstance(errors, list) else []
+                "errors": errors if isinstance(errors, list) else [],
             }
 
         except Exception as e:
@@ -169,7 +163,7 @@ class DocumentManager:
 
         try:
             response = self.client.client.get(index=index, id=id)
-            return response.body if hasattr(response, 'body') else dict(response)
+            return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             # Log only if it's an unexpected error
             logger.error(f"Failed to get document '{id}' from '{index}': {str(e)}")
@@ -181,7 +175,7 @@ class DocumentManager:
         id: str,
         document: Dict[str, Any],
         partial: bool = True,
-        refresh: bool = False
+        refresh: bool = False,
     ) -> Any:
         """
         Update a document.
@@ -215,22 +209,19 @@ class DocumentManager:
                     index=index,
                     id=id,
                     body=body,
-                    refresh="true" if refresh else "false"
+                    refresh="true" if refresh else "false",
                 )
-                return response.body if hasattr(response, 'body') else dict(response)
+                return response.body if hasattr(response, "body") else dict(response)
             else:
                 # For full document updates, just index it again
-                return self.index(index=index, id=id, document=document, refresh=refresh)
+                return self.index(
+                    index=index, id=id, document=document, refresh=refresh
+                )
         except Exception as e:
             logger.error(f"Failed to update document '{id}': {str(e)}")
             raise DocumentError(f"Failed to update document: {str(e)}")
 
-    def delete(
-        self,
-        index: str,
-        id: str,
-        refresh: bool = False
-    ) -> Any:
+    def delete(self, index: str, id: str, refresh: bool = False) -> Any:
         """
         Delete a document by ID.
 
@@ -252,11 +243,9 @@ class DocumentManager:
         try:
             logger.info(f"Deleting document '{id}' from '{index}'")
             response = self.client.client.delete(
-                index=index,
-                id=id,
-                refresh="true" if refresh else "false"
+                index=index, id=id, refresh="true" if refresh else "false"
             )
-            return response.body if hasattr(response, 'body') else dict(response)
+            return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             logger.error(f"Failed to delete document '{id}': {str(e)}")
             raise DocumentError(f"Failed to delete document: {str(e)}")
@@ -265,7 +254,7 @@ class DocumentManager:
         self,
         index: str,
         query: Dict[str, Any],
-        options: Optional[Dict[str, Any]] = None
+        options: Optional[Dict[str, Any]] = None,
     ) -> Any:
         """
         Search for documents.
@@ -293,7 +282,7 @@ class DocumentManager:
         elif query:
             body = {"query": query}
         else:
-             body = {"query": {"match_all": {}}}
+            body = {"query": {"match_all": {}}}
 
         # Add search options if provided
         if options:
@@ -308,7 +297,7 @@ class DocumentManager:
         try:
             logger.debug(f"Searching index '{index}'...")
             response = self.client.client.search(**search_params)  # type: ignore
-            return response.body if hasattr(response, 'body') else dict(response)
+            return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             logger.error(f"Failed to search documents in '{index}': {str(e)}")
             raise DocumentError(f"Failed to search documents: {str(e)}")

@@ -7,9 +7,9 @@ from elasticsearch import Elasticsearch
 class ScrollHelper:
     """Helper for managing Elasticsearch scroll searches.
 
-Scroll searches allow retrieving large numbers of documents from Elasticsearch
-    that would otherwise exceed result size limits. This helper simplifies the
-    process of initializing and maintaining scroll contexts.
+    Scroll searches allow retrieving large numbers of documents from Elasticsearch
+        that would otherwise exceed result size limits. This helper simplifies the
+        process of initializing and maintaining scroll contexts.
     """
 
     def __init__(self, client: Elasticsearch) -> None:
@@ -20,9 +20,14 @@ Scroll searches allow retrieving large numbers of documents from Elasticsearch
         """
         self._client = client
 
-    def scroll(self, index: str, query: Dict[str, Any],
-               scroll_timeout: str = "1m", size: int = 1000,
-               source_fields: Optional[List[str]] = None) -> Generator[Dict[str, Any], None, None]:
+    def scroll(
+        self,
+        index: str,
+        query: Dict[str, Any],
+        scroll_timeout: str = "1m",
+        size: int = 1000,
+        source_fields: Optional[List[str]] = None,
+    ) -> Generator[Dict[str, Any], None, None]:
         """Perform a scroll search and yield batches of results.
 
         Args:
@@ -40,11 +45,7 @@ Scroll searches allow retrieving large numbers of documents from Elasticsearch
             body["_source"] = source_fields
 
         # Initialize scroll
-        resp = self._client.search(
-            index=index,
-            body=body,
-            scroll=scroll_timeout
-        )
+        resp = self._client.search(index=index, body=body, scroll=scroll_timeout)
 
         # Get the scroll ID
         scroll_id = resp.get("_scroll_id")
@@ -56,10 +57,7 @@ Scroll searches allow retrieving large numbers of documents from Elasticsearch
                 yield batch
 
                 # Continue scrolling
-                resp = self._client.scroll(
-                    scroll_id=scroll_id,
-                    scroll=scroll_timeout
-                )
+                resp = self._client.scroll(scroll_id=scroll_id, scroll=scroll_timeout)
 
                 # Update scroll_id as it may change
                 scroll_id = resp.get("_scroll_id")
@@ -79,10 +77,15 @@ Scroll searches allow retrieving large numbers of documents from Elasticsearch
                     # Log but don't raise
                     pass
 
-    def process_all(self, index: str, query: Dict[str, Any],
-                    processor: Callable[[Dict[str, Any]], None],
-                    scroll_timeout: str = "1m", size: int = 1000,
-                    source_fields: Optional[List[str]] = None) -> int:
+    def process_all(
+        self,
+        index: str,
+        query: Dict[str, Any],
+        processor: Callable[[Dict[str, Any]], None],
+        scroll_timeout: str = "1m",
+        size: int = 1000,
+        source_fields: Optional[List[str]] = None,
+    ) -> int:
         """Process all matching documents with a callback function.
 
         Args:
@@ -103,7 +106,7 @@ Scroll searches allow retrieving large numbers of documents from Elasticsearch
             query=query,
             scroll_timeout=scroll_timeout,
             size=size,
-            source_fields=source_fields
+            source_fields=source_fields,
         ):
             for doc in batch:
                 processor(doc)
@@ -111,10 +114,15 @@ Scroll searches allow retrieving large numbers of documents from Elasticsearch
 
         return total_processed
 
-    def collect_all(self, index: str, query: Dict[str, Any],
-                    scroll_timeout: str = "1m", size: int = 1000,
-                    source_fields: Optional[List[str]] = None,
-                    max_documents: Optional[int] = None) -> List[Dict[str, Any]]:
+    def collect_all(
+        self,
+        index: str,
+        query: Dict[str, Any],
+        scroll_timeout: str = "1m",
+        size: int = 1000,
+        source_fields: Optional[List[str]] = None,
+        max_documents: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
         """Collect all matching documents into a single list.
 
         Warning: This can consume a lot of memory for large result sets.
@@ -138,7 +146,7 @@ Scroll searches allow retrieving large numbers of documents from Elasticsearch
             query=query,
             scroll_timeout=scroll_timeout,
             size=size,
-            source_fields=source_fields
+            source_fields=source_fields,
         ):
             if max_documents is not None:
                 remaining = max_documents - docs_collected
