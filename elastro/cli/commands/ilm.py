@@ -21,7 +21,18 @@ def ilm_group():
 @click.option("--full", is_flag=True, help="Show full JSON definition (limited to 2 policies)")
 @click.pass_obj
 def list_policies(client, full):
-    """List all ILM policies."""
+    """
+    List all ILM policies.
+
+    Shows a summary of all Index Lifecycle Management policies.
+
+    Examples:
+        # Summary table
+        $ elastro ilm list
+
+        # Full JSON details
+        $ elastro ilm list --full
+    """
     manager = IlmManager(client)
     try:
         policies = manager.list_policies()
@@ -54,11 +65,18 @@ def list_policies(client, full):
         click.echo(f"Error listing policies: {str(e)}", err=True)
         exit(1)
 
-@ilm_group.command("get")
+@ilm_group.command("get", no_args_is_help=True)
 @click.argument("name", type=str, shell_complete=complete_policies)
 @click.pass_obj
 def get_policy(client, name):
-    """Get an ILM policy definition."""
+    """
+    Get an ILM policy definition.
+
+    Retrieves the full JSON definition of a specific lifecycle policy.
+
+    Examples:
+        $ elastro ilm get my-lifecycle-policy
+    """
     manager = IlmManager(client)
     try:
         policy = manager.get_policy(name)
@@ -67,7 +85,7 @@ def get_policy(client, name):
         click.echo(f"Error getting policy: {str(e)}", err=True)
         exit(1)
 
-@ilm_group.command("create")
+@ilm_group.command("create", no_args_is_help=True)
 @click.argument("name", type=str)
 @click.option("--file", type=click.Path(exists=True, readable=True), required=False, help="Policy definition file (JSON)")
 @click.pass_obj
@@ -78,13 +96,12 @@ def create_policy(client, name, file):
     If [--file] is provided, the policy is created from the JSON file.
     Otherwise, an interactive wizard will launch to help you build the policy.
 
-    Usage Examples:
-    
-    1. Interactive Wizard:
-       $ elastro ilm create my-new-policy
+    Examples:
+        # Interactive Wizard
+        $ elastro ilm create my-new-policy
 
-    2. From File:
-       $ elastro ilm create my-policy --file ./policy.json
+        # From File
+        $ elastro ilm create my-policy --file ./policy.json
     """
     manager = IlmManager(client)
     
@@ -175,12 +192,19 @@ def run_ilm_wizard(name: str) -> Dict[str, Any]:
         return policy
     return None
 
-@ilm_group.command("delete")
+@ilm_group.command("delete", no_args_is_help=True)
 @click.argument("name", type=str, shell_complete=complete_policies)
 @click.option("--force", is_flag=True, help="Force deletion")
 @click.pass_obj
 def delete_policy(client, name, force):
-    """Delete an ILM policy."""
+    """
+    Delete an ILM policy.
+
+    Removes a lifecycle policy. Note: Indices using this policy may continue to move through phases unless updated.
+
+    Examples:
+        $ elastro ilm delete my-old-policy
+    """
     manager = IlmManager(client)
     if not force and not click.confirm(f"Delete policy '{name}'?"):
         return
@@ -194,11 +218,18 @@ def delete_policy(client, name, force):
         click.echo(f"Error deleting policy: {str(e)}", err=True)
         exit(1)
 
-@ilm_group.command("explain")
+@ilm_group.command("explain", no_args_is_help=True)
 @click.argument("index", type=str, shell_complete=complete_indices)
 @click.pass_obj
 def explain_lifecycle(client, index):
-    """Explain the lifecycle state of an index."""
+    """
+    Explain the lifecycle state of an index.
+
+    Detailed breakdown of step, phase, and any errors in lifecycle execution for a specific index.
+
+    Examples:
+        $ elastro ilm explain my-logs-00001
+    """
     manager = IlmManager(client)
     try:
         explanation = manager.explain_lifecycle(index)
@@ -218,7 +249,14 @@ def explain_lifecycle(client, index):
 @ilm_group.command("start")
 @click.pass_obj
 def start_ilm(client):
-    """Start the ILM service."""
+    """
+    Start the ILM service.
+
+    Starts the Index Lifecycle Management feature if it is stopped.
+
+    Examples:
+        $ elastro ilm start
+    """
     manager = IlmManager(client)
     try:
         if manager.start_ilm():
@@ -232,7 +270,14 @@ def start_ilm(client):
 @ilm_group.command("stop")
 @click.pass_obj
 def stop_ilm(client):
-    """Stop the ILM service."""
+    """
+    Stop the ILM service.
+
+    Halts all lifecycle management operations.
+
+    Examples:
+        $ elastro ilm stop
+    """
     manager = IlmManager(client)
     try:
         if manager.stop_ilm():

@@ -14,6 +14,7 @@ __all__ = [
     # Index commands
     "create_index", "get_index", "index_exists", "update_index",
     "delete_index", "open_index", "close_index",
+    "list_indices", "find_indices",
 
     # Document commands
     "index_document", "bulk_index", "get_document", "search_documents",
