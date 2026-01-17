@@ -1,4 +1,4 @@
-import click
+import rich_click as click
 import json
 from typing import Dict, Any, List
 from rich.console import Console
@@ -32,7 +32,11 @@ def list_repositories(client):
     Shows the configured snapshot repositories (e.g. fs, s3).
 
     Examples:
-        $ elastro snapshot repo list
+    
+    List configured repositories:
+    ```bash
+    elastro snapshot repo list
+    ```
     """
     manager = SnapshotManager(client)
     try:
@@ -66,11 +70,16 @@ def create_repository(client, name, type, setting):
     Registers a new repository for storing snapshots. Common types are 'fs' (FileSystem) and 's3'.
 
     Examples:
-        # Create a FileSystem repository
-        $ elastro snapshot repo create my_backup fs --setting location=/mnt/backups
+    
+    Create a FileSystem repository:
+    ```bash
+    elastro snapshot repo create my_backup fs --setting location=/mnt/backups
+    ```
 
-        # Create an S3 repository
-        $ elastro snapshot repo create s3_backup s3 --setting bucket=my-bucket --setting region=us-east-1
+    Create an S3 repository:
+    ```bash
+    elastro snapshot repo create s3_backup s3 --setting bucket=my-bucket --setting region=us-east-1
+    ```
     """
     manager = SnapshotManager(client)
     
@@ -100,7 +109,11 @@ def delete_repository(client, name):
     Unregisters a repository. This does NOT delete the actual snapshot data from storage, only the reference.
 
     Examples:
-        $ elastro snapshot repo delete my_backup
+    
+    Delete a repository definition:
+    ```bash
+    elastro snapshot repo delete my_backup
+    ```
     """
     manager = SnapshotManager(client)
     if not click.confirm(f"Delete repository '{name}'?"):
@@ -128,7 +141,11 @@ def list_snapshots(client, repository):
     Shows details of all snapshots stored in the specified repository.
 
     Examples:
-        $ elastro snapshot list my_backup
+    
+    List snapshots in a repository:
+    ```bash
+    elastro snapshot list my_backup
+    ```
     """
     manager = SnapshotManager(client)
     try:
@@ -168,11 +185,16 @@ def create_snapshot(client, repository, snapshot, indices, wait):
     Takes a snapshot of specified indices (default: all) and stores it in the repository.
 
     Examples:
-        # Snapshot all indices
-        $ elastro snapshot create my_backup snap_1
+    
+    Snapshot all indices:
+    ```bash
+    elastro snapshot create my_backup snap_1
+    ```
 
-        # Snapshot specific index
-        $ elastro snapshot create my_backup snap_users --indices users,logs-*
+    Snapshot specific indices:
+    ```bash
+    elastro snapshot create my_backup snap_users --indices "users,logs-*"
+    ```
     """
     manager = SnapshotManager(client)
     try:
@@ -201,11 +223,16 @@ def restore_snapshot(client, repository, snapshot):
     If no arguments are provided, launches an INTERACTIVE WIZARD to select repo and snapshot.
 
     Examples:
-        # Interactive Wizard
-        $ elastro snapshot restore
+    
+    Launch Interactive Restore Wizard:
+    ```bash
+    elastro snapshot restore
+    ```
 
-        # Direct Restore
-        $ elastro snapshot restore my_backup snap_1
+    Direct Restore from Command Line:
+    ```bash
+    elastro snapshot restore my_backup snap_1
+    ```
     """
     manager = SnapshotManager(client)
     from rich.prompt import Prompt, Confirm
@@ -311,5 +338,9 @@ def delete_snapshot(client, repository, snapshot):
     Permanently deletes a snapshot from the repository.
 
     Examples:
-        $ elastro snapshot delete my_backup snap_old
+    
+    Delete a snapshot:
+    ```bash
+    elastro snapshot delete my_backup snap_old
+    ```
     """

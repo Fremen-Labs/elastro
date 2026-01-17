@@ -2,7 +2,7 @@
 Utility commands for the CLI.
 """
 
-import click
+import rich_click as click
 import json
 from elastro.core.client import ElasticsearchClient
 from elastro.utils.templates import TemplateManager
@@ -23,11 +23,16 @@ def health(client, level, wait, timeout):
     Display cluster health status (green, yellow, red).
 
     Examples:
-        # Check cluster health
-        $ elastro utils health
+    
+    Check cluster health:
+    ```bash
+    elastro utils health
+    ```
 
-        # Wait for green status
-        $ elastro utils health --wait green --timeout 60s
+    Wait for green status:
+    ```bash
+    elastro utils health --wait green --timeout 60s
+    ```
     """
     health_manager = HealthManager(client)
 
@@ -160,11 +165,16 @@ def list_aliases(client, index, name):
     Shows configured aliases, optionally filtering by index or alias name.
 
     Examples:
-        # List all aliases
-        $ elastro utils aliases list
+    
+    List all aliases:
+    ```bash
+    elastro utils aliases list
+    ```
 
-        # List aliases for logs index
-        $ elastro utils aliases list --index logs-*
+    List aliases filtering by index:
+    ```bash
+    elastro utils aliases list --index "logs-*"
+    ```
     """
     alias_manager = AliasManager(client)
 
@@ -189,10 +199,16 @@ def create_alias(client, name, index, is_write_index, routing, filter):
     Adds an alias to an index.
 
     Examples:
-        $ elastro utils aliases create my-alias my-index
+    
+    Create a simple alias:
+    ```bash
+    elastro utils aliases create my-alias my-index
+    ```
 
-        # Set as write index
-        $ elastro utils aliases create logs-write logs-00001 --is-write-index
+    Set alias as write index:
+    ```bash
+    elastro utils aliases create logs-write logs-00001 --is-write-index
+    ```
     """
     alias_manager = AliasManager(client)
 
@@ -231,7 +247,11 @@ def delete_alias(client, name, index, force):
     Removes an alias from an index.
 
     Examples:
-        $ elastro utils aliases delete my-alias my-index
+    
+    Delete an alias:
+    ```bash
+    elastro utils aliases delete my-alias my-index
+    ```
     """
     alias_manager = AliasManager(client)
 
