@@ -7,6 +7,7 @@ class IndexRecipe:
     description: str
     settings: Dict[str, Any]
     mappings: Dict[str, Any]
+    customizable_fields: List[str] = None
     prompts: List[Dict[str, Any]] = None
 
     def get_settings(self) -> Dict[str, Any]:
@@ -46,7 +47,8 @@ RECIPES: Dict[str, IndexRecipe] = {
                     "type": "date"
                 }
             }
-        }
+        },
+        customizable_fields=["title", "content", "category"]
     ),
     "2": IndexRecipe(
         name="High-Volume Logs",
@@ -77,7 +79,8 @@ RECIPES: Dict[str, IndexRecipe] = {
                     }
                 }
             }
-        }
+        },
+        customizable_fields=["level", "message", "source_ip"]
     ),
     "3": IndexRecipe(
         name="Strict Financial Data",
@@ -107,7 +110,8 @@ RECIPES: Dict[str, IndexRecipe] = {
                     "format": "strict_date_optional_time||epoch_millis"
                 }
             }
-        }
+        },
+        customizable_fields=["transaction_id", "amount", "currency", "status"]
     ),
     "4": IndexRecipe(
         name="Geo-Spatial Data",
@@ -131,7 +135,8 @@ RECIPES: Dict[str, IndexRecipe] = {
                     "type": "keyword"
                 }
             }
-        }
+        },
+        customizable_fields=["name", "location", "boundary", "city"]
     ),
     "5": IndexRecipe(
         name="Nested Objects",
@@ -154,7 +159,8 @@ RECIPES: Dict[str, IndexRecipe] = {
                     }
                 }
             }
-        }
+        },
+        customizable_fields=["product_id", "reviews"]
     ),
     "6": IndexRecipe(
         name="Flattened Metadata",
@@ -175,7 +181,8 @@ RECIPES: Dict[str, IndexRecipe] = {
                     "type": "keyword"
                 }
             }
-        }
+        },
+        customizable_fields=["service_name", "metadata", "tags"]
     ),
     "7": IndexRecipe(
         name="Custom Routing",
@@ -200,7 +207,8 @@ RECIPES: Dict[str, IndexRecipe] = {
                     "type": "text"
                 }
             }
-        }
+        },
+        customizable_fields=["user_id", "doc_id"]
     ),
     "8": IndexRecipe(
         name="Optimized Metrics",
@@ -227,7 +235,8 @@ RECIPES: Dict[str, IndexRecipe] = {
                     "type": "date"
                 }
             }
-        }
+        },
+        customizable_fields=["metric_name", "value_cpu", "value_memory"]
     ),
     "9": IndexRecipe(
         name="Binary / Blob Store",
@@ -254,7 +263,8 @@ RECIPES: Dict[str, IndexRecipe] = {
                     "enabled": False
                 }
             }
-        }
+        },
+        customizable_fields=["filename", "blob_data"]
     ),
     "10": IndexRecipe(
         name="Autocomplete",
@@ -275,7 +285,8 @@ RECIPES: Dict[str, IndexRecipe] = {
                     "type": "integer"
                 }
             }
-        }
+        },
+        customizable_fields=["full_title"]
     )
 }
 

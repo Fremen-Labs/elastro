@@ -398,6 +398,34 @@ def index_wizard(client):
         settings["number_of_shards"] = IntPrompt.ask("Primary Shards", default=settings.get("number_of_shards", 1))
         settings["number_of_replicas"] = IntPrompt.ask("Replica Copies", default=settings.get("number_of_replicas", 1))
 
+    # --- Feature: Dynamic Field Customization ---
+    
+    # A. Rename Default Fields
+    if recipe.customizable_fields:
+        console.print("\n[bold]Customize Default Fields:[/]")
+        for field in recipe.customizable_fields:
+            if field in mappings["properties"]:
+                new_name = Prompt.ask(f"Rename field '{field}'?", default=field)
+                if new_name != field:
+                    mappings["properties"][new_name] = mappings["properties"].pop(field)
+
+    # B. Add New Fields
+    console.print("\n[bold]Add Custom Fields:[/]")
+    valid_types = [
+        "text", "keyword", "date", "long", "integer", "boolean", 
+        "ip", "geo_point", "nested", "object"
+    ]
+    
+    while True:
+        if not Confirm.ask("Add a new field?", default=False):
+            break
+            
+        field_name = Prompt.ask("Field Name")
+        field_type = Prompt.ask("Field Type", choices=valid_types, default="keyword")
+        
+        mappings["properties"][field_name] = {"type": field_type}
+        console.print(f"[green]Added field '{field_name}' ({field_type})[/]")
+
     # Construct Final Config
     final_config = {
         "settings": settings,
