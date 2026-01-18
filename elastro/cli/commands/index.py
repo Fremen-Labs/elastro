@@ -4,6 +4,7 @@ Index management commands for the CLI.
 
 import rich_click as click
 import json
+from typing import Any, Optional
 from elastro.core.client import ElasticsearchClient
 from elastro.core.index import IndexManager
 from elastro.core.errors import OperationError
@@ -29,7 +30,14 @@ from elastro.cli.completion import complete_indices
     help="Path to settings file",
 )
 @click.pass_obj
-def create_index(client, name, shards, replicas, mapping, settings):
+def create_index(
+    client: ElasticsearchClient,
+    name: str,
+    shards: int,
+    replicas: int,
+    mapping: Optional[str],
+    settings: Optional[str],
+) -> None:
     """
     Create an index with the specified configuration.
 
@@ -85,7 +93,7 @@ def create_index(client, name, shards, replicas, mapping, settings):
 @click.command("get")
 @click.argument("name", type=str, shell_complete=complete_indices)
 @click.pass_obj
-def get_index(client, name):
+def get_index(client: ElasticsearchClient, name: str) -> None:
     """
     Get information about an index.
 
@@ -111,7 +119,7 @@ def get_index(client, name):
 @click.command("exists")
 @click.argument("name", type=str, shell_complete=complete_indices)
 @click.pass_obj
-def index_exists(client, name):
+def index_exists(client: ElasticsearchClient, name: str) -> None:
     """
     Check if an index exists.
 
@@ -143,7 +151,7 @@ def index_exists(client, name):
     help="Path to settings file",
 )
 @click.pass_obj
-def update_index(client, name, settings):
+def update_index(client: ElasticsearchClient, name: str, settings: str) -> None:
     """
     Update index settings.
 
@@ -176,7 +184,7 @@ def update_index(client, name, settings):
 @click.argument("name", type=str, shell_complete=complete_indices)
 @click.option("--force", is_flag=True, help="Force deletion without confirmation")
 @click.pass_obj
-def delete_index(client, name, force):
+def delete_index(client: ElasticsearchClient, name: str, force: bool) -> None:
     """
     Delete an index.
 
@@ -216,7 +224,7 @@ def delete_index(client, name, force):
 @click.command("open")
 @click.argument("name", type=str, shell_complete=complete_indices)
 @click.pass_obj
-def open_index(client, name):
+def open_index(client: ElasticsearchClient, name: str) -> None:
     """
     Open an index.
 
@@ -243,7 +251,7 @@ def open_index(client, name):
 @click.command("close")
 @click.argument("name", type=str, shell_complete=complete_indices)
 @click.pass_obj
-def close_index(client, name):
+def close_index(client: ElasticsearchClient, name: str) -> None:
     """
     Close an index.
 
@@ -271,7 +279,7 @@ def close_index(client, name):
 @click.command("list")
 @click.argument("pattern", type=str, default="*", required=False)
 @click.pass_obj
-def list_indices(client, pattern):
+def list_indices(client: ElasticsearchClient, pattern: str) -> None:
     """
     List indices.
 
@@ -339,7 +347,7 @@ def list_indices(client, pattern):
 @click.command("find", no_args_is_help=True)
 @click.argument("pattern", type=str)
 @click.pass_obj
-def find_indices(client, pattern):
+def find_indices(client: ElasticsearchClient, pattern: str) -> None:
     """
     Find indices matching a pattern.
 
@@ -369,7 +377,7 @@ def find_indices(client, pattern):
 
 @click.command("wizard", no_args_is_help=False)
 @click.pass_obj
-def index_wizard(client):
+def index_wizard(client: ElasticsearchClient) -> None:
     """
     Interactive index creation wizard.
 

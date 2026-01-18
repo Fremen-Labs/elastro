@@ -43,7 +43,7 @@ class IndexMappings(BaseModel):
     properties: Dict[str, Dict[str, Any]]
 
     @field_validator("properties")
-    def validate_properties(cls, v):
+    def validate_properties(cls, v: Dict[str, Any]) -> Dict[str, Any]:
         """Validate that properties conform to Elasticsearch mapping types."""
         valid_types = {
             "text",
@@ -181,7 +181,7 @@ class Validator:
 
     def validate_document_schema(
         self, document: Dict[str, Any], schema: Optional[Dict[str, Any]] = None
-    ) -> None:
+    ) -> Dict[str, Any]:
         """
         Validate document against schema.
 

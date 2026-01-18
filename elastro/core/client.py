@@ -38,7 +38,7 @@ class ElasticsearchClient:
         password: Optional[str] = None,
         api_key: Optional[str] = None,
         verify_certs: Optional[bool] = None,
-        **kwargs,
+        **kwargs: Any,
     ):
         """
         Initialize the Elasticsearch client.
@@ -197,7 +197,8 @@ class ElasticsearchClient:
         )
 
         try:
-            self._client = Elasticsearch(**client_params)  # type: ignore
+            self._client = Elasticsearch(**client_params)
+            assert self._client is not None
             # Verify connection by making a ping request
             ping_result = self._client.ping()
             if not ping_result:

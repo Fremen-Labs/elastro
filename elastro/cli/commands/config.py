@@ -15,7 +15,7 @@ CONFIG_PATH = os.path.expanduser("~/.elastic/config.yaml")
 @click.command("get", no_args_is_help=True)
 @click.argument("key", type=str)
 @click.option("--profile", "-p", default="default", help="Configuration profile")
-def get_config_value(key, profile):
+def get_config_value(key: str, profile: str) -> None:
     """
     Get a configuration value.
 
@@ -50,7 +50,7 @@ def get_config_value(key, profile):
 @click.argument("key", type=str)
 @click.argument("value", type=str)
 @click.option("--profile", "-p", default="default", help="Configuration profile")
-def set_config_value(key, value, profile):
+def set_config_value(key: str, value: str, profile: str) -> None:
     """
     Set a configuration value.
 
@@ -94,7 +94,7 @@ def set_config_value(key, value, profile):
 
 @click.command("list")
 @click.option("--profile", "-p", default="default", help="Configuration profile")
-def list_config(profile):
+def list_config(profile: str) -> None:
     """
     List all configuration values.
 
@@ -114,7 +114,7 @@ def list_config(profile):
 @click.command("init")
 @click.option("--force", is_flag=True, help="Force initialization (overwrite existing)")
 @click.option("--profile", "-p", default="default", help="Configuration profile")
-def init_config(force, profile):
+def init_config(force: bool, profile: str) -> None:
     """
     Initialize the configuration file.
 

@@ -8,7 +8,9 @@ from typing import Dict, List, Any, Optional
 from elastro.core.client import ElasticsearchClient
 from elastro.core.errors import DatastreamError, ValidationError
 from elastro.core.validation import Validator
-from elastro.core.logger import logger
+from elastro.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class DatastreamManager:
@@ -76,7 +78,7 @@ class DatastreamManager:
                 template_def["mappings"] = settings["mappings"]
 
             # Create the template
-            response = self._client._client.indices.put_index_template(
+            response = self._client.client.indices.put_index_template(
                 name=name, body=template_def
             )
             return response.body if hasattr(response, "body") else dict(response)
@@ -113,7 +115,7 @@ class DatastreamManager:
                 self._client.connect()
 
             # Create params for datastream creation
-            create_params = {
+            create_params: Dict[str, Any] = {
                 "name": name,
             }
 
@@ -121,7 +123,7 @@ class DatastreamManager:
                 create_params["aliases"] = {"default": {"is_write_index": True}}
 
             # Create datastream
-            response = self._client._client.indices.create_data_stream(**create_params)
+            response = self._client.client.indices.create_data_stream(**create_params)
             return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             raise DatastreamError(f"Failed to create datastream: {str(e)}")
@@ -146,7 +148,7 @@ class DatastreamManager:
 
             # Get datastreams matching the pattern
             try:
-                response = self._client._client.indices.get_data_stream(name=pattern)
+                response = self._client.client.indices.get_data_stream(name=pattern)
 
                 # Format the response
                 datastreams = []
@@ -190,7 +192,7 @@ class DatastreamManager:
                 self._client.connect()
 
             # Get the datastream
-            response = self._client._client.indices.get_data_stream(name=name)
+            response = self._client.client.indices.get_data_stream(name=name)
             body = response.body if hasattr(response, "body") else dict(response)
 
             # Format the response to match test expectations
@@ -231,7 +233,7 @@ class DatastreamManager:
 
             # Check if datastream exists
             try:
-                self._client._client.indices.get_data_stream(name=name)
+                self._client.client.indices.get_data_stream(name=name)
                 return True
             except Exception as e:
                 # If datastream doesn't exist, a 404 error is raised
@@ -269,12 +271,12 @@ class DatastreamManager:
                 self._client.connect()
 
             # Delete the datastream
-            response = self._client._client.indices.delete_data_stream(name=name)
+            response = self._client.client.indices.delete_data_stream(name=name)
 
             # Delete associated index template if it exists
             template_name = f"{name}-template"
             try:
-                self._client._client.indices.delete_index_template(name=template_name)
+                self._client.client.indices.delete_index_template(name=template_name)
             except Exception as e:
                 logger.warning(
                     f"Failed to delete associated template '{template_name}': {str(e)}"
@@ -313,7 +315,7 @@ class DatastreamManager:
                 self._client.connect()
 
             # Prepare rollover parameters
-            rollover_params = {
+            rollover_params: Dict[str, Any] = {
                 "alias": name  # Use alias instead of index for datastreams
             }
 
@@ -322,7 +324,7 @@ class DatastreamManager:
                 rollover_params["body"] = {"conditions": conditions}
 
             # Execute rollover
-            response = self._client._client.indices.rollover(**rollover_params)
+            response = self._client.client.indices.rollover(**rollover_params)
             return response.body if hasattr(response, "body") else dict(response)
         except ValidationError as e:
             raise e

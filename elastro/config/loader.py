@@ -120,20 +120,20 @@ def _load_from_file(file_path: str) -> Dict[str, Any]:
         ConfigurationError: If file loading fails
     """
     try:
-        file_path = Path(file_path)
+        path = Path(file_path)
 
-        if not file_path.exists():
-            raise ConfigurationError(f"Configuration file {file_path} does not exist")
+        if not path.exists():
+            raise ConfigurationError(f"Configuration file {path} does not exist")
 
-        if file_path.suffix == ".yaml" or file_path.suffix == ".yml":
-            with open(file_path, "r") as f:
+        if path.suffix == ".yaml" or path.suffix == ".yml":
+            with open(path, "r") as f:
                 return yaml.safe_load(f)
-        elif file_path.suffix == ".json":
-            with open(file_path, "r") as f:
+        elif path.suffix == ".json":
+            with open(path, "r") as f:
                 return json.load(f)
         else:
             raise ConfigurationError(
-                f"Unsupported configuration file format: {file_path.suffix}"
+                f"Unsupported configuration file format: {path.suffix}"
             )
     except Exception as e:
         raise ConfigurationError(

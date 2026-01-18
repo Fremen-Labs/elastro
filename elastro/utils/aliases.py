@@ -38,6 +38,7 @@ class AliasManager:
         index: str,
         filter_query: Optional[Dict[str, Any]] = None,
         routing: Optional[str] = None,
+        is_write_index: bool = False,
     ) -> bool:
         """Create a new index alias.
 
@@ -54,18 +55,22 @@ class AliasManager:
             OperationError: If alias creation fails.
         """
         try:
-            body = {}
+            body: Dict[str, Any] = {}
             if filter_query:
                 body["filter"] = filter_query
             if routing:
                 body["routing"] = routing
+            if is_write_index:
+                body["is_write_index"] = is_write_index
 
             response = self._es.indices.put_alias(index=index, name=name, body=body)
             return response.get("acknowledged", False)
         except Exception as e:
             raise OperationError(f"Failed to create alias {name}: {str(e)}")
 
-    def get(self, name: str = None, index: str = None) -> Dict[str, Any]:
+    def get(
+        self, name: Optional[str] = None, index: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Get alias information.
 
                 Args:
@@ -158,7 +163,9 @@ class AliasManager:
         except Exception as e:
             raise OperationError(f"Failed to update aliases: {str(e)}")
 
-    def list(self, index: Optional[str] = None) -> List[str]:
+    def list(
+        self, index: Optional[str] = None, name: Optional[str] = None
+    ) -> List[str]:
         """List all aliases or aliases for a specific index.
 
         Args:
@@ -172,7 +179,11 @@ class AliasManager:
         """
         try:
             if index:
-                response = self._es.indices.get_alias(index=index)
+                response = self._es.indices.get_alias(
+                    index=index, name=name if name else "*"
+                )
+            elif name:
+                response = self._es.indices.get_alias(name=name)
             else:
                 response = self._es.indices.get_alias()
 

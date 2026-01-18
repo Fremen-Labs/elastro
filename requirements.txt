@@ -52,3 +52,5 @@ typing-inspection==0.4.2
     # via pydantic
 urllib3==2.6.3
     # via elastic-transport
+types-PyYAML
+types-setuptools

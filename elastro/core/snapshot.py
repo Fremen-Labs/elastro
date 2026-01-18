@@ -252,8 +252,8 @@ class SnapshotManager:
         repository: str,
         snapshot: str,
         indices: str = "_all",
-        rename_pattern: str = None,
-        rename_replacement: str = None,
+        rename_pattern: Optional[str] = None,
+        rename_replacement: Optional[str] = None,
         wait_for_completion: bool = False,
     ) -> Dict[str, Any]:
         """

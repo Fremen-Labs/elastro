@@ -4,6 +4,7 @@ Utility commands for the CLI.
 
 import rich_click as click
 import json
+from typing import Optional
 from elastro.core.client import ElasticsearchClient
 from elastro.utils.templates import TemplateManager
 from elastro.utils.aliases import AliasManager
@@ -21,7 +22,7 @@ from elastro.core.errors import OperationError
 @click.option("--wait", type=str, help="Wait for specified status (green, yellow, red)")
 @click.option("--timeout", type=str, default="30s", help="Timeout for health check")
 @click.pass_obj
-def health(client, level, wait, timeout):
+def health(client: ElasticsearchClient, level: str, wait: str, timeout: str) -> None:
     """
     Check Elasticsearch cluster health.
 
@@ -68,7 +69,7 @@ def health(client, level, wait, timeout):
 
 
 @click.group("templates")
-def templates():
+def templates() -> None:
     """
     Manage index templates (Legacy).
 
@@ -81,7 +82,7 @@ def templates():
 @click.option("--type", type=click.Choice(["index", "component"]), help="Template type")
 @click.option("--name", type=str, help="Template name pattern")
 @click.pass_obj
-def list_templates(client, type, name):
+def list_templates(client: ElasticsearchClient, type: str, name: str) -> None:
     """List index templates."""
     template_manager = TemplateManager(client)
 
@@ -102,7 +103,7 @@ def list_templates(client, type, name):
     help="Template type",
 )
 @click.pass_obj
-def get_template(client, name, type):
+def get_template(client: ElasticsearchClient, name: str, type: str) -> None:
     """Get an index template."""
     template_manager = TemplateManager(client)
 
@@ -129,7 +130,9 @@ def get_template(client, name, type):
     help="Template type",
 )
 @click.pass_obj
-def create_template(client, name, file, type):
+def create_template(
+    client: ElasticsearchClient, name: str, file: str, type: str
+) -> None:
     """Create an index template."""
     template_manager = TemplateManager(client)
 
@@ -156,7 +159,9 @@ def create_template(client, name, file, type):
 )
 @click.option("--force", is_flag=True, help="Force deletion without confirmation")
 @click.pass_obj
-def delete_template(client, name, type, force):
+def delete_template(
+    client: ElasticsearchClient, name: str, type: str, force: bool
+) -> None:
     """Delete an index template."""
     template_manager = TemplateManager(client)
 
@@ -177,7 +182,7 @@ def delete_template(client, name, type, force):
 
 
 @click.group("aliases")
-def aliases():
+def aliases() -> None:
     """Manage index aliases."""
     pass
 
@@ -186,7 +191,7 @@ def aliases():
 @click.option("--index", type=str, help="Filter by index")
 @click.option("--name", type=str, help="Filter by alias name")
 @click.pass_obj
-def list_aliases(client, index, name):
+def list_aliases(client: ElasticsearchClient, index: str, name: str) -> None:
     """
     List index aliases.
 
@@ -221,7 +226,14 @@ def list_aliases(client, index, name):
 @click.option("--routing", type=str, help="Routing value")
 @click.option("--filter", type=str, help="Filter query (JSON string)")
 @click.pass_obj
-def create_alias(client, name, index, is_write_index, routing, filter):
+def create_alias(
+    client: ElasticsearchClient,
+    name: str,
+    index: str,
+    is_write_index: bool,
+    routing: str,
+    filter: str,
+) -> None:
     """
     Create an index alias.
 
@@ -256,7 +268,7 @@ def create_alias(client, name, index, is_write_index, routing, filter):
             index,
             is_write_index=is_write_index,
             routing=routing,
-            filter=filter_query,
+            filter_query=filter_query,
         )
         click.echo(json.dumps(result, indent=2))
         click.echo(f"Alias '{name}' created for index '{index}'.")
@@ -270,7 +282,9 @@ def create_alias(client, name, index, is_write_index, routing, filter):
 @click.argument("index", type=str)
 @click.option("--force", is_flag=True, help="Force deletion without confirmation")
 @click.pass_obj
-def delete_alias(client, name, index, force):
+def delete_alias(
+    client: ElasticsearchClient, name: str, index: str, force: bool
+) -> None:
     """
     Delete an index alias.
 

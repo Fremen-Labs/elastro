@@ -10,7 +10,7 @@ class QueryBuilder:
         Parse range string like 'gte:10,lte:20' or 'gt:now-1d' into dict.
         """
         parts = value.split(",")
-        range_query = {}
+        range_query: Dict[str, Any] = {}
         for part in parts:
             if ":" in part:
                 op, val = part.split(":", 1)

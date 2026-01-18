@@ -6,13 +6,14 @@ from rich.panel import Panel
 from elastro.core.client import ElasticsearchClient
 from elastro.utils.templates import TemplateManager
 from elastro.core.errors import OperationError
+from typing import Dict, Any, List
 from elastro.cli.completion import complete_templates
 
 console = Console()
 
 
 @click.group("template")
-def template_group():
+def template_group() -> None:
     """Manage index and component templates."""
     pass
 
@@ -26,7 +27,7 @@ def template_group():
 )
 @click.option("--name", type=str, help="Template name pattern")
 @click.pass_obj
-def list_templates(client, type, name):
+def list_templates(client: ElasticsearchClient, type: str, name: str) -> None:
     """
     List templates.
 
@@ -62,7 +63,7 @@ def list_templates(client, type, name):
     help="Template type",
 )
 @click.pass_obj
-def get_template(client, name, type):
+def get_template(client: ElasticsearchClient, name: str, type: str) -> None:
     """
     Get a template.
 
@@ -94,7 +95,9 @@ def get_template(client, name, type):
 )
 @click.option("--force", is_flag=True, help="Force deletion")
 @click.pass_obj
-def delete_template(client, name, type, force):
+def delete_template(
+    client: ElasticsearchClient, name: str, type: str, force: bool
+) -> None:
     """
     Delete a template.
 
@@ -136,7 +139,9 @@ def delete_template(client, name, type, force):
     help="Template type",
 )
 @click.pass_obj
-def create_template(client, name, file, type):
+def create_template(
+    client: ElasticsearchClient, name: str, file: str, type: str
+) -> None:
     """
     Create a template from file.
 
@@ -166,7 +171,7 @@ def create_template(client, name, file, type):
 
 @template_group.command("wizard")
 @click.pass_obj
-def wizard(client):
+def wizard(client: ElasticsearchClient) -> None:
     """
     Interactive template builder wizard.
 
@@ -193,9 +198,9 @@ def wizard(client):
 
     name = Prompt.ask("Name of the template")
 
-    settings = {}
-    mappings = {"properties": {}}
-    aliases = {}
+    settings: Dict[str, Any] = {}
+    mappings: Dict[str, Any] = {"properties": {}}
+    aliases: Dict[str, Any] = {}
 
     # 2. Settings Wizard
     if Confirm.ask("Configure Settings? (shards, replicas, codec)"):
@@ -226,7 +231,7 @@ def wizard(client):
             mappings["properties"][field_name] = {"type": field_type}
 
     # 4. Final Assembly
-    body = {}
+    body: Dict[str, Any] = {}
     if template_type == "component":
         body["template"] = {}
         if settings:
