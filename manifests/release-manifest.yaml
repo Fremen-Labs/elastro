@@ -1,0 +1,30 @@
+version: 1.2.4
+build:
+    createdAt: "2026-01-17T22:41:30Z"
+    git:
+        branch: feature/rflow-init
+        commit: 5af0e01c8369f5c9fa0b054c3b0d195df2a514ce
+        tag: v1.2.4
+        appCommit: 5af0e01c8369f5c9fa0b054c3b0d195df2a514ce
+    registry: your.azurecr.io
+sources:
+    releaseFlow:
+        repo: https://github.com/Fremen-Labs/elastro
+        branch: main
+        commit: 5af0e01c8369f5c9fa0b054c3b0d195df2a514ce
+        tag: v1.2.4
+    app:
+        repo: https://github.com/Fremen-Labs/elastro
+        commit: 5af0e01c8369f5c9fa0b054c3b0d195df2a514ce
+images:
+    api:
+        repository: api
+        type: repository
+        tag: 1.2.4
+        path: .
+        dockerfile: Dockerfile
+        security:
+            sbom: security/sbom/api-1.2.4.spdx.json.zst
+            scan:
+                tool: trivy
+                resultFile: security/scans/api-1.2.4.trivy.json.zst

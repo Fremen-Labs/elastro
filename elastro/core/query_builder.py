@@ -28,31 +28,32 @@ class QueryBuilder:
 
     @staticmethod
     def build_bool_query(
-        must_match: List[str] = None,
-        must_match_phrase: List[str] = None,
-        must_term: List[str] = None,
-        must_terms: List[str] = None,
-        must_range: List[str] = None,
-        must_prefix: List[str] = None,
-        must_wildcard: List[str] = None,
-        must_exists: List[str] = None,
-        must_ids: List[str] = None,
-        must_fuzzy: List[str] = None,
-        exclude_match: List[str] = None,
-        exclude_term: List[str] = None,
-        query_string: str = None,
+        must_match: Optional[List[str]] = None,
+        must_match_phrase: Optional[List[str]] = None,
+        must_term: Optional[List[str]] = None,
+        must_terms: Optional[List[str]] = None,
+        must_range: Optional[List[str]] = None,
+        must_prefix: Optional[List[str]] = None,
+        must_wildcard: Optional[List[str]] = None,
+        must_exists: Optional[List[str]] = None,
+        must_ids: Optional[List[str]] = None,
+        must_fuzzy: Optional[List[str]] = None,
+        exclude_match: Optional[List[str]] = None,
+        exclude_term: Optional[List[str]] = None,
+        query_string: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Construct a boolean query from various lists of constraints.
         Inputs are usually list of "field=value" strings.
         """
-        must_clauses = []
-        must_not_clauses = []
+        must_clauses: List[Dict[str, Any]] = []
+        must_not_clauses: List[Dict[str, Any]] = []
 
         # Helper to parse field=value
-        def parse_kv(item: str) -> Optional[tuple]:
+        def parse_kv(item: str) -> Optional[tuple[str, str]]:
             if "=" in item:
-                return item.split("=", 1)
+                key, val = item.split("=", 1)
+                return key, val
             return None
 
         # 1. Match (Text)
