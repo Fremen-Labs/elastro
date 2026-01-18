@@ -30,17 +30,34 @@ The library offers both a programmatic API and a command-line interface for seam
 
 ## Installation
 
-```bash
-pip install elastro
-```
+### Global CLI Installation (Recommended)
 
-Or from source:
+To install the CLI tool globally in an isolated environment (avoids `externally-managed-environment` errors):
 
 ```bash
-git clone https://github.com/Fremen-Labs/elastro.git
-cd elastro
-pip install -e .
+# Install with pipx (Recommended for CLI usage)
+pipx install elastro-client
+
+# Upgrade later
+pipx upgrade elastro-client
 ```
+
+### Library Installation (For Development)
+
+If you are using Elastro as a library in your Python project:
+
+```bash
+# Using a virtual environment
+python3 -m venv venv
+source venv/bin/activate
+pip install elastro-client
+```
+
+### Troubleshooting: "externally-managed-environment"
+
+If you see an `externally-managed-environment` error when running `pip install`, it means your OS (like macOS with Homebrew) prevents system-wide package installation.
+
+**Solution:** Use `pipx` (above) or a virtual environment. Do not use `--break-system-packages` unless you are certain of the consequences.
 
 ## Basic Usage
 
