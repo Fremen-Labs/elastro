@@ -14,7 +14,6 @@ from dotenv import load_dotenv
 from elastro.core.errors import ConfigurationError
 from elastro.config.defaults import DEFAULT_CONFIG
 
-
 # Load environment variables from .env file
 load_dotenv()
 

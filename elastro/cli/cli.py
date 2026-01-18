@@ -70,7 +70,6 @@ from elastro.cli.commands.template import template_group
 from elastro.cli.commands.ilm import ilm_group
 from elastro.cli.commands.snapshot import snapshot_group
 
-
 # Register Top-Level Groups
 
 
