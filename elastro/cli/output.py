@@ -1,6 +1,6 @@
 import json
 import yaml
-from typing import Any, Optional
+from typing import Any, Optional, cast
 from rich.console import Console
 from rich.table import Table
 from rich import box
@@ -41,7 +41,7 @@ def format_output(data: Any, output_format: Optional[str] = None) -> str:
         syntax = Syntax(json_str, "json", theme="monokai", word_wrap=True)
 
         display_console.print(syntax)
-        return display_console.file.getvalue()
+        return cast(StringIO, display_console.file).getvalue()
 
     elif output_format == "yaml":
         if hasattr(data, "body"):
@@ -52,7 +52,7 @@ def format_output(data: Any, output_format: Optional[str] = None) -> str:
         syntax = Syntax(yaml_str, "yaml", theme="monokai", word_wrap=True)
 
         display_console.print(syntax)
-        return display_console.file.getvalue()
+        return cast(StringIO, display_console.file).getvalue()
     elif output_format == "table":
         console = Console()
 

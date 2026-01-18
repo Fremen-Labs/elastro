@@ -169,9 +169,9 @@ def run_ilm_wizard(name: str) -> Optional[Dict[str, Any]]:
 
     # --- HOT PHASE ---
     if Confirm.ask("Enable [bold red]HOT[/] phase (Rollover)?", default=True):
-        actions = {}
+        hot_actions: Dict[str, Any] = {}
         if Confirm.ask("  Enable Rollover?", default=True):
-            rollover = {}
+            rollover: Dict[str, Any] = {}
             if Confirm.ask("    Max Age?", default=True):
                 rollover["max_age"] = Prompt.ask("      Value", default="30d")
             if Confirm.ask("    Max Primary Shard Size?", default=True):
@@ -180,24 +180,24 @@ def run_ilm_wizard(name: str) -> Optional[Dict[str, Any]]:
                 )
             if Confirm.ask("    Max Docs?", default=False):
                 rollover["max_docs"] = IntPrompt.ask("      Value")
-            actions["rollover"] = rollover
+            hot_actions["rollover"] = rollover
 
-        phases["hot"] = {"min_age": "0ms", "actions": actions}
+        phases["hot"] = {"min_age": "0ms", "actions": hot_actions}
 
     # --- WARM PHASE ---
     if Confirm.ask("Enable [bold yellow]WARM[/] phase?", default=False):
         min_age = Prompt.ask("  Min Age (from rollover)", default="7d")
-        actions = {}
+        warm_actions: Dict[str, Any] = {}
 
         if Confirm.ask("  Shrink Shards?", default=False):
             num_shards = IntPrompt.ask("    Number of Shards", default=1)
-            actions["shrink"] = {"number_of_shards": num_shards}
+            warm_actions["shrink"] = {"number_of_shards": num_shards}
 
         if Confirm.ask("  Force Merge?", default=False):
             num_segments = IntPrompt.ask("    Max Num Segments", default=1)
-            actions["forcemerge"] = {"max_num_segments": num_segments}
+            warm_actions["forcemerge"] = {"max_num_segments": num_segments}
 
-        phases["warm"] = {"min_age": min_age, "actions": actions}
+        phases["warm"] = {"min_age": min_age, "actions": warm_actions}
 
     # --- COLD PHASE ---
     if Confirm.ask("Enable [bold cyan]COLD[/] phase?", default=False):
