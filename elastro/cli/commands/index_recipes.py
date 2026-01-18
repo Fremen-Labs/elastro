@@ -8,8 +8,8 @@ class IndexRecipe:
     description: str
     settings: Dict[str, Any]
     mappings: Dict[str, Any]
-    customizable_fields: List[str] = None
-    prompts: List[Dict[str, Any]] = None
+    customizable_fields: Optional[List[str]] = None
+    prompts: Optional[List[Dict[str, Any]]] = None
 
     def get_settings(self) -> Dict[str, Any]:
         return self.settings.copy()
@@ -189,5 +189,5 @@ RECIPES: Dict[str, IndexRecipe] = {
 }
 
 
-def get_recipe_choices():
+def get_recipe_choices() -> List[str]:
     return [f"{k}. {v.name}" for k, v in RECIPES.items()]

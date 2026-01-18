@@ -9,7 +9,7 @@ project:
     branch: ""
   releaseFlowRepo:
     provider: ""
-    url: https://dev.azure.com/mentat-automation/vorsam/_git/ReleaseFlow
+    url: https://github.com/Fremen-Labs/elastro
     defaultBranch: ""
     branch: main
 versioning:

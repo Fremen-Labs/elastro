@@ -8,6 +8,7 @@ from typing import Dict, List, Any, Optional
 from elastro.core.client import ElasticsearchClient
 from elastro.core.errors import DatastreamError, ValidationError
 from elastro.core.validation import Validator
+from elastro.core.logger import logger
 
 
 class DatastreamManager:
@@ -274,9 +275,10 @@ class DatastreamManager:
             template_name = f"{name}-template"
             try:
                 self._client._client.indices.delete_index_template(name=template_name)
-            except Exception:
-                # Ignore errors if template doesn't exist
-                pass
+            except Exception as e:
+                logger.warning(
+                    f"Failed to delete associated template '{template_name}': {str(e)}"
+                )
 
             return response.body if hasattr(response, "body") else dict(response)
         except ValidationError as e:

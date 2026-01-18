@@ -9,7 +9,7 @@ build:
     registry: your.azurecr.io
 sources:
     releaseFlow:
-        repo: https://dev.azure.com/mentat-automation/vorsam/_git/ReleaseFlow
+        repo: https://github.com/Fremen-Labs/elastro
         branch: feature/rflow-init
         commit: 5af0e01c8369f5c9fa0b054c3b0d195df2a514ce
         tag: v1.2.4

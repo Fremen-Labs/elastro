@@ -2,6 +2,7 @@
 
 from typing import Any, Callable, Dict, Generator, List, Optional, Union
 from elasticsearch import Elasticsearch
+from elastro.core.logger import logger
 
 
 class ScrollHelper:
@@ -73,9 +74,8 @@ class ScrollHelper:
             if scroll_id:
                 try:
                     self._client.clear_scroll(scroll_id=scroll_id)
-                except Exception:
-                    # Log but don't raise
-                    pass
+                except Exception as e:
+                    logger.warning(f"Failed to clear scroll context: {str(e)}")
 
     def process_all(
         self,
