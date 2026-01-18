@@ -160,9 +160,10 @@ class TestElasticsearchClient:
 
     def test_connect_with_https(self):
         """Test connection with HTTPS and SSL configuration."""
-        with patch("elastro.core.client.Elasticsearch") as mock_es_class, patch(
-            "urllib3.disable_warnings"
-        ) as mock_disable_warnings:
+        with (
+            patch("elastro.core.client.Elasticsearch") as mock_es_class,
+            patch("urllib3.disable_warnings") as mock_disable_warnings,
+        ):
 
             mock_instance = MagicMock()
             mock_instance.ping.return_value = True
