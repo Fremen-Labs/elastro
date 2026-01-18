@@ -236,7 +236,7 @@ cli.add_command(ilm_group)
 cli.add_command(snapshot_group)
 
 
-def main():
+def main() -> None:
     """Entry point for CLI."""
     cli()
 

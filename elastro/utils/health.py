@@ -43,7 +43,7 @@ class HealthManager:
                     OperationError: If health retrieval fails.
         """
         try:
-            params = {"level": level, "timeout": timeout}
+            params: Dict[str, Any] = {"level": level, "timeout": timeout}
 
             if wait_for_status:
                 params["wait_for_status"] = wait_for_status
@@ -157,7 +157,7 @@ class HealthManager:
             OperationError: If explanation retrieval fails.
         """
         try:
-            body = {}
+            body: Dict[str, Any] = {}
             if index:
                 body["index"] = index
             if shard is not None:
@@ -237,7 +237,7 @@ class HealthManager:
             OperationError: If diagnostic fails.
         """
         try:
-            diagnostic = {
+            diagnostic: Dict[str, Any] = {
                 "cluster_health": self.cluster_health(),
                 "nodes_count": len(self._es.nodes.info().get("nodes", {})),
                 "indices_count": len(self._es.indices.get("*").keys()),

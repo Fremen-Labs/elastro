@@ -63,18 +63,26 @@ class SnapshotManager:
                     OperationError: If repository creation fails.
         """
         try:
+            config: RepositoryConfig
             if isinstance(repo_config, dict):
-                repo_config = RepositoryConfig(**repo_config)
+                config = RepositoryConfig(**repo_config)
+            else:
+                config = repo_config
 
             response = self._es.snapshot.create_repository(
-                repository=repo_config.name,
-                body={"type": repo_config.type, "settings": repo_config.settings},
+                repository=config.name,
+                body={"type": config.type, "settings": config.settings},
             )
-            return response.get("acknowledged", False)
+            return bool(response.get("acknowledged", False))
         except Exception as e:
-            raise OperationError(
-                f"Failed to create repository {repo_config.name}: {str(e)}"
+            # We need to access name safely if config creation failed (hard to do cleanly)
+            # but usually it fails in create_repository call
+            repo_name = (
+                repo_config.get("name")
+                if isinstance(repo_config, dict)
+                else repo_config.name
             )
+            raise OperationError(f"Failed to create repository {repo_name}: {str(e)}")
 
     def delete_repository(self, name: str) -> bool:
         """Delete a snapshot repository.
@@ -131,29 +139,35 @@ class SnapshotManager:
                     OperationError: If snapshot creation fails.
         """
         try:
+            config: SnapshotConfig
             if isinstance(snapshot_config, dict):
-                snapshot_config = SnapshotConfig(**snapshot_config)
+                config = SnapshotConfig(**snapshot_config)
+            else:
+                config = snapshot_config
 
-            body = {
-                "ignore_unavailable": snapshot_config.ignore_unavailable,
-                "include_global_state": snapshot_config.include_global_state,
-                "partial": snapshot_config.partial,
+            body: Dict[str, Any] = {
+                "ignore_unavailable": config.ignore_unavailable,
+                "include_global_state": config.include_global_state,
+                "partial": config.partial,
             }
 
-            if snapshot_config.indices:
-                body["indices"] = ",".join(snapshot_config.indices)
+            if config.indices:
+                body["indices"] = ",".join(config.indices)
 
             response = self._es.snapshot.create(
                 repository=repo_name,
-                snapshot=snapshot_config.name,
+                snapshot=config.name,
                 body=body,
-                wait_for_completion=snapshot_config.wait_for_completion,
+                wait_for_completion=config.wait_for_completion,
             )
-            return response
+            return dict(response)
         except Exception as e:
-            raise OperationError(
-                f"Failed to create snapshot {snapshot_config.name}: {str(e)}"
+            snap_name = (
+                snapshot_config.get("name")
+                if isinstance(snapshot_config, dict)
+                else snapshot_config.name
             )
+            raise OperationError(f"Failed to create snapshot {snap_name}: {str(e)}")
 
     def delete_snapshot(self, repo_name: str, snapshot_name: str) -> bool:
         """Delete a snapshot.

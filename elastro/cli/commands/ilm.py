@@ -1,6 +1,6 @@
 import rich_click as click
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -14,7 +14,7 @@ console = Console()
 
 
 @click.group("ilm")
-def ilm_group():
+def ilm_group() -> None:
     """Manage Index Lifecycle Management (ILM) policies."""
     pass
 
@@ -24,7 +24,7 @@ def ilm_group():
     "--full", is_flag=True, help="Show full JSON definition (limited to 2 policies)"
 )
 @click.pass_obj
-def list_policies(client, full):
+def list_policies(client: ElasticsearchClient, full: bool) -> None:
     """
     List all ILM policies.
 
@@ -84,7 +84,7 @@ def list_policies(client, full):
 @ilm_group.command("get", no_args_is_help=True)
 @click.argument("name", type=str, shell_complete=complete_policies)
 @click.pass_obj
-def get_policy(client, name):
+def get_policy(client: ElasticsearchClient, name: str) -> None:
     """
     Get an ILM policy definition.
 
@@ -115,7 +115,7 @@ def get_policy(client, name):
     help="Policy definition file (JSON)",
 )
 @click.pass_obj
-def create_policy(client, name, file):
+def create_policy(client: ElasticsearchClient, name: str, file: Optional[str]) -> None:
     """
     Create or update an ILM policy.
 
@@ -154,7 +154,7 @@ def create_policy(client, name, file):
         exit(1)
 
 
-def run_ilm_wizard(name: str) -> Dict[str, Any]:
+def run_ilm_wizard(name: str) -> Optional[Dict[str, Any]]:
     """Run interactive wizard to build ILM policy."""
     from rich.prompt import Prompt, Confirm, IntPrompt
 
@@ -231,7 +231,7 @@ def run_ilm_wizard(name: str) -> Dict[str, Any]:
 @click.argument("name", type=str, shell_complete=complete_policies)
 @click.option("--force", is_flag=True, help="Force deletion")
 @click.pass_obj
-def delete_policy(client, name, force):
+def delete_policy(client: ElasticsearchClient, name: str, force: bool) -> None:
     """
     Delete an ILM policy.
 
@@ -261,7 +261,7 @@ def delete_policy(client, name, force):
 @ilm_group.command("explain", no_args_is_help=True)
 @click.argument("index", type=str, shell_complete=complete_indices)
 @click.pass_obj
-def explain_lifecycle(client, index):
+def explain_lifecycle(client: ElasticsearchClient, index: str) -> None:
     """
     Explain the lifecycle state of an index.
 
@@ -299,7 +299,7 @@ def explain_lifecycle(client, index):
 
 @ilm_group.command("start")
 @click.pass_obj
-def start_ilm(client):
+def start_ilm(client: ElasticsearchClient) -> None:
     """
     Start the ILM service.
 
@@ -325,7 +325,7 @@ def start_ilm(client):
 
 @ilm_group.command("stop")
 @click.pass_obj
-def stop_ilm(client):
+def stop_ilm(client: ElasticsearchClient) -> None:
     """
     Stop the ILM service.
 

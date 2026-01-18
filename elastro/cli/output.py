@@ -1,6 +1,6 @@
 import json
 import yaml
-from typing import Any
+from typing import Any, Optional
 from rich.console import Console
 from rich.table import Table
 from rich import box
@@ -8,7 +8,7 @@ from io import StringIO
 from elastro.config import get_config
 
 
-def format_output(data: Any, output_format: str = None) -> str:
+def format_output(data: Any, output_format: Optional[str] = None) -> str:
     """
     Format output data based on the specified format.
 

@@ -73,7 +73,7 @@ class DocumentManager:
 
             logger.debug(f"Indexing document into '{index}' with ID '{id}'")
             # Execute the index operation
-            response = self.client.client.index(**params)  # type: ignore
+            response = self.client.client.index(**params)
             return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             logger.error(f"Failed to index document info '{index}': {str(e)}")
@@ -142,6 +142,50 @@ class DocumentManager:
         except Exception as e:
             logger.error(f"Failed to bulk index documents: {str(e)}")
             raise OperationError(f"Failed to bulk index documents: {str(e)}")
+
+    def bulk_delete(
+        self, index: str, ids: List[str], refresh: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Bulk delete multiple documents.
+
+        Args:
+            index: Name of the index
+            ids: List of document IDs to delete
+            refresh: Whether to refresh the index immediately
+
+        Returns:
+            Dict containing bulk deletion response summary
+        """
+        # Validate inputs
+        if not index:
+            raise ValidationError("Index name cannot be empty")
+
+        if not ids or not isinstance(ids, list):
+            raise ValidationError("IDs must be a non-empty list")
+
+        try:
+            # Prepare actions for streaming bulk
+            actions = [{"_op_type": "delete", "_index": index, "_id": id} for id in ids]
+
+            logger.info(f"Bulk deleting {len(actions)} documents from '{index}'...")
+
+            # Use helpers.bulk for optimized streaming
+            success_count, errors = helpers.bulk(
+                self.client.client,
+                actions,
+                refresh="true" if refresh else "false",
+                raise_on_error=True,
+            )
+
+            return {
+                "success_count": success_count,
+                "errors": errors if isinstance(errors, list) else [],
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to bulk delete documents: {str(e)}")
+            raise OperationError(f"Failed to bulk delete documents: {str(e)}")
 
     def get(self, index: str, id: str) -> Any:
         """
@@ -296,7 +340,7 @@ class DocumentManager:
 
         try:
             logger.debug(f"Searching index '{index}'...")
-            response = self.client.client.search(**search_params)  # type: ignore
+            response = self.client.client.search(**search_params)
             return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             logger.error(f"Failed to search documents in '{index}': {str(e)}")

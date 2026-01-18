@@ -4,6 +4,7 @@ Datastream management commands for the CLI.
 
 import rich_click as click
 import json
+from typing import Optional, Dict, Any
 from elastro.core.client import ElasticsearchClient
 from elastro.core.datastream import DatastreamManager
 from elastro.core.errors import OperationError
@@ -18,7 +19,9 @@ from elastro.cli.completion import complete_datastreams
     help="Path to settings file",
 )
 @click.pass_obj
-def create_datastream(client, name, settings):
+def create_datastream(
+    client: ElasticsearchClient, name: str, settings: Optional[str]
+) -> None:
     """
     Create a datastream.
 
@@ -51,7 +54,7 @@ def create_datastream(client, name, settings):
 
 @click.command("list")
 @click.pass_obj
-def list_datastreams(client):
+def list_datastreams(client: ElasticsearchClient) -> None:
     """
     List all datastreams.
 
@@ -77,7 +80,7 @@ def list_datastreams(client):
 @click.command("get", no_args_is_help=True)
 @click.argument("name", type=str, shell_complete=complete_datastreams)
 @click.pass_obj
-def get_datastream(client, name):
+def get_datastream(client: ElasticsearchClient, name: str) -> None:
     """
     Get information about a datastream.
 
@@ -104,7 +107,7 @@ def get_datastream(client, name):
 @click.argument("name", type=str, shell_complete=complete_datastreams)
 @click.option("--force", is_flag=True, help="Force deletion without confirmation")
 @click.pass_obj
-def delete_datastream(client, name, force):
+def delete_datastream(client: ElasticsearchClient, name: str, force: bool) -> None:
     """
     Delete a datastream.
 
@@ -141,7 +144,13 @@ def delete_datastream(client, name, force):
 @click.option("--max-docs", type=int, help="Maximum number of documents")
 @click.option("--max-size", type=str, help="Maximum size (e.g., '5gb')")
 @click.pass_obj
-def rollover_datastream(client, name, max_age, max_docs, max_size):
+def rollover_datastream(
+    client: ElasticsearchClient,
+    name: str,
+    max_age: Optional[str],
+    max_docs: Optional[int],
+    max_size: Optional[str],
+) -> None:
     """
     Rollover a datastream.
 
@@ -163,7 +172,7 @@ def rollover_datastream(client, name, max_age, max_docs, max_size):
     datastream_manager = DatastreamManager(client)
 
     # Prepare conditions
-    conditions = {}
+    conditions: Dict[str, Any] = {}
     if max_age:
         conditions["max_age"] = max_age
     if max_docs:

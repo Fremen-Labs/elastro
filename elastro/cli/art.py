@@ -19,7 +19,7 @@ def get_banner() -> str:
     return ELASTRO_ART
 
 
-def print_banner():
+def print_banner() -> None:
     from rich.console import Console
 
     console = Console()

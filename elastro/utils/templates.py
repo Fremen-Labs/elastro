@@ -89,7 +89,7 @@ class TemplateManager:
             )
 
     def list(
-        self, template_type: str = "index", name: str = None
+        self, template_type: str = "index", name: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """List templates."""
         try:

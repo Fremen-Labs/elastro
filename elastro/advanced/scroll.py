@@ -2,7 +2,10 @@
 
 from typing import Any, Callable, Dict, Generator, List, Optional, Union
 from elasticsearch import Elasticsearch
-from elastro.core.logger import logger
+from elasticsearch import Elasticsearch
+from elastro.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class ScrollHelper:
@@ -28,7 +31,7 @@ class ScrollHelper:
         scroll_timeout: str = "1m",
         size: int = 1000,
         source_fields: Optional[List[str]] = None,
-    ) -> Generator[Dict[str, Any], None, None]:
+    ) -> Generator[List[Dict[str, Any]], None, None]:
         """Perform a scroll search and yield batches of results.
 
         Args:
@@ -138,7 +141,7 @@ class ScrollHelper:
         Returns:
             List of all matching documents
         """
-        all_docs = []
+        all_docs: List[Dict[str, Any]] = []
         docs_collected = 0
 
         for batch in self.scroll(

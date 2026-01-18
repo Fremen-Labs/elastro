@@ -1,10 +1,10 @@
 import rich_click as click
-from typing import List
+from typing import List, Optional, Any
 from elastro.config import load_config
 from elastro.core.client import ElasticsearchClient
 
 
-def get_quick_client():
+def get_quick_client() -> Optional[ElasticsearchClient]:
     """Fast client initialization for autocomplete."""
     # Attempt to load default config/profile
     # We don't have access to --profile flag easily here without complex parsing
@@ -24,7 +24,7 @@ def get_quick_client():
         return None
 
 
-def complete_indices(ctx, param, incomplete: str) -> List[str]:
+def complete_indices(ctx: Any, param: Any, incomplete: str) -> List[str]:
     """Autocomplete for index names."""
     client = ctx.obj if ctx and ctx.obj else get_quick_client()
     if not client:
@@ -47,7 +47,7 @@ def complete_indices(ctx, param, incomplete: str) -> List[str]:
         return []
 
 
-def complete_datastreams(ctx, param, incomplete: str) -> List[str]:
+def complete_datastreams(ctx: Any, param: Any, incomplete: str) -> List[str]:
     """Autocomplete for datastreams."""
     client = ctx.obj if ctx and ctx.obj else get_quick_client()
     if not client:
@@ -67,7 +67,7 @@ def complete_datastreams(ctx, param, incomplete: str) -> List[str]:
         return []
 
 
-def complete_templates(ctx, param, incomplete: str) -> List[str]:
+def complete_templates(ctx: Any, param: Any, incomplete: str) -> List[str]:
     """Autocomplete for templates."""
     client = ctx.obj if ctx and ctx.obj else get_quick_client()
     if not client:
@@ -94,7 +94,7 @@ def complete_templates(ctx, param, incomplete: str) -> List[str]:
         return []
 
 
-def complete_policies(ctx, param, incomplete: str) -> List[str]:
+def complete_policies(ctx: Any, param: Any, incomplete: str) -> List[str]:
     """Autocomplete for ILM policies."""
     client = ctx.obj if ctx and ctx.obj else get_quick_client()
     if not client:

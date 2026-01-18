@@ -5,6 +5,7 @@ Document management commands for the CLI.
 import rich_click as click
 import json
 import sys
+from typing import Optional, Tuple, Any
 from elastro.core.client import ElasticsearchClient
 from elastro.core.document import DocumentManager
 from elastro.core.errors import OperationError
@@ -20,7 +21,9 @@ from elastro.cli.completion import complete_indices
     "--file", type=click.Path(exists=True, readable=True), help="Path to document file"
 )
 @click.pass_obj
-def index_document(client, index, id, file):
+def index_document(
+    client: ElasticsearchClient, index: str, id: Optional[str], file: Optional[str]
+) -> None:
     """
     Index a document.
 
@@ -72,7 +75,7 @@ def index_document(client, index, id, file):
     help="Path to bulk documents file",
 )
 @click.pass_obj
-def bulk_index(client, index, file):
+def bulk_index(client: ElasticsearchClient, index: str, file: str) -> None:
     """
     Bulk index documents.
 
@@ -109,7 +112,7 @@ def bulk_index(client, index, file):
 @click.argument("index", type=str, shell_complete=complete_indices)
 @click.argument("id", type=str)
 @click.pass_obj
-def get_document(client, index, id):
+def get_document(client: ElasticsearchClient, index: str, id: str) -> None:
     """
     Get a document by ID.
 
@@ -157,25 +160,25 @@ def get_document(client, index, id):
 @click.option("--exclude-term", multiple=True, help="Exclude term (must_not)")
 @click.pass_obj
 def search_documents(
-    client,
-    index,
-    query,
-    size,
-    from_,
-    file,
-    match,
-    match_phrase,
-    term,
-    terms,
-    range,
-    prefix,
-    wildcard,
-    exists,
-    ids,
-    fuzzy,
-    exclude_match,
-    exclude_term,
-):
+    client: ElasticsearchClient,
+    index: str,
+    query: Optional[str],
+    size: int,
+    from_: int,
+    file: Optional[str],
+    match: Tuple[str, ...],
+    match_phrase: Tuple[str, ...],
+    term: Tuple[str, ...],
+    terms: Tuple[str, ...],
+    range: Tuple[str, ...],
+    prefix: Tuple[str, ...],
+    wildcard: Tuple[str, ...],
+    exists: Tuple[str, ...],
+    ids: Tuple[str, ...],
+    fuzzy: Tuple[str, ...],
+    exclude_match: Tuple[str, ...],
+    exclude_term: Tuple[str, ...],
+) -> None:
     """
     Search for documents using explicit flags or a query string.
 
@@ -212,18 +215,18 @@ def search_documents(
 
         # Build the actual query part using QueryBuilder
         inner_query = QueryBuilder.build_bool_query(
-            must_match=match,
-            must_match_phrase=match_phrase,
-            must_term=term,
-            must_terms=terms,
-            must_range=range,
-            must_prefix=prefix,
-            must_wildcard=wildcard,
-            must_exists=exists,
-            must_ids=ids,
-            must_fuzzy=fuzzy,
-            exclude_match=exclude_match,
-            exclude_term=exclude_term,
+            must_match=list(match) if match else None,
+            must_match_phrase=list(match_phrase) if match_phrase else None,
+            must_term=list(term) if term else None,
+            must_terms=list(terms) if terms else None,
+            must_range=list(range) if range else None,
+            must_prefix=list(prefix) if prefix else None,
+            must_wildcard=list(wildcard) if wildcard else None,
+            must_exists=list(exists) if exists else None,
+            must_ids=list(ids) if ids else None,
+            must_fuzzy=list(fuzzy) if fuzzy else None,
+            exclude_match=list(exclude_match) if exclude_match else None,
+            exclude_term=list(exclude_term) if exclude_term else None,
             query_string=query,
         )
 
@@ -252,7 +255,9 @@ def search_documents(
 )
 @click.option("--partial", is_flag=True, help="Perform partial update")
 @click.pass_obj
-def update_document(client, index, id, file, partial):
+def update_document(
+    client: ElasticsearchClient, index: str, id: str, file: str, partial: bool
+) -> None:
     """
     Update a document.
 
@@ -290,7 +295,7 @@ def update_document(client, index, id, file, partial):
 @click.argument("index", type=str, shell_complete=complete_indices)
 @click.argument("id", type=str)
 @click.pass_obj
-def delete_document(client, index, id):
+def delete_document(client: ElasticsearchClient, index: str, id: str) -> None:
     """
     Delete a document.
 
@@ -324,7 +329,7 @@ def delete_document(client, index, id):
     help="Path to IDs file",
 )
 @click.pass_obj
-def bulk_delete(client, index, file):
+def bulk_delete(client: ElasticsearchClient, index: str, file: str) -> None:
     """
     Bulk delete documents.
 
