@@ -8,6 +8,8 @@ const error = ref<string | null>(null)
 const successMsg = ref<string | null>(null)
 const isLoading = ref(false)
 
+const activeTab = ref('manage')
+
 const clusterForm = ref({
   name: '',
   host: '',
@@ -25,7 +27,6 @@ const fetchConfig = async () => {
     const res = await axios.get(`${apiBase}/api/config`, {
       headers: { Authorization: `Bearer ${state.token}` }
     })
-    // For simplicity, we just list them here. Real app would populate a table.
     state.clusters = res.data.clusters || []
   } catch (err: any) {
     error.value = "Failed to load configuration."
@@ -66,6 +67,9 @@ const saveCluster = async () => {
     clusterForm.value = { name: '', host: '', username: '', password: '', api_key: '' }
     fetchConfig()
     
+    // Switch to manage tab smoothly after saving
+    activeTab.value = 'manage'
+    
   } catch (err: any) {
     error.value = err.response?.data?.detail || "Failed to save cluster configuration."
   } finally {
@@ -98,80 +102,99 @@ onMounted(() => {
       {{ successMsg }}
     </div>
 
-    <div class="settings-grid">
-      <!-- Add New Cluster Form -->
-      <div class="card form-card">
-        <h3>Add Elasticsearch Cluster</h3>
-        <p class="text-sm text-muted">Configure a new cluster. Secrets are saved locally to ~/.elastro/config.</p>
-        
-        <form @submit.prevent="saveCluster" class="cluster-form">
-          <div class="form-group">
-            <label>Cluster Name</label>
-            <input v-model="clusterForm.name" type="text" placeholder="e.g. Production Cluster" required />
-          </div>
-          
-          <div class="form-group">
-            <label>Host URL</label>
-            <input v-model="clusterForm.host" type="url" placeholder="https://elastic:9200" required />
-          </div>
-
-          <div class="form-group">
-            <label>Authentication Method</label>
-            <div class="radio-group">
-              <label class="radio-label">
-                <input type="radio" v-model="authMethod" value="basic" /> Basic Auth
-              </label>
-              <label class="radio-label">
-                <input type="radio" v-model="authMethod" value="api_key" /> API Key
-              </label>
-            </div>
-          </div>
-
-          <template v-if="authMethod === 'basic'">
-            <div class="form-row">
-              <div class="form-group">
-                <label>Username</label>
-                <input v-model="clusterForm.username" type="text" placeholder="elastic" />
-              </div>
-              <div class="form-group">
-                <label>Password</label>
-                <input v-model="clusterForm.password" type="password" placeholder="••••••••" />
-              </div>
-            </div>
-          </template>
-
-          <template v-if="authMethod === 'api_key'">
-            <div class="form-group">
-              <label>API Key</label>
-              <input v-model="clusterForm.api_key" type="password" placeholder="Base64 Encoded API Key" />
-            </div>
-          </template>
-
-          <button type="submit" class="btn btn-primary submit-btn" :disabled="isLoading">
-            {{ isLoading ? 'Saving...' : 'Save Cluster' }}
-          </button>
-        </form>
+    <div class="tabs-container">
+      <div class="tabs">
+        <button 
+          class="tab-btn" 
+          :class="{ active: activeTab === 'manage' }" 
+          @click="activeTab = 'manage'">
+          Managed Clusters
+        </button>
+        <button 
+          class="tab-btn" 
+          :class="{ active: activeTab === 'add' }" 
+          @click="activeTab = 'add'">
+          Add Cluster
+        </button>
       </div>
 
-      <!-- Managed Clusters List -->
-      <div class="card list-card">
-        <h3>Managed Configurations</h3>
-        <p class="text-sm text-muted">Clusters currently configured in ~/.elastro/config</p>
-        
-        <div v-if="isLoading && state.clusters.length === 0" class="loader mt-4">Loading...</div>
-        
-        <ul class="cluster-list mt-4" v-else-if="state.clusters.length > 0">
-          <li v-for="cluster in state.clusters" :key="cluster.name" class="cluster-list-item">
-            <div class="cluster-info">
-              <strong>{{ cluster.name }}</strong>
-              <span class="host-url">{{ cluster.host }}</span>
+      <div class="tab-content" v-if="activeTab === 'manage'">
+        <!-- Managed Clusters List -->
+        <div class="card list-card animate-fade-in">
+          <h3>Managed Configurations</h3>
+          <p class="text-sm text-muted">Clusters currently configured in ~/.elastro/config</p>
+          
+          <div v-if="isLoading && state.clusters.length === 0" class="loader mt-4">Loading...</div>
+          
+          <ul class="cluster-list mt-4" v-else-if="state.clusters.length > 0">
+            <li v-for="cluster in state.clusters" :key="cluster.name" class="cluster-list-item">
+              <div class="cluster-info">
+                <strong>{{ cluster.name }}</strong>
+                <span class="host-url">{{ cluster.host }}</span>
+              </div>
+              <button class="btn btn-outline btn-sm">Edit</button>
+            </li>
+          </ul>
+          
+          <div v-else class="empty-list mt-4">
+            No clusters configured yet.
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content" v-if="activeTab === 'add'">
+        <!-- Add New Cluster Form -->
+        <div class="card form-card animate-fade-in">
+          <h3>Add Elasticsearch Cluster</h3>
+          <p class="text-sm text-muted">Configure a new cluster. Secrets are saved locally to ~/.elastro/config.</p>
+          
+          <form @submit.prevent="saveCluster" class="cluster-form">
+            <div class="form-group">
+              <label>Cluster Name</label>
+              <input v-model="clusterForm.name" type="text" placeholder="e.g. Production Cluster" required />
             </div>
-            <button class="btn btn-outline btn-sm">Edit</button>
-          </li>
-        </ul>
-        
-        <div v-else class="empty-list mt-4">
-          No clusters configured yet.
+            
+            <div class="form-group">
+              <label>Host URL</label>
+              <input v-model="clusterForm.host" type="url" placeholder="https://elastic:9200" required />
+            </div>
+
+            <div class="form-group">
+              <label>Authentication Method</label>
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input type="radio" v-model="authMethod" value="basic" /> Basic Auth
+                </label>
+                <label class="radio-label">
+                  <input type="radio" v-model="authMethod" value="api_key" /> API Key
+                </label>
+              </div>
+            </div>
+
+            <template v-if="authMethod === 'basic'">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Username</label>
+                  <input v-model="clusterForm.username" type="text" placeholder="elastic" />
+                </div>
+                <div class="form-group">
+                  <label>Password</label>
+                  <input v-model="clusterForm.password" type="password" placeholder="••••••••" />
+                </div>
+              </div>
+            </template>
+
+            <template v-if="authMethod === 'api_key'">
+              <div class="form-group">
+                <label>API Key</label>
+                <input v-model="clusterForm.api_key" type="password" placeholder="Base64 Encoded API Key" />
+              </div>
+            </template>
+
+            <button type="submit" class="btn btn-primary submit-btn" :disabled="isLoading">
+              {{ isLoading ? 'Saving...' : 'Save Cluster' }}
+            </button>
+          </form>
         </div>
       </div>
     </div>
@@ -194,17 +217,49 @@ onMounted(() => {
   font-size: 1rem;
 }
 
-.settings-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-  align-items: start;
+.tabs-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
-@media (max-width: 1024px) {
-  .settings-grid {
-    grid-template-columns: 1fr;
-  }
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  padding-bottom: 0;
+  margin-bottom: 0.5rem;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: -1px;
+}
+
+.tab-btn:hover {
+  color: hsl(var(--foreground));
+  background: hsl(var(--muted) / 0.5);
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
+}
+
+.tab-btn.active {
+  color: hsl(var(--primary));
+  border-bottom: 2px solid hsl(var(--primary));
+  background: transparent;
+}
+
+.tab-content {
+  width: 100%;
+  max-width: 800px;
 }
 
 .card h3 {
