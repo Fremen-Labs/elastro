@@ -31,6 +31,8 @@ dependencies = [
     "colorlog>=6.0.0",
     "rich>=10.0.0",
     "rich-click>=1.7.0",
+    "fastapi>=0.111.0",
+    "uvicorn>=0.30.0",
 ]
 
 [project.optional-dependencies]
@@ -53,6 +55,9 @@ elastro = "elastro.cli.cli:main"
 [tool.setuptools.packages.find]
 include = ["elastro*"]
 exclude = ["tests*", "examples*"]
+
+[tool.setuptools.package-data]
+"elastro" = ["gui/**/*"]
 
 [tool.black]
 line-length = 88
