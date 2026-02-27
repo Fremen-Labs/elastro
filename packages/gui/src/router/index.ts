@@ -1,7 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import Dashboard from '../views/Dashboard.vue'
 import Settings from '../views/Settings.vue'
-import Commands from '../views/Commands.vue'
+import Documentation from '../views/Documentation.vue'
 
 const routes = [
     {
@@ -10,9 +10,9 @@ const routes = [
         component: Dashboard
     },
     {
-        path: '/commands',
-        name: 'Commands',
-        component: Commands
+        path: '/docs',
+        name: 'Documentation',
+        component: Documentation
     },
     {
         path: '/settings',
