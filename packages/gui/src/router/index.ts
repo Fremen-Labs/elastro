@@ -1,12 +1,18 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import Dashboard from '../views/Dashboard.vue'
 import Settings from '../views/Settings.vue'
+import Commands from '../views/Commands.vue'
 
 const routes = [
     {
         path: '/',
         name: 'Dashboard',
         component: Dashboard
+    },
+    {
+        path: '/commands',
+        name: 'Commands',
+        component: Commands
     },
     {
         path: '/settings',
