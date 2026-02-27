@@ -24,12 +24,12 @@ const fetchConfig = async () => {
   if (!state.token) return
   isLoading.value = true
   try {
-    const res = await axios.get(`${apiBase}/api/config`, {
+    const res = await axios.get(`${apiBase}/api/clusters`, {
       headers: { Authorization: `Bearer ${state.token}` }
     })
     state.clusters = res.data.clusters || []
   } catch (err: any) {
-    error.value = "Failed to load configuration."
+    error.value = "Failed to load cluster details."
   } finally {
     isLoading.value = false
   }
@@ -119,24 +119,47 @@ onMounted(() => {
       </div>
 
       <div class="tab-content" v-if="activeTab === 'manage'">
-        <!-- Managed Clusters List -->
-        <div class="card list-card animate-fade-in">
-          <h3>Managed Configurations</h3>
-          <p class="text-sm text-muted">Clusters currently configured in ~/.elastro/config</p>
+        <!-- Managed Clusters Grid -->
+        <div class="animate-fade-in">
+          <div class="flex-header">
+             <h3>Managed Clusters</h3>
+             <p class="text-sm text-muted">A dynamic overview of your connected environments.</p>
+          </div>
           
-          <div v-if="isLoading && state.clusters.length === 0" class="loader mt-4">Loading...</div>
+          <div v-if="isLoading && state.clusters.length === 0" class="loader mt-4">Pinging clusters...</div>
           
-          <ul class="cluster-list mt-4" v-else-if="state.clusters.length > 0">
-            <li v-for="cluster in state.clusters" :key="cluster.name" class="cluster-list-item">
-              <div class="cluster-info">
-                <strong>{{ cluster.name }}</strong>
-                <span class="host-url">{{ cluster.host }}</span>
+          <div class="clusters-grid mt-4" v-else-if="state.clusters.length > 0">
+            <div v-for="cluster in state.clusters" :key="cluster.name" class="card cluster-grid-card">
+              <div class="card-top">
+                <div class="cluster-name-block">
+                  <strong>{{ cluster.name }}</strong>
+                  <span class="host-url">{{ cluster.host }}</span>
+                </div>
+                <div class="health-chip" :class="'health-' + (cluster.health || 'offline')">
+                   <div class="chip-dot"></div>
+                   {{ cluster.health || 'offline' }}
+                </div>
               </div>
-              <button class="btn btn-outline btn-sm">Edit</button>
-            </li>
-          </ul>
+              
+              <div class="card-stats">
+                <div class="stat-small">
+                  <span class="stat-label">Indices</span>
+                  <span class="stat-val">{{ cluster.index_count !== undefined ? cluster.index_count : 'N/A' }}</span>
+                </div>
+                <div class="stat-small">
+                  <span class="stat-label">Largest Index</span>
+                  <span class="stat-val" v-if="cluster.largest_index">{{ cluster.largest_index.name }} ({{ cluster.largest_index.size }})</span>
+                  <span class="stat-val" v-else>N/A</span>
+                </div>
+              </div>
+              
+              <div class="card-actions">
+                 <button class="btn btn-outline btn-sm" style="width: 100%;">Map Connection</button>
+              </div>
+            </div>
+          </div>
           
-          <div v-else class="empty-list mt-4">
+          <div v-else class="empty-list mt-4 card">
             No clusters configured yet.
           </div>
         </div>
@@ -339,27 +362,38 @@ label {
   border: 1px solid hsl(var(--teal) / 0.2);
 }
 
-.cluster-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+/* Clusters Grid Styles */
+.flex-header {
+  margin-bottom: 1.5rem;
 }
 
-.cluster-list-item {
+.clusters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.cluster-grid-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  height: 100%;
+}
+
+.card-top {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  background: hsl(var(--background));
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius);
+  align-items: flex-start;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  padding-bottom: 1rem;
 }
 
-.cluster-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.cluster-name-block strong {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: 0.1rem;
 }
 
 .host-url {
@@ -367,10 +401,76 @@ label {
   color: hsl(var(--muted-foreground));
 }
 
+.health-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: hsl(var(--muted) / 0.3);
+  color: hsl(var(--muted-foreground));
+}
+
+.chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.health-green { 
+  background: hsl(var(--teal) / 0.15); 
+  color: hsl(var(--teal)); 
+}
+.health-yellow { 
+  background: hsl(var(--secondary) / 0.15); 
+  color: hsl(var(--secondary)); 
+}
+.health-red { 
+  background: hsl(var(--destructive) / 0.15); 
+  color: hsl(var(--destructive)); 
+}
+
+.card-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.stat-small {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.stat-val {
+  font-size: 0.95rem;
+  font-weight: 500;
+  word-break: break-all;
+  color: hsl(var(--foreground));
+}
+
+.card-actions {
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+
 .empty-list {
   color: hsl(var(--muted-foreground));
   font-style: italic;
-  padding: 2rem 0;
+  padding: 3rem 0;
   text-align: center;
 }
 

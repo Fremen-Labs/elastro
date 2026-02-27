@@ -142,17 +142,45 @@ class ElastroGUI:
                     health = es.cluster.health()
                     
                     # Get index stats
-                    idx_res = es.cat.indices(format="json")
-                    unstable = [
-                        {"index": idx["index"], "health": idx["health"], "status": idx["status"]}
-                        for idx in idx_res if idx["health"] in ("yellow", "red") and not idx["index"].startswith(".")
-                    ]
+                    idx_res = es.cat.indices(format="json", bytes="b")
+                    
+                    unstable = []
+                    largest_idx_name = "N/A"
+                    largest_idx_size = 0
+                    
+                    for idx in idx_res:
+                        if idx.get("health") in ("yellow", "red") and not idx.get("index", "").startswith("."):
+                            unstable.append({
+                                "index": idx.get("index"),
+                                "health": idx.get("health"),
+                                "status": idx.get("status")
+                            })
+                            
+                        try:
+                            size_bytes = int(idx.get("store.size", 0) or 0)
+                            if size_bytes > largest_idx_size:
+                                largest_idx_size = size_bytes
+                                largest_idx_name = idx.get("index", "Unknown")
+                        except (ValueError, TypeError):
+                            pass
+                            
+                    # Format size to human readable
+                    import math
+                    if largest_idx_size == 0:
+                        formatted_size = "0B"
+                    else:
+                        size_name = ("B", "KB", "MB", "GB", "TB", "PB")
+                        i = int(math.floor(math.log(largest_idx_size, 1024)))
+                        p = math.pow(1024, i)
+                        s = round(largest_idx_size / p, 2)
+                        formatted_size = f"{s} {size_name[i]}"
                     
                     results.append({
                         "name": c["name"],
                         "host": c["host"],
                         "health": health["status"],
                         "index_count": len(idx_res),
+                        "largest_index": {"name": largest_idx_name, "size": formatted_size},
                         "unstable_indices": unstable
                     })
                     
@@ -163,6 +191,7 @@ class ElastroGUI:
                         "host": c["host"],
                         "health": "offline",
                         "index_count": 0,
+                        "largest_index": {"name": "N/A", "size": "0B"},
                         "unstable_indices": []
                     })
                     
