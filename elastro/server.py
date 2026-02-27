@@ -142,11 +142,13 @@ class ElastroGUI:
                     health = es.cluster.health()
                     
                     # Get index stats
-                    idx_res = es.cat.indices(format="json", bytes="b")
+                    # Omit bytes="b" so we get standard ES string formats like '35.6mb' safely
+                    idx_res = es.cat.indices(format="json")
                     
                     unstable = []
                     largest_idx_name = "N/A"
-                    largest_idx_size = 0
+                    largest_idx_size = -1
+                    largest_idx_raw = "0B"
                     
                     for idx in idx_res:
                         if idx.get("health") in ("yellow", "red") and not idx.get("index", "").startswith("."):
@@ -157,30 +159,31 @@ class ElastroGUI:
                             })
                             
                         try:
-                            size_bytes = int(idx.get("store.size", 0) or 0)
+                            raw_size = str(idx.get("store.size", "0b")).strip().lower()
+                            val_str = raw_size
+                            mult = 1
+                            if raw_size.endswith("pb"): mult = 1024**5; val_str = raw_size[:-2]
+                            elif raw_size.endswith("tb"): mult = 1024**4; val_str = raw_size[:-2]
+                            elif raw_size.endswith("gb"): mult = 1024**3; val_str = raw_size[:-2]
+                            elif raw_size.endswith("mb"): mult = 1024**2; val_str = raw_size[:-2]
+                            elif raw_size.endswith("kb"): mult = 1024; val_str = raw_size[:-2]
+                            elif raw_size.endswith("b"): mult = 1; val_str = raw_size[:-1]
+                            
+                            size_bytes = int(float(val_str) * mult) if val_str else 0
+                            
                             if size_bytes > largest_idx_size:
                                 largest_idx_size = size_bytes
                                 largest_idx_name = idx.get("index", "Unknown")
+                                largest_idx_raw = idx.get("store.size", "0b")
                         except (ValueError, TypeError):
                             pass
                             
-                    # Format size to human readable
-                    import math
-                    if largest_idx_size == 0:
-                        formatted_size = "0B"
-                    else:
-                        size_name = ("B", "KB", "MB", "GB", "TB", "PB")
-                        i = int(math.floor(math.log(largest_idx_size, 1024)))
-                        p = math.pow(1024, i)
-                        s = round(largest_idx_size / p, 2)
-                        formatted_size = f"{s} {size_name[i]}"
-                    
                     results.append({
                         "name": c["name"],
                         "host": c["host"],
                         "health": health["status"],
                         "index_count": len(idx_res),
-                        "largest_index": {"name": largest_idx_name, "size": formatted_size},
+                        "largest_index": {"name": largest_idx_name, "size": largest_idx_raw},
                         "unstable_indices": unstable
                     })
                     
