@@ -86,17 +86,20 @@ const getHealthColor = (health: string) => {
     <!-- Cluster Lists -->
     <div class="clusters-container" v-else-if="state.clusters.length > 0">
       <div v-for="cluster in state.clusters" :key="cluster.name" class="card cluster-card">
-        <div class="cluster-header">
-          <h2>{{ cluster.name }}</h2>
-          <span class="health-badge" :style="{ backgroundColor: getHealthColor(cluster.health) }">
-            {{ cluster.health }}
-          </span>
-        </div>
         
-        <div class="cluster-details">
-          <p><strong>Host:</strong> <a :href="cluster.host" target="_blank">{{ cluster.host }}</a></p>
-          <p><strong>Total Indices:</strong> {{ cluster.index_count }}</p>
-        </div>
+        <router-link :to="`/cluster/${encodeURIComponent(cluster.name)}`" class="cluster-link-wrapper">
+          <div class="cluster-header hover-effect">
+            <h2>{{ cluster.name }} <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></h2>
+            <span class="health-badge" :style="{ backgroundColor: getHealthColor(cluster.health) }">
+              {{ cluster.health }}
+            </span>
+          </div>
+          
+          <div class="cluster-details">
+            <p><strong>Host:</strong> {{ cluster.host }}</p>
+            <p><strong>Total Indices:</strong> {{ cluster.index_count }}</p>
+          </div>
+        </router-link>
 
         <div class="unstable-indices" v-if="cluster.unstable_indices?.length > 0">
           <h4>Alerts (Unstable Indices)</h4>

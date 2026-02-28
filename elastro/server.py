@@ -1,8 +1,12 @@
 import os
+import sys
+import io
 import secrets
 import json
 import logging
 import multiprocessing
+import shlex
+import subprocess
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 import uvicorn
@@ -24,6 +28,9 @@ class ClusterConfigSchema(BaseModel):
     name: str
     host: str
     auth: AuthSchema
+
+class ClusterCLIRequestSchema(BaseModel):
+    command: str
 
 class ElastroGUI:
     def __init__(self):
@@ -199,6 +206,192 @@ class ElastroGUI:
                     })
                     
             return {"clusters": results}
+
+        @self.app.get("/api/cluster/{cluster_name}")
+        def get_cluster_details(cluster_name: str, token: str = Depends(self.verify_token)):
+            config = self._read_config()
+            target_c = None
+            
+            for c in config.get("clusters", []):
+                if c["name"] == cluster_name:
+                    target_c = c
+                    break
+                    
+            if not target_c:
+                raise HTTPException(status_code=404, detail=f"Cluster '{cluster_name}' not found in configuration.")
+                
+            try:
+                # Initialize Elastro Client
+                auth_conf = target_c.get("auth", {})
+                
+                auth_kwargs = {}
+                if "api_key" in auth_conf and auth_conf["api_key"]:
+                     auth_kwargs["api_key"] = auth_conf["api_key"]
+                elif "username" in auth_conf:
+                     auth_kwargs["basic_auth"] = (auth_conf["username"], auth_conf.get("password", ""))
+
+                host = target_c["host"]
+                if not host.startswith("http://") and not host.startswith("https://"):
+                    host = "http://" + host
+
+                client = ElasticsearchClient(
+                    hosts=[host],
+                    **auth_kwargs
+                )
+                
+                client.connect()
+                es = client.client
+                
+                # Fetch detailed metrics
+                health = es.cluster.health()
+                
+                # Node stats
+                nodes_info = es.nodes.info()
+                node_count = nodes_info.get("_nodes", {}).get("total", 0)
+                
+                node_roles = {}
+                for node_id, node_data in nodes_info.get("nodes", {}).items():
+                    roles = node_data.get("roles", ["unknown"])
+                    for r in roles:
+                        node_roles[r] = node_roles.get(r, 0) + 1
+
+                # ILM Policies
+                try:
+                    ilm_policies = es.ilm.get_lifecycle()
+                    ilm_count = len(ilm_policies)
+                except Exception as e:
+                    logging.warning(f"Could not fetch ILM for {cluster_name}: {e}")
+                    ilm_count = 0
+                    
+                # Snapshots / Backups
+                repos = []
+                try:
+                    repo_res = es.snapshot.get_repository()
+                    for r_name, r_data in repo_res.items():
+                        repos.append({
+                            "name": r_name,
+                            "type": r_data.get("type", "unknown")
+                        })
+                except Exception as e:
+                    logging.warning(f"Could not fetch Repos for {cluster_name}: {e}")
+                    
+                # Indices detailed summary
+                idx_res = es.cat.indices(format="json")
+                red_indices = 0
+                yellow_indices = 0
+                total_indices = len(idx_res)
+                
+                for idx in idx_res:
+                    if idx.get("health") == "red": red_indices += 1
+                    elif idx.get("health") == "yellow": yellow_indices += 1
+                    
+                return {
+                    "name": target_c["name"],
+                    "host": target_c["host"],
+                    "health": health["status"],
+                    "nodes": {
+                        "total": node_count,
+                        "roles": node_roles
+                    },
+                    "indices": {
+                        "total": total_indices,
+                        "yellow": yellow_indices,
+                        "red": red_indices
+                    },
+                    "ilm": {
+                        "policy_count": ilm_count
+                    },
+                    "backups": {
+                        "configured": len(repos) > 0,
+                        "repositories": repos
+                    }
+                }
+                
+            except Exception as e:
+                logging.error(f"Failed to fetch details for {cluster_name}: {str(e)}")
+                raise HTTPException(status_code=500, detail=f"Failed communicating with Elasticsearch: {str(e)}")
+
+        @self.app.post("/api/cluster/{cluster_name}/cli")
+        def execute_cli_command(cluster_name: str, req: ClusterCLIRequestSchema, token: str = Depends(self.verify_token)):
+            config = self._read_config()
+            target_c = None
+            
+            for c in config.get("clusters", []):
+                if c["name"] == cluster_name:
+                    target_c = c
+                    break
+                    
+            if not target_c:
+                raise HTTPException(status_code=404, detail=f"Cluster '{cluster_name}' not found in configuration.")
+                
+            user_cmd = req.command.strip()
+            if not user_cmd:
+                raise HTTPException(status_code=400, detail="Command cannot be empty")
+                
+            # Strip out "elastro" prefix if the user typed it naturally
+            if user_cmd == "elastro":
+                user_cmd = ""
+            elif user_cmd.startswith("elastro "):
+                user_cmd = user_cmd[8:]
+                
+            # Safely split user string into bash args
+            try:
+                args = shlex.split(user_cmd) if user_cmd else []
+            except ValueError as e:
+                 raise HTTPException(status_code=400, detail=f"Invalid shell command formatting: {e}")
+            
+            # Ensure scheme is present for subprocess execution
+            host = target_c["host"]
+            if not host.startswith("http://") and not host.startswith("https://"):
+                host = "http://" + host
+                
+            # Construct strict elastro command base
+            # elastro --host <host> ...
+            # We use an isolated subprocess pipeline to securely route commands
+            cmd = ["elastro", "--host", host]
+            cmd.extend(args)
+            
+            # Elastro uses Environment Variables for Auth, not CLI flags.
+            # We clone the current env and inject the cluster credentials securely.
+            run_env = os.environ.copy()
+            # Force rich to render ANSI color codes despite running inside an unattached subprocess
+            run_env["FORCE_COLOR"] = "1"
+            
+            # Force massive terminal width so Typer tables do not truncate
+            run_env["COLUMNS"] = "400"
+            
+            # Suppress noisy INFO logs from the embedded terminal
+            run_env["ELASTRO_LOG_LEVEL"] = "WARNING"
+            run_env["ELASTRO_GUI_MODE"] = "1"
+            
+            auth_conf = target_c.get("auth", {})
+            if "api_key" in auth_conf and auth_conf["api_key"]:
+                run_env["ELASTIC_API_KEY"] = auth_conf["api_key"]
+            elif "username" in auth_conf:
+                run_env["ELASTIC_USERNAME"] = auth_conf["username"]
+                run_env["ELASTIC_PASSWORD"] = auth_conf.get("password", "")
+            
+            try:
+                # Capture both stderr and stdout multiplexed
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=run_env)
+                
+                # Always combine stdout and stderr so the user sees errors naturally
+                output = ""
+                if result.stdout:
+                    output += result.stdout
+                if result.stderr:
+                    output += "\n" + result.stderr
+                        
+                return {
+                    "exit_code": result.returncode,
+                    "output": output
+                }
+            except subprocess.TimeoutExpired:
+                raise HTTPException(status_code=504, detail="Command execution timed out after 60 seconds")
+            except FileNotFoundError:
+                raise HTTPException(status_code=500, detail="The 'elastro' executable was not found on the system path.")
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Failed to execute native CLI: {str(e)}")
 
         # Mount static GUI files
         if self.static_dir.exists():

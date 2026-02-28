@@ -70,11 +70,17 @@ const navigate = (path: string) => {
     </aside>
 
     <main class="main-content">
-      <router-view v-slot="{ Component }">
-        <transition name="fade" mode="out-in">
-          <component :is="Component" />
-        </transition>
-      </router-view>
+      <div class="page-wrapper">
+        <router-view v-slot="{ Component }">
+          <transition name="fade" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
+      </div>
+      
+      <footer class="app-footer">
+        <p>Elastro &copy; {{ new Date().getFullYear() }} Fremen Labs</p>
+      </footer>
     </main>
   </div>
 </template>
@@ -122,6 +128,7 @@ const navigate = (path: string) => {
   font-weight: 700;
   background: var(--gradient-accent);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -175,8 +182,24 @@ const navigate = (path: string) => {
   flex: 1;
   height: 100%;
   overflow-y: auto;
-  padding: 2.5rem;
+  padding: 2.5rem 2.5rem 0 2.5rem;
   background-color: hsl(var(--background));
+  display: flex;
+  flex-direction: column;
+}
+
+.page-wrapper {
+  flex: 1 0 auto;
+}
+
+.app-footer {
+  margin-top: 4rem;
+  padding: 2rem 0;
+  border-top: 1px solid hsl(var(--border) / 0.5);
+  color: hsl(var(--muted-foreground));
+  font-size: 0.85rem;
+  text-align: center;
+  flex-shrink: 0;
 }
 
 /* Page Transitions */

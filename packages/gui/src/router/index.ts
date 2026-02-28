@@ -2,12 +2,18 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import Dashboard from '../views/Dashboard.vue'
 import Settings from '../views/Settings.vue'
 import Documentation from '../views/Documentation.vue'
+import ClusterDetail from '../views/ClusterDetail.vue'
 
 const routes = [
     {
         path: '/',
         name: 'Dashboard',
         component: Dashboard
+    },
+    {
+        path: '/cluster/:name',
+        name: 'ClusterDetail',
+        component: ClusterDetail
     },
     {
         path: '/docs',

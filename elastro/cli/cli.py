@@ -4,6 +4,7 @@ Command-line interface main module.
 This module defines the main CLI structure using Click.
 """
 
+import os
 import rich_click as click
 import json
 import yaml
@@ -24,7 +25,10 @@ click.rich_click.ERRORS_SUGGESTION = (
     "Missing arguments? Run with --help to see examples and usage."
 )
 click.rich_click.ERRORS_EPILOGUE = "To find out more, visit [link=https://github.com/Fremen-Labs/elastro]https://github.com/Fremen-Labs/elastro[/link]"
-click.rich_click.HEADER_TEXT = ELASTRO_ART
+if os.environ.get("ELASTRO_GUI_MODE") == "1":
+    click.rich_click.HEADER_TEXT = None
+else:
+    click.rich_click.HEADER_TEXT = ELASTRO_ART
 
 from elastro import __version__
 from elastro.config import load_config, get_config
