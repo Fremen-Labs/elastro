@@ -4,6 +4,7 @@ Command-line interface main module.
 This module defines the main CLI structure using Click.
 """
 
+import os
 import rich_click as click
 import json
 import yaml
@@ -24,7 +25,10 @@ click.rich_click.ERRORS_SUGGESTION = (
     "Missing arguments? Run with --help to see examples and usage."
 )
 click.rich_click.ERRORS_EPILOGUE = "To find out more, visit [link=https://github.com/Fremen-Labs/elastro]https://github.com/Fremen-Labs/elastro[/link]"
-click.rich_click.HEADER_TEXT = ELASTRO_ART
+if os.environ.get("ELASTRO_GUI_MODE") == "1":
+    click.rich_click.HEADER_TEXT = None
+else:
+    click.rich_click.HEADER_TEXT = ELASTRO_ART
 
 from elastro import __version__
 from elastro.config import load_config, get_config
@@ -69,6 +73,10 @@ from elastro.cli.commands.utils import health, templates as utils_templates, ali
 from elastro.cli.commands.template import template_group
 from elastro.cli.commands.ilm import ilm_group
 from elastro.cli.commands.snapshot import snapshot_group
+from elastro.cli.commands.cluster import cluster_group
+from elastro.cli.commands.security import security_group
+from elastro.cli.commands.tasks import tasks_group
+from elastro.cli.commands.ingest import ingest_group
 
 # Register Top-Level Groups
 
@@ -230,10 +238,16 @@ utils.add_command(health)
 utils.add_command(utils_templates)
 utils.add_command(aliases)
 
+from elastro.cli.commands.gui import gui
 # Register Top-Level Groups
 cli.add_command(template_group)
 cli.add_command(ilm_group)
 cli.add_command(snapshot_group)
+cli.add_command(cluster_group)
+cli.add_command(security_group)
+cli.add_command(tasks_group)
+cli.add_command(ingest_group)
+cli.add_command(gui)
 
 
 def main() -> None:

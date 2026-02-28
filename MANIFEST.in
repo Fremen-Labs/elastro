@@ -11,4 +11,4 @@ include .coveragerc
 global-exclude *.pyc
 global-exclude __pycache__
 global-exclude *.so
-global-exclude .DS_Store 
+global-exclude .DS_Store recursive-include elastro/gui *

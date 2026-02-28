@@ -54,3 +54,5 @@ urllib3==2.6.3
     # via elastic-transport
 types-PyYAML
 types-setuptools
+fastapi>=0.111.0
+uvicorn>=0.30.0
