@@ -101,15 +101,19 @@ const getHealthColor = (health: string) => {
         
         <div class="cluster-header">
           <h2>{{ cluster.name }}</h2>
-          <span class="health-badge" :style="{ backgroundColor: getHealthColor(cluster.health) }">
+          <span 
+            class="health-badge" 
+            :class="{ 'status-pulse': cluster.health === 'red' || cluster.health === 'offline' }"
+            :style="{ backgroundColor: getHealthColor(cluster.health) }"
+          >
             {{ cluster.health }}
           </span>
         </div>
         
         <div class="cluster-details">
           <div class="info-block">
-            <p><strong>Host:</strong> {{ cluster.host }}</p>
-            <p><strong>Indices:</strong> {{ cluster.index_count }}</p>
+            <p><strong>Host:</strong> <span class="highlight-val">{{ cluster.host }}</span></p>
+            <p><strong>Indices:</strong> <span class="highlight-val">{{ cluster.index_count }}</span></p>
           </div>
           <router-link :to="`/cluster/${encodeURIComponent(cluster.name)}`" class="btn btn-outline">
             Manage Cluster
@@ -131,8 +135,9 @@ const getHealthColor = (health: string) => {
               <tr v-for="idx in cluster.unstable_indices" :key="idx.index">
                 <td>{{ idx.index }}</td>
                 <td>
-                   <span class="health-dot" :style="{ backgroundColor: getHealthColor(idx.health) }"></span>
-                   {{ idx.health }}
+                   <svg v-if="idx.health === 'red'" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alert-icon-inline"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                   <span v-else class="health-dot" :style="{ backgroundColor: getHealthColor(idx.health) }"></span>
+                   <span :class="{ 'text-destructive font-bold': idx.health === 'red' }">{{ idx.health }}</span>
                 </td>
                 <td>{{ idx.status }}</td>
               </tr>
@@ -226,6 +231,16 @@ const getHealthColor = (health: string) => {
   text-transform: uppercase;
 }
 
+@keyframes pulse-destructive {
+  0% { box-shadow: 0 0 0 0 hsl(var(--destructive) / 0.7); }
+  70% { box-shadow: 0 0 0 10px hsl(var(--destructive) / 0); }
+  100% { box-shadow: 0 0 0 0 hsl(var(--destructive) / 0); }
+}
+
+.status-pulse {
+  animation: pulse-destructive 2s infinite;
+}
+
 .cluster-details {
   display: flex;
   justify-content: space-between;
@@ -236,7 +251,33 @@ const getHealthColor = (health: string) => {
 
 .info-block {
   display: flex;
-  gap: 2rem;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.info-block p {
+  margin: 0;
+  font-size: 1.05rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.info-block strong {
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+}
+
+.highlight-val {
+  color: hsl(var(--foreground));
+  font-family: var(--font-mono);
+  font-weight: 600;
+  background: hsl(var(--muted));
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
 }
 
 .unstable-indices h4 {
@@ -272,6 +313,18 @@ const getHealthColor = (health: string) => {
   height: 8px;
   border-radius: 50%;
   margin-right: 0.5rem;
+}
+
+.alert-icon-inline {
+  color: hsl(var(--destructive));
+  display: inline-block;
+  vertical-align: text-bottom;
+  margin-right: 0.5rem;
+  animation: pulse-destructive 2s infinite;
+}
+
+.font-bold {
+  font-weight: 700;
 }
 
 .error-banner {
