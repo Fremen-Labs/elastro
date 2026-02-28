@@ -66,21 +66,33 @@ const getHealthColor = (health: string) => {
     </div>
 
     <!-- Summary Statistics -->
-    <div class="stats-grid" v-if="state.clusters.length > 0">
+    <div class="stats-grid" v-if="state.loadingClusters || state.clusters.length > 0">
       <div class="card stat-card">
         <h3>Total Clusters</h3>
-        <div class="value">{{ state.clusters.length }}</div>
+        <div v-if="state.loadingClusters" class="skeleton skeleton-text skeleton-jumbo w-12 mt-2"></div>
+        <div v-else class="value">{{ state.clusters.length }}</div>
       </div>
       <div class="card stat-card">
         <h3>Unstable Indices</h3>
-        <div class="value text-destructive">
+        <div v-if="state.loadingClusters" class="skeleton skeleton-text skeleton-jumbo w-12 mt-2"></div>
+        <div v-else class="value text-destructive">
           {{ state.clusters.reduce((acc, c) => acc + (c.unstable_indices || []).length, 0) }}
         </div>
       </div>
     </div>
 
-    <div v-if="state.loadingClusters" class="loader">
-      Loading cluster data...
+    <!-- Skeleton Loading State -->
+    <div v-if="state.loadingClusters" class="clusters-container">
+      <div v-for="i in 3" :key="i" class="card cluster-card">
+        <div class="cluster-header" style="padding-bottom: 0; border-bottom: none;">
+          <div class="skeleton skeleton-text skeleton-title w-1/3" style="margin-bottom: 0;"></div>
+          <div class="skeleton skeleton-badge w-16"></div>
+        </div>
+        <div class="cluster-details" style="margin-bottom: 0px; margin-top: 1rem;">
+          <div class="skeleton skeleton-text w-1/4" style="margin-bottom: 0;"></div>
+          <div class="skeleton skeleton-text w-1/4" style="margin-bottom: 0;"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Cluster Lists -->

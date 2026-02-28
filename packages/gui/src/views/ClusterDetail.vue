@@ -182,8 +182,17 @@ const executeCommand = async () => {
       </button>
     </div>
 
-    <div v-if="loading" class="loader-container">
-      <div class="loader">Loading detailed metrics for {{ clusterName }}...</div>
+    <div v-if="loading" class="metrics-grid mt-4">
+      <div v-for="i in 4" :key="i" class="card metric-card">
+        <div class="metric-header" style="margin-bottom: 1rem;">
+          <div class="skeleton skeleton-badge" style="width: 20px; height: 20px; border-radius: 4px;"></div>
+          <div class="skeleton skeleton-text w-1/2" style="margin-bottom: 0;"></div>
+        </div>
+        <div class="metric-body">
+          <div class="skeleton skeleton-jumbo w-1/3 mb-4"></div>
+          <div class="skeleton skeleton-text w-full"></div>
+        </div>
+      </div>
     </div>
 
     <div v-else-if="error" class="error-banner card">
@@ -294,7 +303,8 @@ const executeCommand = async () => {
           <h3>Elastro Controller</h3>
           
           <div class="cli-chips">
-            <button v-for="chip in cliChips" :key="chip" @click="appendChip(chip)" class="cli-chip">
+            <button v-for="chip in cliChips" :key="chip" @click="appendChip(chip)" 
+              :class="['cli-chip', { 'chip-destructive': ['delete', 'bulk-delete', 'cancel'].includes(chip) }]">
               {{ chip }}
             </button>
           </div>
@@ -739,5 +749,17 @@ const executeCommand = async () => {
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
+}
+
+.chip-destructive {
+  color: hsl(var(--destructive));
+  border-color: hsl(var(--destructive) / 0.6);
+  background: hsl(var(--destructive) / 0.1);
+}
+
+.chip-destructive:hover {
+  background: hsl(var(--destructive) / 0.2);
+  border-color: hsl(var(--destructive));
+  box-shadow: 0 6px 16px hsl(var(--destructive) / 0.3);
 }
 </style>
