@@ -97,10 +97,15 @@ const getHealthColor = (health: string) => {
 
     <!-- Cluster Lists -->
     <div class="clusters-container" v-else-if="state.clusters.length > 0">
-      <div v-for="cluster in state.clusters" :key="cluster.name" class="card cluster-card">
+      <router-link 
+        v-for="cluster in state.clusters" 
+        :key="cluster.name"
+        :to="`/cluster/${encodeURIComponent(cluster.name)}`"
+        class="card cluster-card cluster-link-wrapper"
+      >
         
         <div class="cluster-header">
-          <h2>{{ cluster.name }}</h2>
+          <h2>{{ cluster.name }} <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></h2>
           <span 
             class="health-badge" 
             :class="{ 'status-pulse': cluster.health === 'red' || cluster.health === 'offline' }"
@@ -115,10 +120,6 @@ const getHealthColor = (health: string) => {
             <p><strong>Host:</strong> <span class="highlight-val">{{ cluster.host }}</span></p>
             <p><strong>Indices:</strong> <span class="highlight-val">{{ cluster.index_count }}</span></p>
           </div>
-          <router-link :to="`/cluster/${encodeURIComponent(cluster.name)}`" class="btn btn-outline">
-            Manage Cluster
-            <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 0.5rem;"><polyline points="9 18 15 12 9 6"/></svg>
-          </router-link>
         </div>
 
         <div class="unstable-indices" v-if="cluster.unstable_indices?.length > 0">
@@ -144,7 +145,7 @@ const getHealthColor = (health: string) => {
             </tbody>
           </table>
         </div>
-      </div>
+      </router-link>
     </div>
 
     <div v-else-if="!state.loadingClusters && !error" class="empty-state card">
@@ -206,6 +207,41 @@ const getHealthColor = (health: string) => {
 
 .cluster-card {
   margin-bottom: 1.5rem;
+}
+
+.cluster-link-wrapper {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.cluster-link-wrapper:hover {
+  transform: translateY(-2px);
+  border-color: hsl(var(--ring));
+}
+
+.cluster-link-wrapper:active {
+  transform: scale(0.98);
+  box-shadow: 0 0 15px hsl(var(--primary) / 0.3);
+}
+
+.cluster-link-wrapper .cluster-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cluster-link-wrapper .chevron {
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: all 0.2s ease;
+  color: hsl(var(--primary));
+}
+
+.cluster-link-wrapper:hover .chevron {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .cluster-header {
