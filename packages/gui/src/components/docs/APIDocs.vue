@@ -426,7 +426,6 @@ results = doc_manager.search(&quot;products&quot;, query)"
 .main-content {
   flex: 1;
   width: 100%;
-  padding-bottom: 6rem;
 }
 
 .hero-section {

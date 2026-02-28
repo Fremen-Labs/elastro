@@ -7,7 +7,7 @@ const activeTab = ref('cli');
 </script>
 
 <template>
-  <div class="docs-wrapper animate-fade-in relative z-10 w-full h-full">
+  <div class="docs-wrapper animate-fade-in relative z-10 w-full">
     <!-- Background Glow Effects -->
     <div class="bg-glow bg-glow-primary"></div>
     <div class="bg-glow bg-glow-accent"></div>
