@@ -14,6 +14,10 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const details = ref<any>(null)
 
+// Modal State
+const activeModal = ref<'nodes' | 'indices' | 'ilm' | 'backups' | null>(null)
+const closeModal = () => { activeModal.value = null }
+
 const fetchClusterDetails = async () => {
   if (!state.token) return
   
@@ -216,7 +220,7 @@ const executeCommand = async () => {
 
       <div class="metrics-grid">
         <!-- Node Topology -->
-        <div class="card metric-card">
+        <button class="card metric-card interactive-card" @click="activeModal = 'nodes'">
           <div class="metric-header">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
             <h3>Node Topology</h3>
@@ -229,10 +233,10 @@ const executeCommand = async () => {
               </div>
             </div>
           </div>
-        </div>
+        </button>
 
         <!-- Index Health -->
-        <div class="card metric-card">
+        <button class="card metric-card interactive-card" @click="activeModal = 'indices'">
           <div class="metric-header">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4"/><polyline points="14 2 14 8 20 8"/><path d="M2 15h10"/><path d="m9 18 3-3-3-3"/></svg>
             <h3>Index Health</h3>
@@ -259,10 +263,10 @@ const executeCommand = async () => {
               <span><span class="dot red"></span> {{ details.indices.red }} Red</span>
             </div>
           </div>
-        </div>
+        </button>
 
         <!-- ILM Policies -->
-        <div class="card metric-card">
+        <button class="card metric-card interactive-card" @click="activeModal = 'ilm'">
           <div class="metric-header">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             <h3>Lifecycle Policies</h3>
@@ -271,10 +275,10 @@ const executeCommand = async () => {
             <div class="mega-stat">{{ details.ilm.policy_count }}</div>
             <p class="text-sm text-muted mt-2">Active Index Lifecycle Management configurations governing data retention.</p>
           </div>
-        </div>
+        </button>
 
         <!-- Backups -->
-        <div class="card metric-card">
+        <button class="card metric-card interactive-card" @click="activeModal = 'backups'">
           <div class="metric-header">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             <h3>Snapshot Repositories</h3>
@@ -292,7 +296,7 @@ const executeCommand = async () => {
             </div>
             <p v-else class="text-sm text-muted">No snapshot repositories are currently registered for this cluster.</p>
           </div>
-        </div>
+        </button>
 
       </div>
 
@@ -339,6 +343,82 @@ const executeCommand = async () => {
           >
         </form>
       </div>
+      
+      <!-- Glassmorphic Modal Overlay -->
+      <div v-if="activeModal" class="modal-overlay glass-panel" @click.self="closeModal">
+        <div class="modal-content animate-zoom-in">
+          <div class="modal-header">
+            <h2>
+              {{ 
+                activeModal === 'nodes' ? 'Node Topology Details' :
+                activeModal === 'indices' ? 'Index Health Breakdown' :
+                activeModal === 'ilm' ? 'Lifecycle Policies' :
+                'Snapshot Repositories'
+              }}
+            </h2>
+            <button class="btn-close" @click="closeModal" aria-label="Close modal">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+          
+          <div class="modal-body">
+            <!-- Modal: Nodes -->
+            <div v-if="activeModal === 'nodes'">
+              <div class="detail-grid">
+                 <div v-for="(count, role) in details.nodes.roles" :key="role" class="detail-row">
+                   <span class="detail-label">{{ role }} Nodes</span>
+                   <span class="detail-value badge-outline">{{ count }}</span>
+                 </div>
+              </div>
+              <p class="text-muted mt-4">Total nodes operating in this cluster: {{ details.nodes.total }}</p>
+            </div>
+
+            <!-- Modal: Indices -->
+            <div v-else-if="activeModal === 'indices'">
+               <div class="health-legend vertical mt-2">
+                  <div class="legend-row mb-3">
+                    <span class="dot green"></span> 
+                    <span class="legend-text"><strong>{{ details.indices.total - details.indices.red - details.indices.yellow }}</strong> Green (Healthy) Indices</span>
+                  </div>
+                  <div class="legend-row mb-3">
+                    <span class="dot yellow"></span> 
+                    <span class="legend-text"><strong>{{ details.indices.yellow }}</strong> Yellow (Warning) Indices</span>
+                  </div>
+                  <div class="legend-row">
+                    <span class="dot red"></span> 
+                    <span class="legend-text"><strong>{{ details.indices.red }}</strong> Red (Critical/Offline) Indices</span>
+                  </div>
+               </div>
+            </div>
+
+            <!-- Modal: ILM -->
+            <div v-else-if="activeModal === 'ilm'">
+               <div v-if="details.ilm.policy_count > 0">
+                 <div class="detail-row mb-4">
+                   <span class="detail-label">Active Global Policies</span>
+                   <span class="detail-value badge-outline">{{ details.ilm.policy_count }}</span>
+                 </div>
+                 <p class="text-sm text-muted">To view deeper ILM configurations and rulesets, run <code class="mono-code">ilm list</code> or <code class="mono-code">ilm explain</code> in the Controller.</p>
+               </div>
+               <p v-else class="text-muted">No Data Lifecycle Policies are currently registered on this cluster.</p>
+            </div>
+
+            <!-- Modal: Backups -->
+            <div v-else-if="activeModal === 'backups'">
+               <div v-if="details.backups.configured">
+                  <div class="repos-list">
+                    <div v-for="repo in details.backups.repositories" :key="repo.name" class="repo-item detail-row">
+                      <span class="repo-name">{{ repo.name }}</span>
+                      <span class="repo-type badge-outline">{{ repo.type }}</span>
+                    </div>
+                  </div>
+               </div>
+               <p v-else class="text-muted">No snapshot repositories are configured.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </template>
@@ -762,4 +842,141 @@ const executeCommand = async () => {
   border-color: hsl(var(--destructive));
   box-shadow: 0 6px 16px hsl(var(--destructive) / 0.3);
 }
+
+/* Modal & Glassmorphism Properties */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(var(--background) / 0.5);
+}
+
+.glass-panel {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.modal-content {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: var(--radius);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  width: 90%;
+  max-width: 500px;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+}
+
+.modal-header h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.btn-close {
+  background: transparent;
+  border: none;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-close:hover {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.detail-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: hsl(var(--muted) / 0.3);
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: var(--radius);
+}
+
+.detail-label {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  text-transform: capitalize;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  font-size: 1.05rem;
+}
+
+.legend-text strong {
+  color: hsl(var(--foreground));
+  font-family: var(--font-mono);
+  margin-right: 0.25rem;
+}
+
+.interactive-card {
+  cursor: pointer;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  padding: 1.5rem;
+  border-radius: var(--radius);
+}
+
+.interactive-card:hover {
+  transform: translateY(-2px);
+  border-color: hsl(var(--primary) / 0.5);
+}
+
+.interactive-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 0 15px hsl(var(--primary) / 0.3);
+}
+
+.animate-zoom-in {
+  animation: zoom-in 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes zoom-in {
+  0% { transform: scale(0.95); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.mono-code {
+  font-family: var(--font-mono);
+  background: hsl(var(--muted));
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+}
+
+.mb-3 { margin-bottom: 0.75rem; }
 </style>
