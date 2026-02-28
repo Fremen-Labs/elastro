@@ -99,19 +99,23 @@ const getHealthColor = (health: string) => {
     <div class="clusters-container" v-else-if="state.clusters.length > 0">
       <div v-for="cluster in state.clusters" :key="cluster.name" class="card cluster-card">
         
-        <router-link :to="`/cluster/${encodeURIComponent(cluster.name)}`" class="cluster-link-wrapper">
-          <div class="cluster-header hover-effect">
-            <h2>{{ cluster.name }} <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></h2>
-            <span class="health-badge" :style="{ backgroundColor: getHealthColor(cluster.health) }">
-              {{ cluster.health }}
-            </span>
-          </div>
-          
-          <div class="cluster-details">
+        <div class="cluster-header">
+          <h2>{{ cluster.name }}</h2>
+          <span class="health-badge" :style="{ backgroundColor: getHealthColor(cluster.health) }">
+            {{ cluster.health }}
+          </span>
+        </div>
+        
+        <div class="cluster-details">
+          <div class="info-block">
             <p><strong>Host:</strong> {{ cluster.host }}</p>
-            <p><strong>Total Indices:</strong> {{ cluster.index_count }}</p>
+            <p><strong>Indices:</strong> {{ cluster.index_count }}</p>
           </div>
-        </router-link>
+          <router-link :to="`/cluster/${encodeURIComponent(cluster.name)}`" class="btn btn-outline">
+            Manage Cluster
+            <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 0.5rem;"><polyline points="9 18 15 12 9 6"/></svg>
+          </router-link>
+        </div>
 
         <div class="unstable-indices" v-if="cluster.unstable_indices?.length > 0">
           <h4>Alerts (Unstable Indices)</h4>
@@ -224,14 +228,15 @@ const getHealthColor = (health: string) => {
 
 .cluster-details {
   display: flex;
-  gap: 2rem;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 1.5rem;
   font-size: 0.95rem;
 }
 
-.cluster-details a {
-  color: hsl(var(--primary));
-  text-decoration: none;
+.info-block {
+  display: flex;
+  gap: 2rem;
 }
 
 .unstable-indices h4 {
