@@ -66,40 +66,61 @@ const getHealthColor = (health: string) => {
     </div>
 
     <!-- Summary Statistics -->
-    <div class="stats-grid" v-if="state.clusters.length > 0">
+    <div class="stats-grid" v-if="state.loadingClusters || state.clusters.length > 0">
       <div class="card stat-card">
         <h3>Total Clusters</h3>
-        <div class="value">{{ state.clusters.length }}</div>
+        <div v-if="state.loadingClusters" class="skeleton skeleton-text skeleton-jumbo w-12 mt-2"></div>
+        <div v-else class="value">{{ state.clusters.length }}</div>
       </div>
       <div class="card stat-card">
         <h3>Unstable Indices</h3>
-        <div class="value text-destructive">
+        <div v-if="state.loadingClusters" class="skeleton skeleton-text skeleton-jumbo w-12 mt-2"></div>
+        <div v-else class="value text-destructive">
           {{ state.clusters.reduce((acc, c) => acc + (c.unstable_indices || []).length, 0) }}
         </div>
       </div>
     </div>
 
-    <div v-if="state.loadingClusters" class="loader">
-      Loading cluster data...
+    <!-- Skeleton Loading State -->
+    <div v-if="state.loadingClusters" class="clusters-container">
+      <div v-for="i in 3" :key="i" class="card cluster-card">
+        <div class="cluster-header" style="padding-bottom: 0; border-bottom: none;">
+          <div class="skeleton skeleton-text skeleton-title w-1/3" style="margin-bottom: 0;"></div>
+          <div class="skeleton skeleton-badge w-16"></div>
+        </div>
+        <div class="cluster-details" style="margin-bottom: 0px; margin-top: 1rem;">
+          <div class="skeleton skeleton-text w-1/4" style="margin-bottom: 0;"></div>
+          <div class="skeleton skeleton-text w-1/4" style="margin-bottom: 0;"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Cluster Lists -->
     <div class="clusters-container" v-else-if="state.clusters.length > 0">
-      <div v-for="cluster in state.clusters" :key="cluster.name" class="card cluster-card">
+      <router-link 
+        v-for="cluster in state.clusters" 
+        :key="cluster.name"
+        :to="`/cluster/${encodeURIComponent(cluster.name)}`"
+        class="card cluster-card cluster-link-wrapper"
+      >
         
-        <router-link :to="`/cluster/${encodeURIComponent(cluster.name)}`" class="cluster-link-wrapper">
-          <div class="cluster-header hover-effect">
-            <h2>{{ cluster.name }} <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></h2>
-            <span class="health-badge" :style="{ backgroundColor: getHealthColor(cluster.health) }">
-              {{ cluster.health }}
-            </span>
+        <div class="cluster-header">
+          <h2>{{ cluster.name }} <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></h2>
+          <span 
+            class="health-badge" 
+            :class="{ 'status-pulse': cluster.health === 'red' || cluster.health === 'offline' }"
+            :style="{ backgroundColor: getHealthColor(cluster.health) }"
+          >
+            {{ cluster.health }}
+          </span>
+        </div>
+        
+        <div class="cluster-details">
+          <div class="info-block">
+            <p><strong>Host:</strong> <span class="highlight-val">{{ cluster.host }}</span></p>
+            <p><strong>Indices:</strong> <span class="highlight-val">{{ cluster.index_count }}</span></p>
           </div>
-          
-          <div class="cluster-details">
-            <p><strong>Host:</strong> {{ cluster.host }}</p>
-            <p><strong>Total Indices:</strong> {{ cluster.index_count }}</p>
-          </div>
-        </router-link>
+        </div>
 
         <div class="unstable-indices" v-if="cluster.unstable_indices?.length > 0">
           <h4>Alerts (Unstable Indices)</h4>
@@ -115,15 +136,16 @@ const getHealthColor = (health: string) => {
               <tr v-for="idx in cluster.unstable_indices" :key="idx.index">
                 <td>{{ idx.index }}</td>
                 <td>
-                   <span class="health-dot" :style="{ backgroundColor: getHealthColor(idx.health) }"></span>
-                   {{ idx.health }}
+                   <svg v-if="idx.health === 'red'" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alert-icon-inline"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                   <span v-else class="health-dot" :style="{ backgroundColor: getHealthColor(idx.health) }"></span>
+                   <span :class="{ 'text-destructive font-bold': idx.health === 'red' }">{{ idx.health }}</span>
                 </td>
                 <td>{{ idx.status }}</td>
               </tr>
             </tbody>
           </table>
         </div>
-      </div>
+      </router-link>
     </div>
 
     <div v-else-if="!state.loadingClusters && !error" class="empty-state card">
@@ -187,6 +209,41 @@ const getHealthColor = (health: string) => {
   margin-bottom: 1.5rem;
 }
 
+.cluster-link-wrapper {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.cluster-link-wrapper:hover {
+  transform: translateY(-2px);
+  border-color: hsl(var(--ring));
+}
+
+.cluster-link-wrapper:active {
+  transform: scale(0.98);
+  box-shadow: 0 0 15px hsl(var(--primary) / 0.3);
+}
+
+.cluster-link-wrapper .cluster-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cluster-link-wrapper .chevron {
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: all 0.2s ease;
+  color: hsl(var(--primary));
+}
+
+.cluster-link-wrapper:hover .chevron {
+  opacity: 1;
+  transform: translateX(0);
+}
+
 .cluster-header {
   display: flex;
   justify-content: space-between;
@@ -210,16 +267,53 @@ const getHealthColor = (health: string) => {
   text-transform: uppercase;
 }
 
+@keyframes pulse-destructive {
+  0% { box-shadow: 0 0 0 0 hsl(var(--destructive) / 0.7); }
+  70% { box-shadow: 0 0 0 10px hsl(var(--destructive) / 0); }
+  100% { box-shadow: 0 0 0 0 hsl(var(--destructive) / 0); }
+}
+
+.status-pulse {
+  animation: pulse-destructive 2s infinite;
+}
+
 .cluster-details {
   display: flex;
-  gap: 2rem;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 1.5rem;
   font-size: 0.95rem;
 }
 
-.cluster-details a {
-  color: hsl(var(--primary));
-  text-decoration: none;
+.info-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.info-block p {
+  margin: 0;
+  font-size: 1.05rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.info-block strong {
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+}
+
+.highlight-val {
+  color: hsl(var(--foreground));
+  font-family: var(--font-mono);
+  font-weight: 600;
+  background: hsl(var(--muted));
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
 }
 
 .unstable-indices h4 {
@@ -255,6 +349,18 @@ const getHealthColor = (health: string) => {
   height: 8px;
   border-radius: 50%;
   margin-right: 0.5rem;
+}
+
+.alert-icon-inline {
+  color: hsl(var(--destructive));
+  display: inline-block;
+  vertical-align: text-bottom;
+  margin-right: 0.5rem;
+  animation: pulse-destructive 2s infinite;
+}
+
+.font-bold {
+  font-weight: 700;
 }
 
 .error-banner {

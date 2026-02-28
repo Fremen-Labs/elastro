@@ -66,7 +66,7 @@ class ElastroGUI:
 
     def verify_token(self, authorization: str = Header(None)):
         if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Invalid token")
+            raise HTTPException(status_code=401, detail="Unauthorized")
         token = authorization.split(" ")[1]
         
         # Prevent timing attacks
@@ -373,7 +373,7 @@ class ElastroGUI:
             
             try:
                 # Capture both stderr and stdout multiplexed
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=run_env)
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, env=run_env)
                 
                 # Always combine stdout and stderr so the user sees errors naturally
                 output = ""
@@ -387,7 +387,7 @@ class ElastroGUI:
                     "output": output
                 }
             except subprocess.TimeoutExpired:
-                raise HTTPException(status_code=504, detail="Command execution timed out after 60 seconds")
+                raise HTTPException(status_code=408, detail="Command execution timed out after 30 seconds")
             except FileNotFoundError:
                 raise HTTPException(status_code=500, detail="The 'elastro' executable was not found on the system path.")
             except Exception as e:
