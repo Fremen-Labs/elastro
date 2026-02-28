@@ -77,6 +77,10 @@ const commandTree: Record<string, string[]> = {
   snapshot: ['create', 'delete', 'list', 'repo', 'restore'],
   template: ['create', 'delete', 'get', 'list', 'wizard'],
   ilm: ['create', 'delete', 'explain', 'get', 'list', 'start', 'stop'],
+  cluster: ['allocation', 'settings'],
+  security: ['roles', 'users'],
+  tasks: ['cancel', 'list'],
+  ingest: ['pipelines', 'simulate'],
   utils: ['aliases', 'health', 'templates']
 }
 

@@ -73,6 +73,10 @@ from elastro.cli.commands.utils import health, templates as utils_templates, ali
 from elastro.cli.commands.template import template_group
 from elastro.cli.commands.ilm import ilm_group
 from elastro.cli.commands.snapshot import snapshot_group
+from elastro.cli.commands.cluster import cluster_group
+from elastro.cli.commands.security import security_group
+from elastro.cli.commands.tasks import tasks_group
+from elastro.cli.commands.ingest import ingest_group
 
 # Register Top-Level Groups
 
@@ -239,6 +243,10 @@ from elastro.cli.commands.gui import gui
 cli.add_command(template_group)
 cli.add_command(ilm_group)
 cli.add_command(snapshot_group)
+cli.add_command(cluster_group)
+cli.add_command(security_group)
+cli.add_command(tasks_group)
+cli.add_command(ingest_group)
 cli.add_command(gui)
 
 
