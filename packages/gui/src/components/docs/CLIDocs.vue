@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import { Terminal, Command, Settings, RotateCcw } from 'lucide-vue-next';
+import { Terminal, Command, Settings, RotateCcw, Activity, Shield, ListTree, Workflow } from 'lucide-vue-next';
 import CodeBlock from '../CodeBlock.vue';
 
 const sections = [
   { id: 'installation', title: 'Installation', icon: Terminal },
   { id: 'cli-usage', title: 'CLI Usage', icon: Command },
   { id: 'ilm-policy', title: 'ILM Policy Management', icon: Settings },
-  { id: 'snapshot-restore', title: 'Snapshot & Restore', icon: RotateCcw }
+  { id: 'snapshot-restore', title: 'Snapshot & Restore', icon: RotateCcw },
+  { id: 'cluster-diagnostics', title: 'Cluster Diagnostics', icon: Activity },
+  { id: 'rbac-admin', title: 'RBAC Admin', icon: Shield },
+  { id: 'task-monitor', title: 'Task Monitor', icon: ListTree },
+  { id: 'ingest-pipes', title: 'Ingest Pipelines', icon: Workflow }
 ];
 
 const activeSection = ref('installation');
@@ -232,6 +236,109 @@ elastro snapshot restore my_backup snapshot_1 --indices &quot;logs-*&quot;"
           language="bash"
           :showLineNumbers="true"
           title="Restore Commands"
+        />
+      </section>
+
+      <!-- Cluster Diagnostics -->
+      <section id="cluster-diagnostics" data-section class="doc-section">
+        <h2 class="section-title">
+          <Activity class="icon-large text-primary" />
+          Cluster Diagnostics
+        </h2>
+        <p class="section-desc">
+          Identify root causes for unassigned shards and manage global cluster routing logic without deciphering dense JSON responses.
+        </p>
+
+        <CodeBlock
+          code="# Explain why an index has yellow/red unassigned shards
+elastro cluster allocation --index my-broken-index
+
+# View persistent and transient allocation settings
+elastro cluster settings
+
+# Update transient routing logic to 'none' for maintenance
+elastro cluster settings --enable-routing none"
+          language="bash"
+          :showLineNumbers="true"
+          title="Cluster Commands"
+        />
+      </section>
+
+      <!-- RBAC Administration -->
+      <section id="rbac-admin" data-section class="doc-section">
+        <h2 class="section-title">
+          <Shield class="icon-large text-primary" />
+          RBAC Admin
+        </h2>
+        <p class="section-desc">
+          Interrogate the Native Realm securely to dump active Users, application privileges, and cluster mapping Roles directly to your terminal.
+        </p>
+
+        <CodeBlock
+          code="# List all existing Native Realm users
+elastro security users
+
+# Fetch a specific user's assigned roles profile
+elastro security users --username elastic
+
+# List all index and cluster Roles
+elastro security roles
+
+# Output complex mapped privileges for a single Role
+elastro security roles --name kibana_admin"
+          language="bash"
+          :showLineNumbers="true"
+          title="Security Commands"
+        />
+      </section>
+
+      <!-- Task Monitor -->
+      <section id="task-monitor" data-section class="doc-section">
+        <h2 class="section-title">
+          <ListTree class="icon-large text-primary" />
+          Task Monitor
+        </h2>
+        <p class="section-desc">
+          List running node tasks, evaluate execution duration, and forcefully cancel runaway background operations (like reindexing jobs) that hit circuit breakers.
+        </p>
+
+        <CodeBlock
+          code="# List all high-level background node tasks (filters out 'search' pings)
+elastro tasks list
+
+# Hunt down a specific massive data ingestion job
+elastro tasks list --action *reindex*
+
+# Forcefully kill an active node task string (Format: Node_ID:Task_ID)
+elastro tasks cancel pT_C3E0hSkmI3Q7Qlw_9Xg:1483"
+          language="bash"
+          :showLineNumbers="true"
+          title="Tasks Commands"
+        />
+      </section>
+
+      <!-- Ingest Pipelines -->
+      <section id="ingest-pipes" data-section class="doc-section">
+        <h2 class="section-title">
+          <Workflow class="icon-large text-primary" />
+          Ingest Pipelines
+        </h2>
+        <p class="section-desc">
+          Validate un-mapped structure modifications securely. Test local JSON payload strings against live Grok and Dissect interceptors before committing bad indexes.
+        </p>
+
+        <CodeBlock
+          code="# List all configured Ingest node pipelines 
+elastro ingest pipelines
+
+# Fetch the specific processor array for a single pipeline
+elastro ingest pipelines --id raw-logs-ingest
+
+# Simulate a raw JSON document injection securely against an interceptor
+elastro ingest simulate raw-logs-ingest --doc '{&quot;_source&quot;: {&quot;message&quot;: &quot;10.0.0.1 - ERROR 500&quot;}}'"
+          language="bash"
+          :showLineNumbers="true"
+          title="Ingest Commands"
         />
       </section>
     </main>
