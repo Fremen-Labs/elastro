@@ -249,6 +249,7 @@ elastro snapshot restore my_backup snapshot_1 --indices &quot;logs-*&quot;"
           Identify root causes for unassigned shards and manage global cluster routing logic without deciphering dense JSON responses.
         </p>
 
+        <h3 class="subsection-title">Cluster Operations</h3>
         <CodeBlock
           code="# Explain why an index has yellow/red unassigned shards
 elastro cluster allocation --index my-broken-index
@@ -274,6 +275,7 @@ elastro cluster settings --enable-routing none"
           Interrogate the Native Realm securely to dump active Users, application privileges, and cluster mapping Roles directly to your terminal.
         </p>
 
+        <h3 class="subsection-title">RBAC Operations</h3>
         <CodeBlock
           code="# List all existing Native Realm users
 elastro security users
@@ -302,6 +304,7 @@ elastro security roles --name kibana_admin"
           List running node tasks, evaluate execution duration, and forcefully cancel runaway background operations (like reindexing jobs) that hit circuit breakers.
         </p>
 
+        <h3 class="subsection-title">Task Management</h3>
         <CodeBlock
           code="# List all high-level background node tasks (filters out 'search' pings)
 elastro tasks list
@@ -327,6 +330,7 @@ elastro tasks cancel pT_C3E0hSkmI3Q7Qlw_9Xg:1483"
           Validate un-mapped structure modifications securely. Test local JSON payload strings against live Grok and Dissect interceptors before committing bad indexes.
         </p>
 
+        <h3 class="subsection-title">Pipeline Management</h3>
         <CodeBlock
           code="# List all configured Ingest node pipelines 
 elastro ingest pipelines
@@ -427,7 +431,6 @@ elastro ingest simulate raw-logs-ingest --doc '{&quot;_source&quot;: {&quot;mess
 .main-content {
   flex: 1;
   width: 100%;
-  padding-bottom: 6rem;
 }
 
 .hero-section {

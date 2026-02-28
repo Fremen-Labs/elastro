@@ -193,7 +193,7 @@ const navigate = (path: string) => {
 }
 
 .app-footer {
-  margin-top: 4rem;
+  margin-top: auto;
   padding: 2rem 0;
   border-top: 1px solid hsl(var(--border) / 0.5);
   color: hsl(var(--muted-foreground));
