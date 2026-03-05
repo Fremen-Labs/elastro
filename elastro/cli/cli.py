@@ -239,6 +239,7 @@ utils.add_command(utils_templates)
 utils.add_command(aliases)
 
 from elastro.cli.commands.gui import gui
+
 # Register Top-Level Groups
 cli.add_command(template_group)
 cli.add_command(ilm_group)
