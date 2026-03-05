@@ -125,7 +125,9 @@ class ElastroGUI:
             return {"status": "success"}
 
         @self.app.get("/api/clusters")
-        def get_clusters_health(token: str = Depends(self.verify_token)) -> Dict[str, Any]:
+        def get_clusters_health(
+            token: str = Depends(self.verify_token),
+        ) -> Dict[str, Any]:
             config = self._read_config()
             results = []
 
