@@ -148,6 +148,9 @@ print(results)
 # Initialize configuration
 elastro config init
 
+# Launch the Elastro Local Web GUI
+elastro gui
+
 # Create an index
 elastro index create products --shards 3 --replicas 1
 
@@ -165,6 +168,21 @@ elastro doc index products --id 1 --file ./product.json
 
 # Search documents
 elastro doc search products --term category=laptop
+
+# View cluster health and routing allocation
+elastro cluster health
+elastro cluster allocation
+
+# Manage ingest pipelines
+elastro ingest list
+elastro ingest simulate my-pipeline --docs ./docs.json
+
+# Manage native realm security users and roles
+elastro security users list
+elastro security roles create my-role --privileges "monitor,manage"
+
+# View long-running cluster tasks
+elastro tasks list --detailed
 ```
 
 ### ILM (Index Lifecycle Management)
