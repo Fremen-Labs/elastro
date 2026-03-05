@@ -9,11 +9,11 @@ import shlex
 import subprocess
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-import uvicorn
-from fastapi import FastAPI, Depends, HTTPException, Header, Body
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
+import uvicorn  # type: ignore
+from fastapi import FastAPI, Depends, HTTPException, Header, Body  # type: ignore
+from fastapi.staticfiles import StaticFiles  # type: ignore
+from fastapi.responses import HTMLResponse  # type: ignore
+from fastapi.middleware.cors import CORSMiddleware  # type: ignore
 from elastro.core.client import ElasticsearchClient
 
 # Optional Pydantic based schema since Elastro uses Pydantic
@@ -37,7 +37,7 @@ class ClusterCLIRequestSchema(BaseModel):
 
 
 class ElastroGUI:
-    def __init__(self):
+    def __init__(self) -> None:
         self.config_dir = Path.home() / ".elastro"
         self.config_file = self.config_dir / "config.json"
         self.token = secrets.token_urlsafe(32)
@@ -48,7 +48,7 @@ class ElastroGUI:
 
         self._setup_routes()
 
-    def _ensure_config(self):
+    def _ensure_config(self) -> None:
         if not self.config_dir.exists():
             self.config_dir.mkdir(parents=True)
         if not self.config_file.exists():
@@ -63,12 +63,12 @@ class ElastroGUI:
         except json.JSONDecodeError:
             return {"clusters": []}
 
-    def _write_config(self, config: Dict[str, Any]):
+    def _write_config(self, config: Dict[str, Any]) -> None:
         self._ensure_config()
         with open(self.config_file, "w") as f:
             json.dump(config, f, indent=4)
 
-    def verify_token(self, authorization: str = Header(None)):
+    def verify_token(self, authorization: Optional[str] = Header(None)) -> str:
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Unauthorized")
         token = authorization.split(" ")[1]
@@ -78,7 +78,7 @@ class ElastroGUI:
             raise HTTPException(status_code=401, detail="Unauthorized")
         return token
 
-    def _setup_routes(self):
+    def _setup_routes(self) -> None:
         # Enable CORS for local dev logic
         self.app.add_middleware(
             CORSMiddleware,
@@ -89,7 +89,7 @@ class ElastroGUI:
         )
 
         @self.app.get("/api/config")
-        def get_config(token: str = Depends(self.verify_token)):
+        def get_config(token: str = Depends(self.verify_token)) -> Dict[str, Any]:
             config = self._read_config()
             # Mask secrets
             safe_clusters = []
@@ -107,7 +107,7 @@ class ElastroGUI:
         @self.app.post("/api/config/clusters")
         def add_cluster(
             cluster: ClusterConfigSchema, token: str = Depends(self.verify_token)
-        ):
+        ) -> Dict[str, str]:
             config = self._read_config()
 
             # Check for existing
@@ -125,7 +125,7 @@ class ElastroGUI:
             return {"status": "success"}
 
         @self.app.get("/api/clusters")
-        def get_clusters_health(token: str = Depends(self.verify_token)):
+        def get_clusters_health(token: str = Depends(self.verify_token)) -> Dict[str, Any]:
             config = self._read_config()
             results = []
 
@@ -243,7 +243,7 @@ class ElastroGUI:
         @self.app.get("/api/cluster/{cluster_name}")
         def get_cluster_details(
             cluster_name: str, token: str = Depends(self.verify_token)
-        ):
+        ) -> Dict[str, Any]:
             config = self._read_config()
             target_c = None
 
@@ -287,7 +287,7 @@ class ElastroGUI:
                 nodes_info = es.nodes.info()
                 node_count = nodes_info.get("_nodes", {}).get("total", 0)
 
-                node_roles = {}
+                node_roles: Dict[str, int] = {}
                 for node_id, node_data in nodes_info.get("nodes", {}).items():
                     roles = node_data.get("roles", ["unknown"])
                     for r in roles:
@@ -350,7 +350,7 @@ class ElastroGUI:
             cluster_name: str,
             req: ClusterCLIRequestSchema,
             token: str = Depends(self.verify_token),
-        ):
+        ) -> Dict[str, Any]:
             config = self._read_config()
             target_c = None
 
@@ -452,7 +452,7 @@ class ElastroGUI:
             )
 
             @self.app.get("/{full_path:path}")
-            def serve_gui(full_path: str):
+            def serve_gui(full_path: str) -> HTMLResponse:
                 index_path = self.static_dir / "index.html"
                 if index_path.exists():
                     with open(index_path, "r") as f:
@@ -462,7 +462,7 @@ class ElastroGUI:
                 )
 
 
-def run_server(port: int = 8080, token: str = ""):
+def run_server(port: int = 8080, token: str = "") -> None:
     gui = ElastroGUI()
     if token:
         gui.token = token  # Override for the process
