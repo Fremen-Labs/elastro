@@ -104,7 +104,7 @@ jobs:
         
         # Generate Release Notes
         # We will use ReleaseFlow's AI notes generator to parse commit history for this version
-        rflow notes generate --version ${{ env.VERSION }} --out-external release-notes.md --ai
+        rflow notes generate --version $VERSION --out-external release-notes.md --ai
         
     - name: Sync Version and Build Package
       run: |
