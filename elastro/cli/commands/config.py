@@ -6,10 +6,27 @@ import rich_click as click
 import json
 import os
 import yaml
-from typing import Dict, Any
+import copy
+from typing import Dict, Any, Union
 from elastro.config import get_config, save_config, default_config
 
 CONFIG_PATH = os.path.expanduser("~/.elastic/config.yaml")
+
+SENSITIVE_KEYS = {"api_key", "password"}
+
+def mask_credentials(data: Any) -> Any:
+    """Recursively mask sensitive credentials in a configuration object."""
+    if isinstance(data, dict):
+        masked_data = copy.deepcopy(data)
+        for key, value in masked_data.items():
+            if key in SENSITIVE_KEYS and value is not None:
+                masked_data[key] = "********"
+            elif isinstance(value, (dict, list)):
+                masked_data[key] = mask_credentials(value)
+        return masked_data
+    elif isinstance(data, list):
+        return [mask_credentials(item) for item in data]
+    return data
 
 
 @click.command("get", no_args_is_help=True)
@@ -38,9 +55,13 @@ def get_config_value(key: str, profile: str) -> None:
             value = value[part]
 
         if isinstance(value, (dict, list)):
-            click.echo(json.dumps(value, indent=2))
+            masked_value = mask_credentials(value)
+            click.echo(json.dumps(masked_value, indent=2))
         else:
-            click.echo(value)
+            if parts[-1] in SENSITIVE_KEYS and value is not None:
+                click.echo("********")
+            else:
+                click.echo(value)
     except (KeyError, TypeError):
         click.echo(f"Configuration key '{key}' not found.", err=True)
         exit(1)
@@ -108,7 +129,8 @@ def list_config(profile: str) -> None:
     ```
     """
     config = get_config(profile=profile)
-    click.echo(yaml.dump(config, default_flow_style=False))
+    masked_config = mask_credentials(config)
+    click.echo(yaml.dump(masked_config, default_flow_style=False))
 
 
 @click.command("init")
