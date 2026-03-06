@@ -40,9 +40,21 @@ jobs:
 
     - name: Run ReleaseFlow Generator
       id: rflow
+      env:
+        RFLOW_ADO_PAT: ${{ secrets.RFLOW_ADO_PAT }}
       run: |
-        # 1. Install ReleaseFlow CLI
-        curl -fsSL https://raw.githubusercontent.com/mentat-automation/release-flow/main/install.sh | bash
+        # 1. Install ReleaseFlow CLI from Azure DevOps
+        echo "Fetching ReleaseFlow install.sh from Azure DevOps..."
+        ORG="mentat-automation"
+        PROJECT="vorsam"
+        REPO="ReleaseFlow"
+        
+        # Fetch the raw install.sh script from the ADO repository
+        curl -u ":$RFLOW_ADO_PAT" -fsSL "https://dev.azure.com/$ORG/$PROJECT/_apis/git/repositories/$REPO/items?path=/install.sh&api-version=6.0" -o install.sh
+        
+        chmod +x install.sh
+        # Assuming the install.sh supports standard execution (it might require the PAT to download the actual binary inside the script too, but we will pass it)
+        ./install.sh --token "$RFLOW_ADO_PAT"
         
         # 2. Install Dependencies (Syft for SBOM, Trivy for Scans)
         curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
