@@ -24,7 +24,9 @@ def gui() -> None:
             try:
                 os.makedirs(os.path.dirname(config_path), exist_ok=True)
                 save_config(default_config(), path=config_path)
-                console.print(f"[dim]Initialized default CLI configuration at {config_path}[/dim]")
+                console.print(
+                    f"[dim]Initialized default CLI configuration at {config_path}[/dim]"
+                )
             except Exception:
                 pass
 

@@ -58,20 +58,21 @@ class ElastroGUI:
             if cli_config_path.exists():
                 try:
                     import yaml
+
                     with open(cli_config_path, "r") as f:
                         cli_cfg = yaml.safe_load(f)
-                    
+
                     if cli_cfg and "elasticsearch" in cli_cfg:
                         es_cfg = cli_cfg["elasticsearch"]
-                        host = es_cfg.get("hosts", [""])[0] if es_cfg.get("hosts") else ""
+                        host = (
+                            es_cfg.get("hosts", [""])[0] if es_cfg.get("hosts") else ""
+                        )
                         auth = es_cfg.get("auth", {})
-                        
+
                         if host:
-                            initial_clusters.append({
-                                "name": "default-cli",
-                                "host": host,
-                                "auth": auth
-                            })
+                            initial_clusters.append(
+                                {"name": "default-cli", "host": host, "auth": auth}
+                            )
                 except Exception:
                     pass
 
