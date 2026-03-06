@@ -5,7 +5,7 @@ This module provides the core client for connecting to Elasticsearch.
 """
 
 from typing import Dict, List, Optional, Union, Any
-from elasticsearch import Elasticsearch
+from elasticsearch import Elasticsearch, AsyncElasticsearch
 from elasticsearch.exceptions import (
     ConnectionError as ESConnectionError,
     AuthenticationException,
@@ -122,16 +122,8 @@ class ElasticsearchClient:
             return "cloud"
         return None
 
-    def connect(self) -> None:
-        """
-        Establish connection to Elasticsearch.
-
-        Raises:
-            ConnectionError: If unable to connect to Elasticsearch
-            AuthenticationError: If authentication fails
-        """
-        logger.info(f"Connecting to Elasticsearch at {self.hosts}...")
-
+    def _get_client_params(self) -> Dict[str, Any]:
+        """Generate the parameters dictionary for the Elasticsearch client."""
         client_params = {
             "hosts": self.hosts,
         }
@@ -165,7 +157,6 @@ class ElasticsearchClient:
             client_params["retry_on_timeout"] = self.retry_on_timeout
         if self.max_retries is not None:
             client_params["max_retries"] = self.max_retries
-        # Note: timeout is handled in request_config in newer versions
 
         # Handle authentication
         if self.auth:
@@ -181,6 +172,20 @@ class ElasticsearchClient:
             # Handle cloud ID
             elif "cloud_id" in self.auth:
                 client_params["cloud_id"] = self.auth["cloud_id"]
+
+        return client_params
+
+    def connect(self) -> None:
+        """
+        Establish connection to Elasticsearch.
+
+        Raises:
+            ConnectionError: If unable to connect to Elasticsearch
+            AuthenticationError: If authentication fails
+        """
+        logger.info(f"Connecting to Elasticsearch at {self.hosts}...")
+
+        client_params = self._get_client_params()
 
         # Prepare safe loggable params
         log_params = client_params.copy()
@@ -247,6 +252,15 @@ class ElasticsearchClient:
         if not self._connected or self._client is None:
             raise ConnectionError("Client is not connected. Call connect() first.")
         return self._client
+
+    def get_async_client(self) -> AsyncElasticsearch:
+        """
+        Get a new AsyncElasticsearch client instance using the same connection parameters.
+
+        Returns:
+            AsyncElasticsearch client instance
+        """
+        return AsyncElasticsearch(**self._get_client_params())
 
     def is_connected(self) -> bool:
         """

@@ -5,6 +5,7 @@ This module provides functionality for managing Elasticsearch documents.
 """
 
 from typing import Dict, List, Any, Optional, Union
+import asyncio
 from elasticsearch import helpers
 from elastro.core.client import ElasticsearchClient
 from elastro.core.errors import DocumentError, ValidationError, OperationError
@@ -123,14 +124,21 @@ class DocumentManager:
 
             logger.info(f"Bulk indexing {len(actions)} documents into '{index}'...")
 
-            # Use helpers.bulk for optimized streaming
-            success_count, errors = helpers.bulk(
-                self.client.client,
-                actions,
-                refresh="true" if refresh else "false",
-                stats_only=False,  # We want details if needed, but summary is usually returned
-                raise_on_error=True,
-            )
+            async def _do_async_bulk():
+                async_client = self.client.get_async_client()
+                try:
+                    return await helpers.async_bulk(
+                        async_client,
+                        actions,
+                        refresh="true" if refresh else "false",
+                        stats_only=False,
+                        raise_on_error=True,
+                    )
+                finally:
+                    await async_client.close()
+
+            # Use optimized async streaming mapped back to synchronous blocking thread
+            success_count, errors = asyncio.run(_do_async_bulk())
 
             logger.info(f"Bulk index complete: {success_count} successful")
 
@@ -170,13 +178,20 @@ class DocumentManager:
 
             logger.info(f"Bulk deleting {len(actions)} documents from '{index}'...")
 
-            # Use helpers.bulk for optimized streaming
-            success_count, errors = helpers.bulk(
-                self.client.client,
-                actions,
-                refresh="true" if refresh else "false",
-                raise_on_error=True,
-            )
+            async def _do_async_bulk():
+                async_client = self.client.get_async_client()
+                try:
+                    return await helpers.async_bulk(
+                        async_client,
+                        actions,
+                        refresh="true" if refresh else "false",
+                        raise_on_error=True,
+                    )
+                finally:
+                    await async_client.close()
+
+            # Use optimized async streaming mapped back to synchronous blocking thread
+            success_count, errors = asyncio.run(_do_async_bulk())
 
             return {
                 "success_count": success_count,

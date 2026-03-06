@@ -77,6 +77,8 @@ from elastro.cli.commands.cluster import cluster_group
 from elastro.cli.commands.security import security_group
 from elastro.cli.commands.tasks import tasks_group
 from elastro.cli.commands.ingest import ingest_group
+from elastro.cli.commands.ml import ml_group
+from elastro.cli.commands.script import script_group
 
 # Register Top-Level Groups
 
@@ -248,6 +250,8 @@ cli.add_command(cluster_group)
 cli.add_command(security_group)
 cli.add_command(tasks_group)
 cli.add_command(ingest_group)
+cli.add_command(ml_group)
+cli.add_command(script_group)
 cli.add_command(gui)
 
 
