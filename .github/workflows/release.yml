@@ -73,7 +73,7 @@ jobs:
         sudo chmod +x /usr/local/bin/rflow
         
         # Verify
-        rflow --version
+        rflow version
         
         # Move back to workspace
         cd $GITHUB_WORKSPACE
