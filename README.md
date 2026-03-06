@@ -32,10 +32,17 @@ The library offers both a programmatic API and a command-line interface for seam
 
 ### Global CLI Installation (Recommended)
 
-To install the CLI tool globally in an isolated environment (avoids `externally-managed-environment` errors):
+To heavily simplify installation across all operating systems and elegantly check your Python compatibility, run our automated `install.sh` via curl:
 
 ```bash
-# Install with pipx (Recommended for CLI usage)
+# Safely check your python version and install the elastro CLI globally
+curl -sSfL https://raw.githubusercontent.com/Fremen-Labs/elastro/main/install.sh | bash
+```
+
+Alternatively, if you already have pipx installed and your Python version is compatible (>=3.9, <3.14):
+
+```bash
+# Manual installation via pipx
 pipx install elastro-client
 
 # Upgrade later
