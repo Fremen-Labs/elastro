@@ -38,21 +38,33 @@ jobs:
     - name: Security - Dependency Audit
       run: pip-audit
 
-    # TODO: Insert ReleaseFlow CLI setup and execution here
-    # 1. Download/Install `vorsam` CLI (or use an action if it exists)
-    # 2. Authenticate to Azure Key Vault if required by release.yaml
-    # 3. Run `vorsam release generate` (or rflow)
-    # 4. Extract variables (Version, SBOM, Security Scans, Changelog)
     - name: Run ReleaseFlow Generator
       id: rflow
       run: |
-        echo "TODO: Implement rflow release generation"
-        # Dummy values for testing the workflow logic
-        echo "VERSION=1.3.5" >> $GITHUB_ENV
-        echo "Release generated" > release-notes.md
-        echo "{}" > sbom.json
-        echo "{}" > security-scan.json
-
+        # 1. Install ReleaseFlow CLI
+        curl -fsSL https://raw.githubusercontent.com/mentat-automation/release-flow/main/install.sh | bash
+        
+        # 2. Install Dependencies (Syft for SBOM, Trivy for Scans)
+        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+        
+        # 3. Bump version and generate manifest
+        rflow manifest generate --config release.yaml --app-dir . --bump patch
+        
+        # Extract the new version written to .version by rflow
+        VERSION=$(cat .version)
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        
+        # Generate SBOM
+        rflow sbom generate --manifest manifests/release-manifest.yaml
+        
+        # Scan for vulnerabilities
+        rflow scan images --manifest manifests/release-manifest.yaml
+        
+        # Generate Release Notes
+        # The external notes are generated into the ReleaseFlow source repo typically, but we will mock it here if rflow doesn't support local external note dumping directly.
+        echo "Release $VERSION Generated via ReleaseFlow" > release-notes.md
+        
     - name: Sync Version and Build Package
       run: |
         # Update pyproject.toml dynamically
@@ -70,8 +82,8 @@ jobs:
         name: Release v${{ env.VERSION }}
         body_path: release-notes.md
         files: |
-          sbom.json
-          security-scan.json
+          security/sbom/*
+          security/scans/*
           dist/*
 
     - name: Publish to PyPI
