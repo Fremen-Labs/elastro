@@ -93,7 +93,7 @@ jobs:
         rflow sbom generate --manifest manifests/release-manifest.yaml
         
         # Scan for vulnerabilities
-        rflow scan images --manifest manifests/release-manifest.yaml
+        rflow scan repo --manifest manifests/release-manifest.yaml
         
         # Generate Release Notes
         # The external notes are generated into the ReleaseFlow source repo typically, but we will mock it here if rflow doesn't support local external note dumping directly.
