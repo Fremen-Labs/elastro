@@ -7,7 +7,7 @@ name = "elastro-client"
 version = "1.2.3"
 description = "A comprehensive Python library for Elasticsearch management with both programmatic and CLI interfaces"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.9,<3.14"
 authors = [
     {name = "Austin Jorgensen"},
 ]
@@ -17,6 +17,9 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Operating System :: OS Independent",
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
