@@ -28,6 +28,14 @@ Elastro is a Python library designed to simplify interactions with Elasticsearch
 
 The library offers both a programmatic API and a command-line interface for seamless integration with various workflows.
 
+## Table of Contents
+- [Installation](#installation)
+- [Basic Usage (Python API)](#basic-usage)
+- [CLI Usage](#cli-usage)
+- [ILM (Index Lifecycle Management)](#ilm-index-lifecycle-management)
+- [Snapshot & Restore](#snapshot--restore)
+- [Documentation & Examples](#documentation)
+
 ## Installation
 
 ### Global CLI Installation (Recommended)
@@ -249,11 +257,14 @@ elastro snapshot restore
 elastro snapshot restore my_backup snapshot_1 --indices "logs-*"
 ```
 
-- [Getting Started](https://github.com/Fremen-Labs/elastro/blob/main/docs/getting_started.md)
-- [API Reference](https://github.com/Fremen-Labs/elastro/blob/main/docs/api_reference.md)
-- [CLI Usage](https://github.com/Fremen-Labs/elastro/blob/main/docs/cli_usage.md)
-- [Advanced Features](https://github.com/Fremen-Labs/elastro/blob/main/docs/advanced_features.md)
-- [Troubleshooting](https://github.com/Fremen-Labs/elastro/blob/main/docs/troubleshooting.md)
+## Documentation
+
+For full details, refer to the guides in the `docs/` directory:
+- 📖 [Getting Started](https://github.com/Fremen-Labs/elastro/blob/main/docs/getting_started.md)
+- ⚙️ [API Reference](https://github.com/Fremen-Labs/elastro/blob/main/docs/api_reference.md)
+- 💻 [CLI Usage](https://github.com/Fremen-Labs/elastro/blob/main/docs/cli_usage.md)
+- 🚀 [Advanced Features](https://github.com/Fremen-Labs/elastro/blob/main/docs/advanced_features.md)
+- 🛠️ [Troubleshooting](https://github.com/Fremen-Labs/elastro/blob/main/docs/troubleshooting.md)
 
 ## Examples
 
