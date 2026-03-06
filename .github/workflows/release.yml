@@ -82,7 +82,12 @@ jobs:
         curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
         curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
         
-        # 3. Bump version and generate manifest
+        # 3. Bootstrap Version and Generate Manifest
+        # Extract current version from pyproject.toml since it's the source of truth
+        CURRENT_VERSION=$(grep "^version =" pyproject.toml | awk -F'"' '{print $2}')
+        echo "$CURRENT_VERSION" > .version
+        echo "Extracted $CURRENT_VERSION from pyproject.toml. Triggering ReleaseFlow bump..."
+        
         rflow manifest generate --config release.yaml --app-dir . --bump patch
         
         # Extract the new version written to .version by rflow
