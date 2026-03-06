@@ -38,8 +38,8 @@ class ClusterCLIRequestSchema(BaseModel):
 
 class ElastroGUI:
     def __init__(self) -> None:
-        self.config_dir = Path.home() / ".elastro"
-        self.config_file = self.config_dir / "config.json"
+        self.config_dir = Path.home() / ".elastic"
+        self.config_file = self.config_dir / "gui_config.json"
         self.token = secrets.token_urlsafe(32)
         self.app = FastAPI(title="Elastro Local GUI API")
 
@@ -50,10 +50,33 @@ class ElastroGUI:
 
     def _ensure_config(self) -> None:
         if not self.config_dir.exists():
-            self.config_dir.mkdir(parents=True)
+            self.config_dir.mkdir(parents=True, exist_ok=True)
         if not self.config_file.exists():
+            initial_clusters = []
+            # Try to auto-import from CLI config for a smooth UX
+            cli_config_path = self.config_dir / "config.yaml"
+            if cli_config_path.exists():
+                try:
+                    import yaml
+                    with open(cli_config_path, "r") as f:
+                        cli_cfg = yaml.safe_load(f)
+                    
+                    if cli_cfg and "elasticsearch" in cli_cfg:
+                        es_cfg = cli_cfg["elasticsearch"]
+                        host = es_cfg.get("hosts", [""])[0] if es_cfg.get("hosts") else ""
+                        auth = es_cfg.get("auth", {})
+                        
+                        if host:
+                            initial_clusters.append({
+                                "name": "default-cli",
+                                "host": host,
+                                "auth": auth
+                            })
+                except Exception:
+                    pass
+
             with open(self.config_file, "w") as f:
-                json.dump({"clusters": []}, f)
+                json.dump({"clusters": initial_clusters}, f)
 
     def _read_config(self) -> Dict[str, Any]:
         self._ensure_config()
@@ -517,6 +540,7 @@ def launch_gui_process() -> str:
     p.start()
 
     if p.pid:
+        gui.config_dir.mkdir(parents=True, exist_ok=True)
         with open(state_file, "w") as f:
             json.dump({"pid": p.pid, "port": port, "token": gui.token}, f)
 
