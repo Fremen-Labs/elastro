@@ -1,7 +1,9 @@
+import os
 import rich_click as click
 from rich.console import Console
 from rich.panel import Panel
 from elastro.server import launch_gui_process
+from elastro.config.loader import default_config, save_config
 
 console = Console()
 
@@ -15,6 +17,17 @@ def gui() -> None:
     access URL for managing Elasticsearch clusters structurally via the Browser.
     """
     try:
+        # Safety measure: ensure base CLI config exists so first-run GUI users
+        # get the default localhost cluster seeded into their workspace.
+        config_path = os.path.expanduser("~/.elastic/config.yaml")
+        if not os.path.exists(config_path):
+            try:
+                os.makedirs(os.path.dirname(config_path), exist_ok=True)
+                save_config(default_config(), path=config_path)
+                console.print(f"[dim]Initialized default CLI configuration at {config_path}[/dim]")
+            except Exception:
+                pass
+
         url = launch_gui_process()
 
         banner = """[bold cyan]Elastro Local GUI Launched![/bold cyan]
