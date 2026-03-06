@@ -14,6 +14,7 @@ CONFIG_PATH = os.path.expanduser("~/.elastic/config.yaml")
 
 SENSITIVE_KEYS = {"api_key", "password"}
 
+
 def mask_credentials(data: Any) -> Any:
     """Recursively mask sensitive credentials in a configuration object."""
     if isinstance(data, dict):
