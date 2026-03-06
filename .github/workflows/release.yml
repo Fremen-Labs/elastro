@@ -63,7 +63,7 @@ jobs:
         echo "Since we are bypassing the bash install.sh, we will clone the rflow repo and build it locally in the runner to guarantee architecture compatibility."
         
         # We will clone the releaseflow repo using the PAT
-        git clone https://$RFLOW_ADO_PAT@dev.azure.com/$ORG/$PROJECT/_git/ReleaseFlow /tmp/ReleaseFlow
+        git clone -b master https://$RFLOW_ADO_PAT@dev.azure.com/$ORG/$PROJECT/_git/ReleaseFlow /tmp/ReleaseFlow
         cd /tmp/ReleaseFlow
         
         # Build the rflow binary
