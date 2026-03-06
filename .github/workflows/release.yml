@@ -44,17 +44,34 @@ jobs:
         RFLOW_ADO_PAT: ${{ secrets.RFLOW_ADO_PAT }}
       run: |
         # 1. Install ReleaseFlow CLI from Azure DevOps
-        echo "Fetching ReleaseFlow install.sh from Azure DevOps..."
+        echo "Fetching ReleaseFlow binary directly from Azure DevOps Artifacts..."
         ORG="mentat-automation"
         PROJECT="vorsam"
-        REPO="ReleaseFlow"
+        # The ADO Pipeline ID that builds rflow (e.g., release-flow-build-prod)
+        # To make this robust without hardcoding the ID, we can fetch the latest successful run of the definition name,
+        # but for direct download, we need the Definition ID. Assuming ID=1 for now, or user can update.
+        # However, the most bulletproof way to get the latest binary from a private repo without complex ADO artifact APIs 
+        # in bash is to compile it on the fly, or if there is a known static URL.
         
-        # Fetch the raw install.sh script from the ADO repository
-        curl -u ":$RFLOW_ADO_PAT" -fsSL "https://dev.azure.com/$ORG/$PROJECT/_apis/git/repositories/$REPO/items?path=/install.sh&api-version=6.0" -o install.sh
+        echo "Since we are bypassing the bash install.sh, we will clone the rflow repo and build it locally in the runner to guarantee architecture compatibility."
         
-        chmod +x install.sh
-        # Assuming the install.sh supports standard execution (it might require the PAT to download the actual binary inside the script too, but we will pass it)
-        ./install.sh --token "$RFLOW_ADO_PAT"
+        # We will clone the releaseflow repo using the PAT
+        git clone https://$RFLOW_ADO_PAT@dev.azure.com/$ORG/$PROJECT/_git/ReleaseFlow /tmp/ReleaseFlow
+        cd /tmp/ReleaseFlow
+        
+        # Build the rflow binary
+        echo "Building rflow from source..."
+        make build
+        
+        # Move to path
+        sudo cp bin/rflow /usr/local/bin/rflow
+        sudo chmod +x /usr/local/bin/rflow
+        
+        # Verify
+        rflow --version
+        
+        # Move back to workspace
+        cd $GITHUB_WORKSPACE
         
         # 2. Install Dependencies (Syft for SBOM, Trivy for Scans)
         curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
