@@ -38,6 +38,11 @@ jobs:
     - name: Security - Dependency Audit
       run: pip-audit
 
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
     - name: Run ReleaseFlow Generator
       id: rflow
       env:
