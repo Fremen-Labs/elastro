@@ -1,0 +1,3 @@
+[submodule ".agents/fremen-agent-skills"]
+	path = .agents/fremen-agent-skills
+	url = git@ssh.dev.azure.com:v3/mentat-automation/fremenlabs/fremen-agent-skills
