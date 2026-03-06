@@ -191,6 +191,8 @@ class ElasticsearchClient:
         log_auth = self.auth.copy() if self.auth else {}
         if "password" in log_auth:
             log_auth["password"] = "******"
+        if "api_key" in log_auth:
+            log_auth["api_key"] = "******"
 
         logger.info(
             f"Connecting with params: hosts={client_params.get('hosts')}, auth={log_auth}, basic_auth={log_params.get('basic_auth')}"
