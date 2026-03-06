@@ -100,7 +100,7 @@ jobs:
         rflow sbom generate --manifest manifests/release-manifest.yaml
         
         # Scan for vulnerabilities
-        rflow scan images --manifest manifests/release-manifest.yaml
+        rflow scan directory --manifest manifests/release-manifest.yaml
         
         # Generate Release Notes
         # We will use ReleaseFlow's AI notes generator to parse commit history for this version
