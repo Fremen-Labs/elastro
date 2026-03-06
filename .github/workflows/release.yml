@@ -47,6 +47,8 @@ jobs:
       id: rflow
       env:
         RFLOW_ADO_PAT: ${{ secrets.RFLOW_ADO_PAT }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        RFLOW_AI_PROVIDER: "gemini"
       run: |
         # 1. Install ReleaseFlow CLI from Azure DevOps
         echo "Fetching ReleaseFlow binary directly from Azure DevOps Artifacts..."
