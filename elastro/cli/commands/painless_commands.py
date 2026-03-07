@@ -4,7 +4,7 @@ Painless scripting CLI commands.
 
 import os
 import json
-import click
+import click  # type: ignore
 import rich_click as rich_click
 from rich.console import Console
 from rich.markdown import Markdown
@@ -12,12 +12,12 @@ from rich.panel import Panel
 from rich.syntax import Syntax
 from rich import print as rprint
 import rich.prompt
+from typing import Any, Dict
 
 console = Console()
 
-
 @rich_click.group(name="painless", invoke_without_command=False, no_args_is_help=True)
-def painless_group():
+def painless_group() -> None:
     """
     Develop, test, and deploy Elasticsearch Painless scripts perfectly.
 
@@ -26,9 +26,8 @@ def painless_group():
     """
     pass
 
-
 @painless_group.command(name="scaffold")
-def scaffold():
+def scaffold() -> None:
     """
     Interactively scaffold a new Painless script with perfect boilerplate.
 
@@ -147,11 +146,11 @@ from elastro.core.client import ElasticsearchClient
 @click.pass_obj
 def test_command(
     client: ElasticsearchClient,
-    script_file: click.File,
+    script_file: Any,
     doc: str,
     context: str,
     index: str,
-):
+) -> None:
     """
     Test a Painless script locally against a mock JSON document.
 
@@ -165,7 +164,10 @@ def test_command(
     """
     script_source = script_file.read()
 
-    payload = {"script": {"source": script_source}, "context": context}
+    payload: Dict[str, Any] = {
+        "script": {"source": script_source},
+        "context": context
+    }
 
     if index:
         payload["context_setup"] = payload.get("context_setup", {})
