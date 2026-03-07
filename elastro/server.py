@@ -201,7 +201,9 @@ class ElastroGUI:
                     for idx in idx_res:
                         if idx.get("health") in ("yellow", "red") and not idx.get(  # type: ignore
                             "index", ""
-                        ).startswith("."):
+                        ).startswith(
+                            "."
+                        ):
                             unstable.append(
                                 {
                                     "index": idx.get("index"),  # type: ignore
