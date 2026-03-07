@@ -18,11 +18,11 @@ from elastro.cli.completion import complete_indices
 @click.argument("index", type=str, shell_complete=complete_indices)
 @click.option("--id", type=str, help="Document ID")
 @click.option(
-    "--file", type=click.Path(exists=True, readable=True), help="Path to document file"
+    "--file", type=click.File("r"), help="Path to document file (use '-' for stdin)"
 )
 @click.pass_obj
 def index_document(
-    client: ElasticsearchClient, index: str, id: Optional[str], file: Optional[str]
+    client: ElasticsearchClient, index: str, id: Optional[str], file: Any
 ) -> None:
     """
     Index a document.
@@ -50,8 +50,7 @@ def index_document(
 
     # Load document data
     if file:
-        with open(file, "r") as f:
-            document = json.load(f)
+        document = json.load(file)
     else:
         # Read from stdin if no file provided
         document = json.loads(sys.stdin.read())
@@ -70,12 +69,12 @@ def index_document(
 @click.argument("index", type=str, shell_complete=complete_indices)
 @click.option(
     "--file",
-    type=click.Path(exists=True, readable=True),
+    type=click.File("r"),
     required=True,
-    help="Path to bulk documents file",
+    help="Path to bulk documents file (use '-' for stdin)",
 )
 @click.pass_obj
-def bulk_index(client: ElasticsearchClient, index: str, file: str) -> None:
+def bulk_index(client: ElasticsearchClient, index: str, file: Any) -> None:
     """
     Bulk index documents.
 
@@ -91,8 +90,7 @@ def bulk_index(client: ElasticsearchClient, index: str, file: str) -> None:
     document_manager = DocumentManager(client)
 
     # Load documents data
-    with open(file, "r") as f:
-        documents = json.load(f)
+    documents = json.load(file)
 
     if not isinstance(documents, list):
         click.echo("Error: Bulk file must contain a JSON array of documents", err=True)
@@ -142,7 +140,7 @@ def get_document(client: ElasticsearchClient, index: str, id: str) -> None:
 @click.option("--size", type=int, default=10, help="Maximum number of results")
 @click.option("--from", "from_", type=int, default=0, help="Starting offset")
 @click.option(
-    "--file", type=click.Path(exists=True, readable=True), help="Path to query file"
+    "--file", type=click.File("r"), help="Path to query file (use '-' for stdin)"
 )
 # Top 10 Query Types
 @click.option("--match", multiple=True, help="Match query (field=value)")
@@ -165,7 +163,7 @@ def search_documents(
     query: Optional[str],
     size: int,
     from_: int,
-    file: Optional[str],
+    file: Any,
     match: Tuple[str, ...],
     match_phrase: Tuple[str, ...],
     term: Tuple[str, ...],
@@ -206,8 +204,7 @@ def search_documents(
 
     # Determine query source
     if file:
-        with open(file, "r") as f:
-            query_body = json.load(f)
+        query_body = json.load(file)
     else:
         # Check if any flags set
         # If no flags and no query, default to match_all inside QueryBuilder
@@ -249,14 +246,14 @@ def search_documents(
 @click.argument("id", type=str)
 @click.option(
     "--file",
-    type=click.Path(exists=True, readable=True),
+    type=click.File("r"),
     required=True,
-    help="Path to document file",
+    help="Path to document file (use '-' for stdin)",
 )
 @click.option("--partial", is_flag=True, help="Perform partial update")
 @click.pass_obj
 def update_document(
-    client: ElasticsearchClient, index: str, id: str, file: str, partial: bool
+    client: ElasticsearchClient, index: str, id: str, file: Any, partial: bool
 ) -> None:
     """
     Update a document.
@@ -278,8 +275,7 @@ def update_document(
     document_manager = DocumentManager(client)
 
     # Load document data
-    with open(file, "r") as f:
-        document = json.load(f)
+    document = json.load(file)
 
     try:
         result = document_manager.update(index, id, document, partial)
@@ -324,12 +320,12 @@ def delete_document(client: ElasticsearchClient, index: str, id: str) -> None:
 @click.argument("index", type=str, shell_complete=complete_indices)
 @click.option(
     "--file",
-    type=click.Path(exists=True, readable=True),
+    type=click.File("r"),
     required=True,
-    help="Path to IDs file",
+    help="Path to IDs file (use '-' for stdin)",
 )
 @click.pass_obj
-def bulk_delete(client: ElasticsearchClient, index: str, file: str) -> None:
+def bulk_delete(client: ElasticsearchClient, index: str, file: Any) -> None:
     """
     Bulk delete documents.
 
@@ -345,8 +341,7 @@ def bulk_delete(client: ElasticsearchClient, index: str, file: str) -> None:
     document_manager = DocumentManager(client)
 
     # Load document IDs
-    with open(file, "r") as f:
-        ids = json.load(f)
+    ids = json.load(file)
 
     if not isinstance(ids, list):
         click.echo(

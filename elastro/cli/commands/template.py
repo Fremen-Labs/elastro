@@ -128,9 +128,9 @@ def delete_template(
 @click.argument("name", type=str)
 @click.option(
     "--file",
-    type=click.Path(exists=True, readable=True),
+    type=click.File("r"),
     required=True,
-    help="Template definition file",
+    help="Template definition file (use '-' for stdin)",
 )
 @click.option(
     "--type",
@@ -140,7 +140,7 @@ def delete_template(
 )
 @click.pass_obj
 def create_template(
-    client: ElasticsearchClient, name: str, file: str, type: str
+    client: ElasticsearchClient, name: str, file: Any, type: str
 ) -> None:
     """
     Create a template from file.
@@ -156,8 +156,7 @@ def create_template(
     """
     manager = TemplateManager(client)
 
-    with open(file, "r") as f:
-        body = json.load(f)
+    body = json.load(file)
 
     try:
         if manager.create(name, body, template_type=type):
