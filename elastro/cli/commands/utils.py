@@ -10,6 +10,7 @@ from elastro.utils.templates import TemplateManager
 from elastro.utils.aliases import AliasManager
 from elastro.utils.health import HealthManager
 from elastro.core.errors import OperationError
+from elastro.cli.output import format_output
 
 
 @click.command("health")
@@ -62,7 +63,7 @@ def health(client: ElasticsearchClient, level: str, wait: str, timeout: str) -> 
         )
 
         # Display additional info
-        click.echo(json.dumps(result, indent=2))
+        click.echo(format_output(result, output_format="json"))
     except OperationError as e:
         click.echo(f"Error checking health: {str(e)}", err=True)
         exit(1)
@@ -88,7 +89,7 @@ def list_templates(client: ElasticsearchClient, type: str, name: str) -> None:
 
     try:
         result = template_manager.list(template_type=type, name=name)
-        click.echo(json.dumps(result, indent=2))
+        click.echo(format_output(result, output_format="json"))
     except OperationError as e:
         click.echo(f"Error listing templates: {str(e)}", err=True)
         exit(1)
@@ -109,7 +110,7 @@ def get_template(client: ElasticsearchClient, name: str, type: str) -> None:
 
     try:
         result = template_manager.get(name, template_type=type)
-        click.echo(json.dumps(result, indent=2))
+        click.echo(format_output(result, output_format="json"))
     except OperationError as e:
         click.echo(f"Error retrieving template: {str(e)}", err=True)
         exit(1)
@@ -142,7 +143,7 @@ def create_template(
 
     try:
         result = template_manager.create(name, template_def, template_type=type)
-        click.echo(json.dumps(result, indent=2))
+        click.echo(format_output(result, output_format="json"))
         click.echo(f"Template '{name}' created successfully.")
     except OperationError as e:
         click.echo(f"Error creating template: {str(e)}", err=True)
@@ -174,7 +175,7 @@ def delete_template(
 
     try:
         result = template_manager.delete(name, template_type=type)
-        click.echo(json.dumps(result, indent=2))
+        click.echo(format_output(result, output_format="json"))
         click.echo(f"Template '{name}' deleted successfully.")
     except OperationError as e:
         click.echo(f"Error deleting template: {str(e)}", err=True)
@@ -213,7 +214,7 @@ def list_aliases(client: ElasticsearchClient, index: str, name: str) -> None:
 
     try:
         result = alias_manager.list(index=index, name=name)
-        click.echo(json.dumps(result, indent=2))
+        click.echo(format_output(result, output_format="json"))
     except OperationError as e:
         click.echo(f"Error listing aliases: {str(e)}", err=True)
         exit(1)
@@ -270,7 +271,7 @@ def create_alias(
             routing=routing,
             filter_query=filter_query,
         )
-        click.echo(json.dumps(result, indent=2))
+        click.echo(format_output(result, output_format="json"))
         click.echo(f"Alias '{name}' created for index '{index}'.")
     except OperationError as e:
         click.echo(f"Error creating alias: {str(e)}", err=True)
@@ -310,7 +311,7 @@ def delete_alias(
 
     try:
         result = alias_manager.delete(name, index)
-        click.echo(json.dumps(result, indent=2))
+        click.echo(format_output(result, output_format="json"))
         click.echo(f"Alias '{name}' deleted from index '{index}'.")
     except OperationError as e:
         click.echo(f"Error deleting alias: {str(e)}", err=True)
