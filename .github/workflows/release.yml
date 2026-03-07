@@ -113,6 +113,14 @@ jobs:
         # Update __init__.py dynamically
         sed -i "s/__version__ = \".*\"/__version__ = \"${{ env.VERSION }}\"/" elastro/__init__.py
         
+        # Commit the version bump back to the repository so subsequent runs do not stick on old versions
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git add pyproject.toml elastro/__init__.py
+        # Use || true to prevent failure if it's already committed (e.g. manual bump)
+        git commit -m "chore(release): bump version to ${{ env.VERSION }} [skip ci]" || true
+        git push origin main || true
+        
         # Build wheel and sdist
         python -m build
 
