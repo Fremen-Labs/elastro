@@ -124,7 +124,7 @@ class DocumentManager:
 
             logger.info(f"Bulk indexing {len(actions)} documents into '{index}'...")
 
-            async def _do_async_bulk():
+            async def _do_async_bulk() -> Any:
                 async_client = self.client.get_async_client()
                 try:
                     return await helpers.async_bulk(
@@ -178,7 +178,7 @@ class DocumentManager:
 
             logger.info(f"Bulk deleting {len(actions)} documents from '{index}'...")
 
-            async def _do_async_bulk():
+            async def _do_async_bulk() -> Any:
                 async_client = self.client.get_async_client()
                 try:
                     return await helpers.async_bulk(
