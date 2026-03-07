@@ -16,6 +16,7 @@ from typing import Any, Dict
 
 console = Console()
 
+
 @rich_click.group(name="painless", invoke_without_command=False, no_args_is_help=True)
 def painless_group() -> None:
     """
@@ -25,6 +26,7 @@ def painless_group() -> None:
     context-aware scaffolding, robust null-handling, and instant mock-data execution loops.
     """
     pass
+
 
 @painless_group.command(name="scaffold")
 def scaffold() -> None:
@@ -164,10 +166,7 @@ def test_command(
     """
     script_source = script_file.read()
 
-    payload: Dict[str, Any] = {
-        "script": {"source": script_source},
-        "context": context
-    }
+    payload: Dict[str, Any] = {"script": {"source": script_source}, "context": context}
 
     if index:
         payload["context_setup"] = payload.get("context_setup", {})
