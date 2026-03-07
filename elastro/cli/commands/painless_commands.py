@@ -4,7 +4,7 @@ Painless scripting CLI commands.
 
 import os
 import json
-import click  # type: ignore
+import click
 import rich_click as rich_click
 from rich.console import Console
 from rich.markdown import Markdown
