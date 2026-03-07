@@ -46,6 +46,7 @@ from elastro.cli.commands.index import (
     list_indices,
     find_indices,
     index_wizard,
+    fix_indices,
 )
 from elastro.cli.commands.document import (
     index_document,
@@ -177,6 +178,7 @@ index.add_command(close_index)
 index.add_command(list_indices)
 index.add_command(find_indices)
 index.add_command(index_wizard)
+index.add_command(fix_indices)
 
 
 @cli.group()
