@@ -85,6 +85,8 @@ const commandTree: Record<string, string[]> = {
   security: ['roles', 'users'],
   tasks: ['cancel', 'list'],
   ingest: ['pipelines', 'simulate'],
+  ml: ['init-job'],
+  script: ['create', 'delete', 'execute', 'get', 'list'],
   utils: ['aliases', 'health', 'templates']
 }
 
