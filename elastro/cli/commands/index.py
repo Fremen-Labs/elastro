@@ -21,12 +21,12 @@ from elastro.cli.completion import complete_indices
 )
 @click.option(
     "--mapping",
-    type=click.Path(exists=True, readable=True),
+    type=click.File("r"),
     help="Path to mapping file",
 )
 @click.option(
     "--settings",
-    type=click.Path(exists=True, readable=True),
+    type=click.File("r"),
     help="Path to settings file",
 )
 @click.pass_obj
@@ -35,8 +35,8 @@ def create_index(
     name: str,
     shards: int,
     replicas: int,
-    mapping: Optional[str],
-    settings: Optional[str],
+    mapping: Any,
+    settings: Any,
 ) -> None:
     """
     Create an index with the specified configuration.
@@ -71,15 +71,13 @@ def create_index(
 
     # Load mappings from file if provided
     if mapping:
-        with open(mapping, "r") as f:
-            mapping_data = json.load(f)
-            index_settings["mappings"] = mapping_data
+        mapping_data = json.load(mapping)
+        index_settings["mappings"] = mapping_data
 
     # Load settings from file if provided (overriding defaults)
     if settings:
-        with open(settings, "r") as f:
-            settings_data = json.load(f)
-            index_settings["settings"].update(settings_data)
+        settings_data = json.load(settings)
+        index_settings["settings"].update(settings_data)
 
     try:
         result = index_manager.create(name, index_settings)
@@ -146,12 +144,12 @@ def index_exists(client: ElasticsearchClient, name: str) -> None:
 @click.argument("name", type=str, shell_complete=complete_indices)
 @click.option(
     "--settings",
-    type=click.Path(exists=True, readable=True),
+    type=click.File("r"),
     required=True,
     help="Path to settings file",
 )
 @click.pass_obj
-def update_index(client: ElasticsearchClient, name: str, settings: str) -> None:
+def update_index(client: ElasticsearchClient, name: str, settings: Any) -> None:
     """
     Update index settings.
 
@@ -168,8 +166,7 @@ def update_index(client: ElasticsearchClient, name: str, settings: str) -> None:
     index_manager = IndexManager(client)
 
     # Load settings from file
-    with open(settings, "r") as f:
-        settings_data = json.load(f)
+    settings_data = json.load(settings)
 
     try:
         result = index_manager.update(name, settings_data)
