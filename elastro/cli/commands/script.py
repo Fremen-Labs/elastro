@@ -7,6 +7,7 @@ import json
 import tempfile
 import subprocess
 import rich_click as click
+from typing import Any
 from rich.console import Console
 from rich.prompt import Prompt, Confirm
 from elastro.core.client import ElasticsearchClient
@@ -43,7 +44,7 @@ def list_scripts(client: ElasticsearchClient) -> None:
             console.print("[dim]No scripts found.[/dim]")
             return
 
-        console.print(format_output(scripts, format_type="json"))
+        console.print(format_output(scripts, output_format="json"))
     except Exception as e:
         console.print(f"[bold red]Error listing scripts:[/bold red] {str(e)}")
 
@@ -57,7 +58,7 @@ def get_script(client: ElasticsearchClient, id: str) -> None:
     """
     try:
         response = client.client.get_script(id=id)
-        console.print(format_output(response, format_type="json"))
+        console.print(format_output(response, output_format="json"))
     except Exception as e:
         console.print(f"[bold red]Error getting script '{id}':[/bold red] {str(e)}")
 
@@ -77,7 +78,7 @@ def delete_script(client: ElasticsearchClient, id: str) -> None:
                     f"[bold green]Success![/bold green] Script '{id}' deleted."
                 )
             else:
-                console.print(format_output(response, format_type="json"))
+                console.print(format_output(response, output_format="json"))
         except Exception as e:
             console.print(
                 f"[bold red]Error deleting script '{id}':[/bold red] {str(e)}"
@@ -151,7 +152,7 @@ def create_script(
         if response.get("acknowledged"):
             console.print(f"[bold green]Success![/bold green] Script '{id}' stored.")
         else:
-            console.print(format_output(response, format_type="json"))
+            console.print(format_output(response, output_format="json"))
     except Exception as e:
         console.print(f"[bold red]Error pushing script:[/bold red] {str(e)}")
 
@@ -184,7 +185,7 @@ def execute_script(
         console.print("[bold red]Error:[/bold red] Invalid JSON context maps provided.")
         return
 
-    payload = {}
+    payload: dict[str, Any] = {}
     if source:
         payload["script"] = {"lang": "painless", "source": source}
     elif id:
@@ -200,6 +201,6 @@ def execute_script(
             "POST", "/_scripts/painless/_execute", body=payload
         )
         console.print("[bold green]Execution Result:[/bold green]")
-        console.print(format_output(response, format_type="json"))
+        console.print(format_output(response, output_format="json"))
     except Exception as e:
         console.print(f"[bold red]Execution Error:[/bold red] {str(e)}")

@@ -3,6 +3,7 @@ Machine Learning commands for the CLI.
 """
 
 import rich_click as click
+from typing import Any
 from rich.console import Console
 from rich.prompt import Prompt, Confirm
 from elastro.core.client import ElasticsearchClient
@@ -58,7 +59,7 @@ def init_job(client: ElasticsearchClient) -> None:
     function_type = func_map[function_idx]
 
     # Generate the ES mapping JSON
-    job_config = {
+    job_config: dict[str, Any] = {
         "description": f"Elastro Scaffolded Job: detect '{function_type}' on '{metric_field}'",
         "analysis_config": {
             "bucket_span": "15m",
@@ -78,7 +79,7 @@ def init_job(client: ElasticsearchClient) -> None:
         del job_config["analysis_config"]["detectors"][0]["field_name"]
 
     console.print("\n[bold green]Generated Configuration:[/bold green]")
-    console.print(format_output(job_config, format_type="json"))
+    console.print(format_output(job_config, output_format="json"))
 
     if not Confirm.ask("\nDeploy this ML Job to the cluster?"):
         console.print("[dim]Operation aborted.[/dim]")
