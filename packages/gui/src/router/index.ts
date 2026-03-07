@@ -3,6 +3,7 @@ import Dashboard from '../views/Dashboard.vue'
 import Settings from '../views/Settings.vue'
 import Documentation from '../views/Documentation.vue'
 import ClusterDetail from '../views/ClusterDetail.vue'
+import MappingBuilder from '../views/MappingBuilder.vue'
 
 const routes = [
     {
@@ -19,6 +20,11 @@ const routes = [
         path: '/docs',
         name: 'Documentation',
         component: Documentation
+    },
+    {
+        path: '/mapping-builder',
+        name: 'MappingBuilder',
+        component: MappingBuilder
     },
     {
         path: '/settings',
