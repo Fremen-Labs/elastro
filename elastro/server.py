@@ -203,9 +203,7 @@ class ElastroGUI:
                             continue
                         if idx.get("health") in ("yellow", "red") and not idx.get(
                             "index", ""
-                        ).startswith(
-                            "."
-                        ):
+                        ).startswith("."):
                             unstable.append(
                                 {
                                     "index": idx.get("index"),
