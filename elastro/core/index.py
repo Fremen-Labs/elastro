@@ -290,3 +290,57 @@ class IndexManager:
         except Exception as e:
             logger.error(f"Failed to list indices with pattern '{pattern}': {str(e)}")
             raise ElasticIndexError(f"Failed to list indices: {str(e)}")
+
+    def allocation_explain(self, name: str) -> Dict[str, Any]:
+        """
+        Explain allocation for an index.
+
+        Args:
+            name: Name of the index
+
+        Returns:
+            Allocation explanation dictionary
+        """
+        if not name:
+            raise ValidationError("Index name is required")
+
+        try:
+            # First, we must find a specific unassigned shard for this index.
+            # The Elasticsearch API STRICTLY requires `shard` and `primary` when `index` is provided.
+            shards = self.client.client.cat.shards(index=name, format="json")
+            unassigned = [s for s in shards if s.get("state") == "UNASSIGNED"]  # type: ignore
+
+            if not unassigned:
+                return {
+                    "allocate_explanation": "All shards are currently assigned.",
+                    "unassigned_info": {"reason": "ASSIGNED"},
+                }
+
+            target_shard = unassigned[0]
+            shard_id = int(target_shard.get("shard", 0))  # type: ignore
+            is_primary = target_shard.get("prirep") == "p"  # type: ignore
+
+            response = self.client.client.cluster.allocation_explain(
+                body={"index": name, "shard": shard_id, "primary": is_primary}
+            )
+            return response.body if hasattr(response, "body") else dict(response)
+        except Exception as e:
+            logger.error(f"Failed to explain allocation for index '{name}': {str(e)}")
+            raise ElasticIndexError(f"Failed to explain allocation: {str(e)}")
+
+    def reroute(self, retry_failed: bool = True) -> Any:
+        """
+        Reroute unassigned shards.
+
+        Args:
+            retry_failed: Whether to retry allocation of failed shards
+
+        Returns:
+            Reroute response
+        """
+        try:
+            response = self.client.client.cluster.reroute(retry_failed=retry_failed)
+            return response.body if hasattr(response, "body") else dict(response)
+        except Exception as e:
+            logger.error(f"Failed to reroute cluster: {str(e)}")
+            raise ElasticIndexError(f"Failed to reroute cluster: {str(e)}")

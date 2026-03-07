@@ -64,6 +64,52 @@ const getHealthColor = (health: string) => {
   }
 }
 
+// Unhealthy Indices State & Fixes
+import { watch } from 'vue'
+const unhealthyIndices = ref<any[] | null>(null)
+const unhealthyLoading = ref(false)
+const activeFix = ref<string | null>(null)
+
+const fetchUnhealthyIndices = async () => {
+  if (!state.token) return
+  unhealthyLoading.value = true
+  try {
+    const res = await axios.get(`${apiBase}/api/clusters/${encodeURIComponent(clusterName.value)}/indices/unhealthy`, {
+      headers: { Authorization: `Bearer ${state.token}` }
+    })
+    unhealthyIndices.value = res.data.indices
+  } catch (err) {
+    console.error("Failed to fetch unhealthy indices", err)
+  } finally {
+    unhealthyLoading.value = false
+  }
+}
+
+const executeFix = async (indexName: string, action: string) => {
+  if (!state.token) return
+  activeFix.value = indexName
+  try {
+    await axios.post(
+      `${apiBase}/api/clusters/${encodeURIComponent(clusterName.value)}/indices/${encodeURIComponent(indexName)}/fix`,
+      { action },
+      { headers: { Authorization: `Bearer ${state.token}` } }
+    )
+    fetchUnhealthyIndices()
+    fetchClusterDetails()
+  } catch(err: any) {
+    console.error("Fix failed", err)
+    alert(err.response?.data?.detail || "Failed to apply fix.")
+  } finally {
+    activeFix.value = null
+  }
+}
+
+watch(activeModal, (val) => {
+  if (val === 'indices' && details.value && (details.value.indices.yellow > 0 || details.value.indices.red > 0) && !unhealthyIndices.value) {
+    fetchUnhealthyIndices()
+  }
+})
+
 // CLI Emulator Logic
 interface HistoryItem {
   type: 'input' | 'output' | 'error' | 'system'
@@ -390,6 +436,38 @@ const executeCommand = async () => {
                   <div class="legend-row">
                     <span class="dot red"></span> 
                     <span class="legend-text"><strong>{{ details.indices.red }}</strong> Red (Critical/Offline) Indices</span>
+                  </div>
+               </div>
+               
+               <!-- Unhealthy Diagnostics List -->
+               <div v-if="unhealthyLoading" class="mt-4 text-center text-muted">
+                 Loading diagnostic explanations...
+               </div>
+               <div v-else-if="unhealthyIndices && unhealthyIndices.length > 0" class="mt-4">
+                  <h3 class="mb-3" style="font-weight: 600; font-size: 1.1rem; color: hsl(var(--destructive));">Diagnostics & Remediation</h3>
+                  <div class="repos-list">
+                    <div v-for="idx in unhealthyIndices" :key="idx.index" class="repo-item detail-row" style="flex-direction: column; align-items: flex-start; gap: 0.5rem; border-color: hsl(var(--destructive)/0.3);">
+                       <div style="display: flex; justify-content: space-between; width: 100%;">
+                         <span class="repo-name">{{ idx.index }}</span>
+                         <span class="badge-outline" :style="{ borderColor: getHealthColor(idx.health), color: getHealthColor(idx.health) }">{{ idx.health.toUpperCase() }}</span>
+                       </div>
+                       <p class="text-sm text-muted" style="margin: 0.5rem 0;">{{ idx.allocate_explanation }}</p>
+                       
+                       <div v-if="idx.reason === 'ALLOCATION_FAILED' || (idx.health === 'yellow' && idx.allocate_explanation.toLowerCase().includes('replica') && (idx.allocate_explanation.toLowerCase().includes('too many') || idx.allocate_explanation.toLowerCase().includes('permitted') || idx.allocate_explanation.toLowerCase().includes('same node')))" class="mt-2" style="width: 100%;">
+                          <div v-if="idx.reason === 'ALLOCATION_FAILED'">
+                            <button class="btn btn-secondary" style="width: 100%; justify-content: center; font-size: 0.85rem;" @click="executeFix(idx.index, 'reroute')" :disabled="activeFix === idx.index">
+                               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                               {{ activeFix === idx.index ? 'Applying Reroute...' : 'Force Retry Allocation (Reroute)' }}
+                            </button>
+                          </div>
+                          <div v-else>
+                            <button class="btn btn-secondary" style="width: 100%; justify-content: center; font-size: 0.85rem;" @click="executeFix(idx.index, 'reduce_replicas')" :disabled="activeFix === idx.index">
+                               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                               {{ activeFix === idx.index ? 'Applying Fix...' : 'Reduce Replicas to 0' }}
+                            </button>
+                          </div>
+                       </div>
+                    </div>
                   </div>
                </div>
             </div>

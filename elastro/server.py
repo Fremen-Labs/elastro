@@ -9,11 +9,11 @@ import shlex
 import subprocess
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-import uvicorn  # type: ignore
-from fastapi import FastAPI, Depends, HTTPException, Header, Body  # type: ignore
-from fastapi.staticfiles import StaticFiles  # type: ignore
-from fastapi.responses import HTMLResponse  # type: ignore
-from fastapi.middleware.cors import CORSMiddleware  # type: ignore
+import uvicorn
+from fastapi import FastAPI, Depends, HTTPException, Header, Body
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 from elastro.core.client import ElasticsearchClient
 
 # Optional Pydantic based schema since Elastro uses Pydantic
@@ -35,6 +35,10 @@ class ClusterConfigSchema(BaseModel):
 class ClusterCLIRequestSchema(BaseModel):
     command: str
     stdin: Optional[str] = None
+
+
+class IndexFixRequestSchema(BaseModel):
+    action: str
 
 
 class ElastroGUI:
@@ -195,19 +199,19 @@ class ElastroGUI:
                     largest_idx_raw = "0B"
 
                     for idx in idx_res:
-                        if idx.get("health") in ("yellow", "red") and not idx.get(
+                        if idx.get("health") in ("yellow", "red") and not idx.get(  # type: ignore
                             "index", ""
                         ).startswith("."):
                             unstable.append(
                                 {
-                                    "index": idx.get("index"),
-                                    "health": idx.get("health"),
-                                    "status": idx.get("status"),
+                                    "index": idx.get("index"),  # type: ignore
+                                    "health": idx.get("health"),  # type: ignore
+                                    "status": idx.get("status"),  # type: ignore
                                 }
                             )
 
                         try:
-                            raw_size = str(idx.get("store.size", "0b")).strip().lower()
+                            raw_size = str(idx.get("store.size", "0b")).strip().lower()  # type: ignore
                             val_str = raw_size
                             mult = 1
                             if raw_size.endswith("pb"):
@@ -233,8 +237,8 @@ class ElastroGUI:
 
                             if size_bytes > largest_idx_size:
                                 largest_idx_size = size_bytes
-                                largest_idx_name = idx.get("index", "Unknown")
-                                largest_idx_raw = idx.get("store.size", "0b")
+                                largest_idx_name = idx.get("index", "Unknown")  # type: ignore
+                                largest_idx_raw = idx.get("store.size", "0b")  # type: ignore
                         except (ValueError, TypeError):
                             pass
 
@@ -346,9 +350,9 @@ class ElastroGUI:
                 total_indices = len(idx_res)
 
                 for idx in idx_res:
-                    if idx.get("health") == "red":
+                    if idx.get("health") == "red":  # type: ignore
                         red_indices += 1
-                    elif idx.get("health") == "yellow":
+                    elif idx.get("health") == "yellow":  # type: ignore
                         yellow_indices += 1
 
                 return {
@@ -474,6 +478,136 @@ class ElastroGUI:
                 raise HTTPException(
                     status_code=500, detail=f"Failed to execute native CLI: {str(e)}"
                 )
+
+        @self.app.get("/api/clusters/{cluster_name}/indices/unhealthy")
+        def get_unhealthy_indices(
+            cluster_name: str, token: str = Depends(self.verify_token)
+        ) -> Dict[str, Any]:
+            config = self._read_config()
+            target_c = next(
+                (c for c in config.get("clusters", []) if c["name"] == cluster_name),
+                None,
+            )
+            if not target_c:
+                raise HTTPException(status_code=404, detail="Cluster not found")
+
+            try:
+                auth_conf = target_c.get("auth", {})
+                auth_kwargs = {}
+                if "api_key" in auth_conf and auth_conf["api_key"]:
+                    auth_kwargs["api_key"] = auth_conf["api_key"]
+                elif "username" in auth_conf:
+                    auth_kwargs["basic_auth"] = (
+                        auth_conf["username"],
+                        auth_conf.get("password", ""),
+                    )
+
+                host = target_c["host"]
+                if not host.startswith("http"):
+                    host = "http://" + host
+
+                client = ElasticsearchClient(hosts=[host], **auth_kwargs)
+                client.connect()
+
+                from elastro.core.index import IndexManager
+
+                idx_mgr = IndexManager(client)
+
+                indices = idx_mgr.list()
+                unhealthy = [
+                    idx
+                    for idx in indices
+                    if idx.get("health", "green") in ["yellow", "red"]
+                ]
+
+                results = []
+                for idx in unhealthy:
+                    name = str(idx.get("index", ""))
+                    if not name:
+                        continue
+                    try:
+                        explain = idx_mgr.allocation_explain(name)
+                        unassigned = explain.get("unassigned_info", {})
+                        results.append(
+                            {
+                                "index": name,
+                                "health": idx.get("health"),
+                                "status": idx.get("status"),
+                                "allocate_explanation": explain.get(
+                                    "allocate_explanation", "No explanation"
+                                ),
+                                "reason": unassigned.get("reason", "UNKNOWN"),
+                            }
+                        )
+                    except Exception as e:
+                        logging.error(f"Failed to explain {name}: {e}")
+                        results.append(
+                            {
+                                "index": name,
+                                "health": idx.get("health"),
+                                "status": idx.get("status"),
+                                "allocate_explanation": "Failed to fetch explanation",
+                                "reason": "ERROR",
+                            }
+                        )
+                return {"indices": results}
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.post("/api/clusters/{cluster_name}/indices/{index_name}/fix")
+        def fix_index(
+            cluster_name: str,
+            index_name: str,
+            req: IndexFixRequestSchema,
+            token: str = Depends(self.verify_token),
+        ) -> Dict[str, Any]:
+            config = self._read_config()
+            target_c = next(
+                (c for c in config.get("clusters", []) if c["name"] == cluster_name),
+                None,
+            )
+            if not target_c:
+                raise HTTPException(status_code=404, detail="Cluster not found")
+
+            try:
+                auth_conf = target_c.get("auth", {})
+                auth_kwargs = {}
+                if "api_key" in auth_conf and auth_conf["api_key"]:
+                    auth_kwargs["api_key"] = auth_conf["api_key"]
+                elif "username" in auth_conf:
+                    auth_kwargs["basic_auth"] = (
+                        auth_conf["username"],
+                        auth_conf.get("password", ""),
+                    )
+
+                host = target_c["host"]
+                if not host.startswith("http"):
+                    host = "http://" + host
+
+                client = ElasticsearchClient(hosts=[host], **auth_kwargs)
+                client.connect()
+
+                from elastro.core.index import IndexManager
+
+                idx_mgr = IndexManager(client)
+
+                if req.action == "reduce_replicas":
+                    idx_mgr.update(index_name, {"index": {"number_of_replicas": 0}})
+                    return {
+                        "status": "success",
+                        "message": f"Replicas reduced to 0 for {index_name}",
+                    }
+                elif req.action == "reroute":
+                    idx_mgr.reroute(retry_failed=True)
+                    return {
+                        "status": "success",
+                        "message": "Cluster rerouted successfully",
+                    }
+                else:
+                    raise HTTPException(status_code=400, detail="Unknown action")
+
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
 
         # Mount static GUI files
         if self.static_dir.exists():
