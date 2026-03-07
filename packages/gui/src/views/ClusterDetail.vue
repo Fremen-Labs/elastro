@@ -15,7 +15,7 @@ const error = ref<string | null>(null)
 const details = ref<any>(null)
 
 // Modal State
-const activeModal = ref<'nodes' | 'indices' | 'ilm' | 'backups' | null>(null)
+const activeModal = ref<'nodes' | 'indices' | 'ilm' | 'backups' | 'mappings' | 'analytics' | null>(null)
 const closeModal = () => { activeModal.value = null }
 
 const fetchClusterDetails = async () => {
@@ -298,6 +298,30 @@ const executeCommand = async () => {
           </div>
         </button>
 
+        <!-- Mappings Builder -->
+        <button class="card metric-card interactive-card" @click="activeModal = 'mappings'">
+          <div class="metric-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"/></svg>
+            <h3>Mapping Builder</h3>
+          </div>
+          <div class="metric-body">
+             <div class="mega-stat">UI</div>
+             <p class="text-sm text-muted mt-2">Visually construct structural index schemas and analyzers via forms.</p>
+          </div>
+        </button>
+
+        <!-- Time-Series Analytics -->
+        <button class="card metric-card interactive-card" @click="activeModal = 'analytics'">
+          <div class="metric-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <h3>Time-Series Analytics</h3>
+          </div>
+          <div class="metric-body">
+             <div class="mega-stat">ML</div>
+             <p class="text-sm text-muted mt-2">Visualize datastream flows and automatically deploy statistical anomaly detection triggers.</p>
+          </div>
+        </button>
+
       </div>
 
       <!-- Interactive Embedded CLI -->
@@ -353,7 +377,9 @@ const executeCommand = async () => {
                 activeModal === 'nodes' ? 'Node Topology Details' :
                 activeModal === 'indices' ? 'Index Health Breakdown' :
                 activeModal === 'ilm' ? 'Lifecycle Policies' :
-                'Snapshot Repositories'
+                activeModal === 'backups' ? 'Snapshot Repositories' :
+                activeModal === 'mappings' ? 'Index Mapping Builder' :
+                'Time-Series Analytics & Machine Learning'
               }}
             </h2>
             <button class="btn-close" @click="closeModal" aria-label="Close modal">
@@ -414,6 +440,37 @@ const executeCommand = async () => {
                   </div>
                </div>
                <p v-else class="text-muted">No snapshot repositories are configured.</p>
+            </div>
+
+            <!-- Modal: Mappings -->
+            <div v-else-if="activeModal === 'mappings'">
+               <div class="form-container">
+                 <p class="mb-4 text-muted">Use this builder to scaffold mappings visually before pushing them to the CLI.</p>
+                 <div class="detail-grid mb-4">
+                   <div class="detail-row">
+                     <span class="detail-label">Template Pattern Target</span>
+                     <span class="detail-value badge-outline">logs-*</span>
+                   </div>
+                   <div class="detail-row">
+                     <span class="detail-label">Dynamic Mapping Policy</span>
+                     <span class="detail-value badge-outline">Strict Override</span>
+                   </div>
+                 </div>
+                 <div class="editor-mockup p-4 bg-black rounded mb-4" style="font-family: monospace; font-size: 0.8rem; color: #a1a1aa;">
+                   {<br/>&nbsp;&nbsp;"properties": {<br/>&nbsp;&nbsp;&nbsp;&nbsp;"@timestamp": { "type": "date" },<br/>&nbsp;&nbsp;&nbsp;&nbsp;"status": { "type": "keyword" }<br/>&nbsp;&nbsp;}<br/>}
+                 </div>
+                 <button class="btn btn-secondary mt-2 w-full" style="width: 100%" @click="cliInput = 'template wizard'; closeModal(); focusInput();">Drop to Interactive Terminal Wizard</button>
+               </div>
+            </div>
+
+            <!-- Modal: Analytics -->
+            <div v-else-if="activeModal === 'analytics'">
+               <div class="chart-container" style="height: 150px; display: flex; align-items: flex-end; gap: 4px; padding: 20px 0; border-bottom: 1px solid hsl(var(--border));">
+                 <!-- CSS-only mock bar chart modeling time-series data -->
+                 <div v-for="h in [20, 40, 80, 60, 45, 90, 100, 30, 50, 75, 85, 40]" :key="h" :style="{ height: h + '%', width: '8%', background: 'hsl(var(--primary))', borderRadius: '4px 4px 0 0', opacity: 0.8 }"></div>
+               </div>
+               <p class="text-muted text-sm mt-4 text-center">Demonstration of Visual Datastream Flows. Run the <code style="font-family: var(--font-mono);">elastro ml init-job</code> script natively from the CLI terminal to bind explicit anomaly triggers to your cluster.</p>
+               <button class="btn btn-primary mt-4 w-full" style="width: 100%; border: 1px solid hsl(var(--primary)); background: transparent; color: hsl(var(--primary)); padding: 10px;" @click="cliInput = 'ml init-job'; closeModal(); focusInput();">Deploy Anomaly Detection Logic (CLI)</button>
             </div>
           </div>
         </div>
