@@ -308,7 +308,11 @@ class IndexManager:
             # First, we must find a specific unassigned shard for this index.
             # The Elasticsearch API STRICTLY requires `shard` and `primary` when `index` is provided.
             shards = self.client.client.cat.shards(index=name, format="json")
-            unassigned = [s for s in shards if isinstance(s, dict) and s.get("state") == "UNASSIGNED"]
+            unassigned = [
+                s
+                for s in shards
+                if isinstance(s, dict) and s.get("state") == "UNASSIGNED"
+            ]
 
             if not unassigned:
                 return {
@@ -317,7 +321,11 @@ class IndexManager:
                 }
 
             target_shard = unassigned[0]
-            if not isinstance(target_shard, dict): return {"allocate_explanation": "Error casting shard", "unassigned_info": {}}
+            if not isinstance(target_shard, dict):
+                return {
+                    "allocate_explanation": "Error casting shard",
+                    "unassigned_info": {},
+                }
             shard_id = int(target_shard.get("shard", 0))
             is_primary = target_shard.get("prirep") == "p"
 
