@@ -9,6 +9,7 @@ from elastro.cli.commands.document import *
 from elastro.cli.commands.datastream import *
 from elastro.cli.commands.config import *
 from elastro.cli.commands.utils import *
+from elastro.cli.commands.painless_commands import *
 
 __all__ = [
     # Index commands
@@ -45,4 +46,6 @@ __all__ = [
     "health",
     "templates",
     "aliases",
+    # Painless commands
+    "painless_group",
 ]

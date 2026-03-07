@@ -79,6 +79,7 @@ from elastro.cli.commands.tasks import tasks_group
 from elastro.cli.commands.ingest import ingest_group
 from elastro.cli.commands.ml import ml_group
 from elastro.cli.commands.script import script_group
+from elastro.cli.commands.painless_commands import painless_group
 
 # Register Top-Level Groups
 
@@ -252,6 +253,7 @@ cli.add_command(tasks_group)
 cli.add_command(ingest_group)
 cli.add_command(ml_group)
 cli.add_command(script_group)
+cli.add_command(painless_group)
 cli.add_command(gui)
 
 

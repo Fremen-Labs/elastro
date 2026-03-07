@@ -34,6 +34,7 @@ class ClusterConfigSchema(BaseModel):
 
 class ClusterCLIRequestSchema(BaseModel):
     command: str
+    stdin: Optional[str] = None
 
 
 class ElastroGUI:
@@ -443,7 +444,12 @@ class ElastroGUI:
             try:
                 # Capture both stderr and stdout multiplexed
                 result = subprocess.run(
-                    cmd, capture_output=True, text=True, timeout=30, env=run_env
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    input=req.stdin,
+                    timeout=30,
+                    env=run_env,
                 )
 
                 # Always combine stdout and stderr so the user sees errors naturally
