@@ -9,11 +9,11 @@ import shlex
 import subprocess
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-import uvicorn
-from fastapi import FastAPI, Depends, HTTPException, Header, Body
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
+import uvicorn  # type: ignore
+from fastapi import FastAPI, Depends, HTTPException, Header, Body  # type: ignore
+from fastapi.staticfiles import StaticFiles  # type: ignore
+from fastapi.responses import HTMLResponse  # type: ignore
+from fastapi.middleware.cors import CORSMiddleware  # type: ignore
 from elastro.core.client import ElasticsearchClient
 
 # Optional Pydantic based schema since Elastro uses Pydantic
@@ -193,27 +193,29 @@ class ElastroGUI:
                     # Omit bytes="b" so we get standard ES string formats like '35.6mb' safely
                     idx_res = es.cat.indices(format="json")
 
-                    unstable = []
+                    unstable: List[Dict[str, Any]] = []
                     largest_idx_name = "N/A"
                     largest_idx_size = -1
                     largest_idx_raw = "0B"
 
                     for idx in idx_res:
-                        if idx.get("health") in ("yellow", "red") and not idx.get(  # type: ignore
+                        if not isinstance(idx, dict):
+                            continue
+                        if idx.get("health") in ("yellow", "red") and not idx.get(
                             "index", ""
                         ).startswith(
                             "."
                         ):
                             unstable.append(
                                 {
-                                    "index": idx.get("index"),  # type: ignore
-                                    "health": idx.get("health"),  # type: ignore
-                                    "status": idx.get("status"),  # type: ignore
+                                    "index": idx.get("index"),
+                                    "health": idx.get("health"),
+                                    "status": idx.get("status"),
                                 }
                             )
 
                         try:
-                            raw_size = str(idx.get("store.size", "0b")).strip().lower()  # type: ignore
+                            raw_size = str(idx.get("store.size", "0b")).strip().lower()
                             val_str = raw_size
                             mult = 1
                             if raw_size.endswith("pb"):
@@ -239,8 +241,8 @@ class ElastroGUI:
 
                             if size_bytes > largest_idx_size:
                                 largest_idx_size = size_bytes
-                                largest_idx_name = idx.get("index", "Unknown")  # type: ignore
-                                largest_idx_raw = idx.get("store.size", "0b")  # type: ignore
+                                largest_idx_name = idx.get("index", "Unknown")
+                                largest_idx_raw = idx.get("store.size", "0b")
                         except (ValueError, TypeError):
                             pass
 
@@ -352,9 +354,11 @@ class ElastroGUI:
                 total_indices = len(idx_res)
 
                 for idx in idx_res:
-                    if idx.get("health") == "red":  # type: ignore
+                    if not isinstance(idx, dict):
+                        continue
+                    if idx.get("health") == "red":
                         red_indices += 1
-                    elif idx.get("health") == "yellow":  # type: ignore
+                    elif idx.get("health") == "yellow":
                         yellow_indices += 1
 
                 return {
