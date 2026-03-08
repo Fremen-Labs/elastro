@@ -271,6 +271,10 @@ def restore_snapshot(
     if not repository or not snapshot:
         console.print(Panel("🧙 [bold blue]Restore Wizard[/]", border_style="blue"))
 
+        console.print("\n[bold]Repository Configuration:[/bold]")
+        console.print(
+            "Snapshots are immutable point-in-time backups stored in external Repositories (like AWS S3 or a shared FileSystem)."
+        )
         # 1. Select Repository
         try:
             repos_dict = manager.list_repositories()
@@ -321,7 +325,11 @@ def restore_snapshot(
             snapshot = snaps[snap_idx]["snapshot"]
 
     # 3. Restore Options
-    indices = Prompt.ask("\nIndices to restore", default="_all")
+    console.print("\n[bold]Restore Options:[/bold]")
+    console.print(
+        "You can surgically restore specific indices or the entire snapshot. Renaming indices during restore (e.g. prefixing with 'restored_') prevents accidentally overwriting live production data."
+    )
+    indices = Prompt.ask("Indices to restore", default="_all")
     rename_pattern = None
     rename_replacement = None
 

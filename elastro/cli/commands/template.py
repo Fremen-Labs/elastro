@@ -188,9 +188,17 @@ def wizard(client: ElasticsearchClient) -> None:
 
     console.print(Panel.fit("🧙‍♂️ Index Architect Wizard", style="bold blue"))
 
+    console.print("\n[bold]Template Type:[/bold]")
+    console.print(
+        "  [bold cyan]Component Templates[/] are Lego blocks. They define reusable mappings or settings that can be attached to multiple templates."
+    )
+    console.print(
+        "  [bold cyan]Index Templates[/] are blueprints. They dictate exactly how new indices should be created based on an index pattern (e.g., 'logs-*')."
+    )
+
     # 1. Choose Type
     template_type = Prompt.ask(
-        "What do you want to build?",
+        "\nWhat do you want to build?",
         choices=["component", "index"],
         default="component",
     )
@@ -202,6 +210,10 @@ def wizard(client: ElasticsearchClient) -> None:
     aliases: Dict[str, Any] = {}
 
     # 2. Settings Wizard
+    console.print("\n[bold]Settings (Optional):[/bold]")
+    console.print(
+        "Settings configure the physical infrastructure of the backing indices, such as shard allocation and compression codecs."
+    )
     if Confirm.ask("Configure Settings? (shards, replicas, codec)"):
         shards = IntPrompt.ask("Number of shards", default=1)
         replicas = IntPrompt.ask("Number of replicas", default=1)
@@ -217,6 +229,10 @@ def wizard(client: ElasticsearchClient) -> None:
             settings["codec"] = codec
 
     # 3. Mappings Wizard
+    console.print("\n[bold]Mappings (Optional):[/bold]")
+    console.print(
+        "Mappings enforce a strict data schema, converting arbitrary JSON into strongly-typed columnar formats optimized for aggregations and search."
+    )
     if Confirm.ask("Configure Mappings?"):
         while True:
             if not Confirm.ask("Add a field?"):

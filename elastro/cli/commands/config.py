@@ -220,12 +220,19 @@ def run_config_wizard() -> Dict[str, Any]:
     )
 
     # 1. Hosts
+    console.print("\n[bold]1. Cluster Connection:[/bold]")
+    console.print(
+        "Provide the HTTP(S) address of your Elasticsearch cluster. Multiple coordinates can be provided (comma-separated) for round-robin load balancing."
+    )
     default_host = "http://localhost:9200"
     hosts_input = Prompt.ask("🔌 [bold]Elasticsearch Host[/]", default=default_host)
     hosts = [h.strip() for h in hosts_input.split(",")]
 
     # 2. Authentication
-    console.print("\n🔑 [bold]Authentication[/]")
+    console.print("\n🔑 [bold]2. Authentication[/]")
+    console.print(
+        "Select how Elastro should authenticate with the cluster. API Keys are recommended for production environments."
+    )
     auth_type = Prompt.ask(
         "   Method", choices=["basic", "api_key", "none"], default="none"
     )

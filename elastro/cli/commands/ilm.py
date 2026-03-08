@@ -165,6 +165,24 @@ def run_ilm_wizard(name: str) -> Optional[Dict[str, Any]]:
         )
     )
 
+    console.print("\n[bold]Phase Configuration:[/bold]")
+    console.print(
+        "ILM policies automate data tiering. You configure conditions (like index age or size) that dictate when an index moves to the next phase."
+    )
+    console.print(
+        "  [bold red]HOT[/]    - Actively queried and written to. Uses premium fast SSD nodes."
+    )
+    console.print(
+        "  [bold yellow]WARM[/]   - Rarely written to, but frequently queried. Uses standard nodes."
+    )
+    console.print(
+        "  [bold cyan]COLD[/]   - Read-only data. Uses dense, high-capacity nodes."
+    )
+    console.print(
+        "  [bold grey]DELETE[/] - End of lifecycle. Data is permanently purged from the cluster."
+    )
+    console.print()
+
     phases = {}
 
     # --- HOT PHASE ---

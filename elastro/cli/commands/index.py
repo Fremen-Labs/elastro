@@ -421,6 +421,10 @@ def index_wizard(client: ElasticsearchClient) -> None:
     console.print(f"[italic]{recipe.description}[/]\n")
 
     # 3. Prompt for Basic Info
+    console.print("\n[bold]1. Basic Information:[/bold]")
+    console.print(
+        "Indices define where your documents live. Using descriptive, lowercase names (e.g., 'logs-api-prod') is standard practice."
+    )
     index_name = Prompt.ask("Enter index name", default="my-new-index")
 
     # 4. Prepare Configuration
@@ -428,6 +432,10 @@ def index_wizard(client: ElasticsearchClient) -> None:
     mappings = recipe.get_mappings()
 
     # Allow simple overrides for shards/replicas
+    console.print("\n[bold]2. Infrastructure Settings:[/bold]")
+    console.print(
+        "Primary shards dictate write parallelism. Replicas dictate read concurrency and High Availability (HA) resilience."
+    )
     if Confirm.ask("Customize shards/replicas?", default=False):
         settings["number_of_shards"] = IntPrompt.ask(
             "Primary Shards", default=settings.get("number_of_shards", 1)
@@ -440,7 +448,10 @@ def index_wizard(client: ElasticsearchClient) -> None:
 
     # A. Rename Default Fields
     if recipe.customizable_fields:
-        console.print("\n[bold]Customize Default Fields:[/]")
+        console.print("\n[bold]3. Customize Default Fields:[/]")
+        console.print(
+            "This recipe provides standard baseline fields. You may rename them to perfectly match your data model's keys."
+        )
         for field in recipe.customizable_fields:
             if field in mappings["properties"]:
                 new_name = Prompt.ask(f"Rename field '{field}'?", default=field)
@@ -448,7 +459,10 @@ def index_wizard(client: ElasticsearchClient) -> None:
                     mappings["properties"][new_name] = mappings["properties"].pop(field)
 
     # B. Add New Fields
-    console.print("\n[bold]Add Custom Fields:[/]")
+    console.print("\n[bold]4. Add Custom Fields:[/]")
+    console.print(
+        "Explicitly defining fields ensures Elasticsearch indexes data exactly how your application expects it (e.g., 'keyword' for exact matching, 'text' for full-text search)."
+    )
     valid_types = [
         "text",
         "keyword",
