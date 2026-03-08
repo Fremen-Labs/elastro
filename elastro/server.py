@@ -9,11 +9,11 @@ import shlex
 import subprocess
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-import uvicorn  # type: ignore
-from fastapi import FastAPI, Depends, HTTPException, Header, Body  # type: ignore
-from fastapi.staticfiles import StaticFiles  # type: ignore
-from fastapi.responses import HTMLResponse  # type: ignore
-from fastapi.middleware.cors import CORSMiddleware  # type: ignore
+import uvicorn
+from fastapi import FastAPI, Depends, HTTPException, Header, Body
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 from elastro.core.client import ElasticsearchClient
 
 # Optional Pydantic based schema since Elastro uses Pydantic
@@ -532,6 +532,22 @@ class ElastroGUI:
                     try:
                         explain = idx_mgr.allocation_explain(name)
                         unassigned = explain.get("unassigned_info", {})
+
+                        routing_filter_fault = False
+                        for node_decision in explain.get(
+                            "node_allocation_decisions", []
+                        ):
+                            for decider in node_decision.get("deciders", []):
+                                if decider.get(
+                                    "decider"
+                                ) == "filter" and "index.routing.allocation" in decider.get(
+                                    "explanation", ""
+                                ):
+                                    routing_filter_fault = True
+                                    break
+                            if routing_filter_fault:
+                                break
+
                         results.append(
                             {
                                 "index": name,
@@ -541,6 +557,7 @@ class ElastroGUI:
                                     "allocate_explanation", "No explanation"
                                 ),
                                 "reason": unassigned.get("reason", "UNKNOWN"),
+                                "routing_filter_fault": routing_filter_fault,
                             }
                         )
                     except Exception as e:
@@ -552,6 +569,7 @@ class ElastroGUI:
                                 "status": idx.get("status"),
                                 "allocate_explanation": "Failed to fetch explanation",
                                 "reason": "ERROR",
+                                "routing_filter_fault": False,
                             }
                         )
                 return {"indices": results}
@@ -606,6 +624,20 @@ class ElastroGUI:
                     return {
                         "status": "success",
                         "message": "Cluster rerouted successfully",
+                    }
+                elif req.action == "clear_routing_filters":
+                    settings_payload = {
+                        "routing.allocation.require._name": None,
+                        "routing.allocation.include._name": None,
+                        "routing.allocation.exclude._name": None,
+                        "routing.allocation.require.*": None,
+                        "routing.allocation.include.*": None,
+                        "routing.allocation.exclude.*": None,
+                    }
+                    idx_mgr.update(index_name, {"index": settings_payload})
+                    return {
+                        "status": "success",
+                        "message": f"Custom routing allocation filters cleared for {index_name}",
                     }
                 else:
                     raise HTTPException(status_code=400, detail="Unknown action")
@@ -679,10 +711,27 @@ def launch_gui_process() -> str:
             s.bind(("127.0.0.1", 0))
             port = s.getsockname()[1]
 
-    # We use multiprocessing to detach the server
-    p = multiprocessing.Process(target=run_server, args=(port, gui.token))
-    p.daemon = False  # We want it to run after CLI exits
-    p.start()
+    # We use a detached subprocess instead of multiprocessing to survive CLI exit on macOS
+    import sys
+    import subprocess
+    cmd = [
+        sys.executable,
+        "-c",
+        f"from elastro.server import run_server; run_server({port}, '{gui.token}')"
+    ]
+    
+    kwargs = {}
+    if os.name == 'posix':
+        kwargs['start_new_session'] = True
+        
+    err_file = open('/tmp/elastro_gui_daemon.err', 'w')
+    p = subprocess.Popen(
+        cmd,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=err_file,
+        **kwargs
+    )
 
     if p.pid:
         gui.config_dir.mkdir(parents=True, exist_ok=True)

@@ -4,12 +4,42 @@ Command handlers for the CLI.
 This module contains the implementations of the CLI commands.
 """
 
-from elastro.cli.commands.index import *
-from elastro.cli.commands.document import *
-from elastro.cli.commands.datastream import *
-from elastro.cli.commands.config import *
-from elastro.cli.commands.utils import *
-from elastro.cli.commands.painless_commands import *
+from elastro.cli.commands.index import (
+    create_index,
+    get_index,
+    index_exists,
+    update_index,
+    delete_index,
+    open_index,
+    close_index,
+    list_indices,
+    find_indices,
+    index_wizard,
+)
+from elastro.cli.commands.document import (
+    index_document,
+    bulk_index,
+    get_document,
+    search_documents,
+    update_document,
+    delete_document,
+    bulk_delete,
+)
+from elastro.cli.commands.datastream import (
+    create_datastream,
+    list_datastreams,
+    get_datastream,
+    delete_datastream,
+    rollover_datastream,
+)
+from elastro.cli.commands.config import (
+    get_config_value,
+    set_config_value,
+    list_config,
+    init_config,
+)
+from elastro.cli.commands.utils import health, templates, aliases
+from elastro.cli.commands.painless_commands import painless_group
 
 __all__ = [
     # Index commands
