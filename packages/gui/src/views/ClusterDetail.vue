@@ -58,7 +58,7 @@ onMounted(() => {
 const getHealthColor = (health: string) => {
   switch(health) {
     case 'green': return 'hsl(var(--teal))'
-    case 'yellow': return 'hsl(var(--secondary))'
+    case 'yellow': return 'hsl(var(--warning))'
     case 'red': return 'hsl(var(--destructive))'
     default: return 'hsl(var(--muted-foreground))'
   }
@@ -298,7 +298,7 @@ const executeCommand = async () => {
               }" title="Green Indices"></div>
               <div class="health-bar-segment" :style="{ 
                 width: `${details.indices.yellow / details.indices.total * 100}%`,
-                background: 'hsl(var(--secondary))' 
+                background: 'hsl(var(--warning))' 
               }" title="Yellow Indices"></div>
               <div class="health-bar-segment" :style="{ 
                 width: `${details.indices.red / details.indices.total * 100}%`,
@@ -644,7 +644,7 @@ const executeCommand = async () => {
   margin-right: 0.25rem;
 }
 .dot.green { background: hsl(var(--teal)); }
-.dot.yellow { background: hsl(var(--secondary)); }
+.dot.yellow { background: hsl(var(--warning)); }
 .dot.red { background: hsl(var(--destructive)); }
 
 /* Backups */
@@ -958,6 +958,9 @@ const executeCommand = async () => {
   box-shadow: 0 20px 50px rgba(0,0,0,0.5);
   width: 90%;
   max-width: 500px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
@@ -995,6 +998,7 @@ const executeCommand = async () => {
 
 .modal-body {
   padding: 1.5rem;
+  overflow-y: auto;
 }
 
 .detail-grid {

@@ -18,6 +18,8 @@
   --accent-foreground: 230 60% 10%;
   --teal: 173 80% 40%;
   --teal-foreground: 0 0% 100%;
+  --warning: 45 93% 47%;
+  --warning-foreground: 0 0% 100%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
   --border: 210 20% 90%;
@@ -47,6 +49,7 @@
     --popover-foreground: 210 20% 98%;
     --primary: 216 100% 60%;
     --secondary: 263 53% 65%;
+    --warning: 45 93% 55%;
     --muted: 230 25% 18%;
     --muted-foreground: 210 20% 70%;
     --accent: 189 100% 45%;
