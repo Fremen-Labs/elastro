@@ -34,6 +34,10 @@ def init_job(client: ElasticsearchClient) -> None:
         "This wizard will configure a basic Single Metric anomaly detection job.\n"
     )
 
+    console.print("[bold]1. Job Definition:[/bold]")
+    console.print(
+        "The Job ID must be unique across the cluster. The Index Pattern defines what data the ML node will process."
+    )
     # 1. Job ID
     job_id = Prompt.ask("Enter a new [bold]Job ID[/bold]", default="anomaly-job-01")
 
@@ -43,14 +47,22 @@ def init_job(client: ElasticsearchClient) -> None:
     )
 
     # 3. Time Field
+    console.print("\n[bold]2. Analysis Configuration:[/bold]")
+    console.print(
+        "The time field is required to build time-series buckets. The metric field is the actual numerical value being analyzed (e.g., CPU %, response_time_ms)."
+    )
     time_field = Prompt.ask("Primary [bold]Time Field[/bold]", default="@timestamp")
 
     # 4. Metric Field
     metric_field = Prompt.ask("Metric Field to Analyze", default="response.time")
 
     # 5. Function Type
+    console.print("\n[bold]3. Analysis Algorithm:[/bold]")
+    console.print(
+        "The algorithm dictates what mathematical outlier the ML job hunts for."
+    )
     function_idx = Prompt.ask(
-        "\nSelect Analysis Function:\n  1. High Mean (Detect Spikes)\n  2. Low Mean (Detect Drops)\n  3. Count (Detect Log Volume Anomalies)\nChoice",
+        "Select Analysis Function:\n  1. High Mean (Detect Spikes)\n  2. Low Mean (Detect Drops)\n  3. Count (Detect Log Volume Anomalies)\nChoice",
         choices=["1", "2", "3"],
         default="1",
     )
