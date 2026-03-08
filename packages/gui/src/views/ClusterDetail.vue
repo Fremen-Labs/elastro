@@ -94,8 +94,19 @@ const executeFix = async (indexName: string, action: string) => {
       { action },
       { headers: { Authorization: `Bearer ${state.token}` } }
     )
-    fetchUnhealthyIndices()
-    fetchClusterDetails()
+    
+    // Optimistic UI: Immediately remove the index from the unhealthy list to provide instant tactile feedback
+    if (unhealthyIndices.value) {
+      unhealthyIndices.value = unhealthyIndices.value.filter(idx => idx.index !== indexName)
+    }
+    
+    // The Elasticsearch background thread takes a moment to process the cluster state change
+    // Wait slightly so the newly polled cluster state reflects the green health
+    setTimeout(() => {
+      fetchUnhealthyIndices()
+      fetchClusterDetails()
+    }, 1500)
+    
   } catch(err: any) {
     console.error("Fix failed", err)
     alert(err.response?.data?.detail || "Failed to apply fix.")
@@ -440,16 +451,27 @@ const executeCommand = async () => {
                </div>
                
                <!-- Unhealthy Diagnostics List -->
-               <div v-if="unhealthyLoading" class="mt-4 text-center text-muted">
-                 Loading diagnostic explanations...
+               <div v-if="unhealthyLoading" class="mt-4">
+                  <h3 class="mb-3" style="font-weight: 600; font-size: 1.1rem; color: hsl(var(--foreground));">Diagnostics & Remediation</h3>
+                  <div class="repos-list">
+                    <div v-for="i in 3" :key="i" class="repo-item detail-row" style="flex-direction: column; align-items: flex-start; gap: 0.5rem; border-color: transparent;">
+                       <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                         <div class="skeleton skeleton-text w-1/3" style="margin: 0; height: 1.2rem;"></div>
+                         <div class="skeleton skeleton-badge" style="width: 60px; height: 24px;"></div>
+                       </div>
+                       <div class="skeleton skeleton-text w-full mt-2" style="height: 0.9rem;"></div>
+                       <div class="skeleton skeleton-text w-3/4" style="height: 0.9rem;"></div>
+                       <div class="skeleton skeleton-title w-full mt-2" style="height: 2rem;"></div>
+                    </div>
+                  </div>
                </div>
                <div v-else-if="unhealthyIndices && unhealthyIndices.length > 0" class="mt-4">
-                  <h3 class="mb-3" style="font-weight: 600; font-size: 1.1rem; color: hsl(var(--destructive));">Diagnostics & Remediation</h3>
+                  <h3 class="mb-3" style="font-weight: 600; font-size: 1.1rem; color: hsl(var(--foreground));">Diagnostics & Remediation</h3>
                   <div class="repos-list">
-                    <div v-for="idx in unhealthyIndices" :key="idx.index" class="repo-item detail-row" style="flex-direction: column; align-items: flex-start; gap: 0.5rem; border-color: hsl(var(--destructive)/0.3);">
-                       <div style="display: flex; justify-content: space-between; width: 100%;">
+                    <div v-for="idx in unhealthyIndices" :key="idx.index" class="repo-item detail-row" :style="{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem', borderColor: `hsl(var(--${idx.health === 'yellow' ? 'warning' : 'destructive'}) / 0.4)` }">
+                       <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
                          <span class="repo-name">{{ idx.index }}</span>
-                         <span class="badge-outline" :style="{ borderColor: getHealthColor(idx.health), color: getHealthColor(idx.health) }">{{ idx.health.toUpperCase() }}</span>
+                         <span class="health-badge outline" :style="{ borderColor: getHealthColor(idx.health), color: getHealthColor(idx.health), padding: '0.15rem 0.6rem', fontSize: '0.75rem' }">{{ idx.health }}</span>
                        </div>
                        <p class="text-sm text-muted" style="margin: 0.5rem 0;">{{ idx.allocate_explanation }}</p>
                        
