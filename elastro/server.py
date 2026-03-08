@@ -722,15 +722,15 @@ def launch_gui_process() -> str:
     ]
 
     kwargs: Dict[str, Any] = {}
-    if os.name == 'posix':
-        kwargs['start_new_session'] = True
-        
+    if os.name == "posix":
+        kwargs["start_new_session"] = True
+
     p = subprocess.Popen(
         cmd,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
-        **kwargs
+        **kwargs,
     )
 
     if p.pid:
