@@ -714,23 +714,24 @@ def launch_gui_process() -> str:
     # We use a detached subprocess instead of multiprocessing to survive CLI exit on macOS
     import sys
     import subprocess
+
     cmd = [
         sys.executable,
         "-c",
-        f"from elastro.server import run_server; run_server({port}, '{gui.token}')"
+        f"from elastro.server import run_server; run_server({port}, '{gui.token}')",
     ]
-    
+
     kwargs = {}
-    if os.name == 'posix':
-        kwargs['start_new_session'] = True
-        
-    err_file = open('/tmp/elastro_gui_daemon.err', 'w')
+    if os.name == "posix":
+        kwargs["start_new_session"] = True
+
+    err_file = open("/tmp/elastro_gui_daemon.err", "w")
     p = subprocess.Popen(
         cmd,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=err_file,
-        **kwargs
+        **kwargs,
     )
 
     if p.pid:
