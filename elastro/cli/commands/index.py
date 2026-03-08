@@ -589,13 +589,15 @@ def fix_indices(client: ElasticsearchClient) -> None:
 
                 # Simple automatic fix suggestions based on common failure modes
                 # Mode A: Yellow due to replica assignment failure (e.g., node limits)
-                if (
-                    health == "yellow"
-                    and "replica" in str(allocate_explanation).lower()
-                    and (
-                        "permitted" in str(allocate_explanation).lower()
-                        or "too many copies" in str(allocate_explanation).lower()
-                        or "same node" in str(allocate_explanation).lower()
+                if health == "yellow" and (
+                    reason in ["CLUSTER_RECOVERED", "REPLICA_ADDED"]
+                    or (
+                        "replica" in str(allocate_explanation).lower()
+                        and (
+                            "permitted" in str(allocate_explanation).lower()
+                            or "too many copies" in str(allocate_explanation).lower()
+                            or "same node" in str(allocate_explanation).lower()
+                        )
                     )
                 ):
                     console.print(
