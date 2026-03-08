@@ -627,10 +627,30 @@ class ElastroGUI:
                 idx_mgr = IndexManager(client)
 
                 if req.action == "reduce_replicas":
-                    idx_mgr.update(index_name, {"index": {"number_of_replicas": 0}})
+                    # For system/internal indices, we MUST disable auto_expand_replicas simultaneously
+                    # Otherwise, the Elasticsearch background thread reverts it back to 1 instantly
+                    payload = {
+                        "index": {
+                            "number_of_replicas": 0,
+                            "auto_expand_replicas": "false",
+                        }
+                    }
+                    try:
+                        # Attempt to update via standard wrapper (works without expand_wildcards on user indices)
+                        idx_mgr.update(index_name, payload)
+                    except Exception as e:
+                        # If it fails due to being a hidden/system index, fallback to raw client call with expand_wildcards
+                        client.client.indices.put_settings(
+                            index=index_name,
+                            body=payload,
+                            allow_no_indices=False,
+                            expand_wildcards="all",
+                            ignore_unavailable=True,
+                        )
+
                     return {
                         "status": "success",
-                        "message": f"Replicas reduced to 0 for {index_name}",
+                        "message": f"Replicas reduced to 0 and auto-expand disabled for {index_name}",
                     }
                 elif req.action == "reroute":
                     idx_mgr.reroute(retry_failed=True)

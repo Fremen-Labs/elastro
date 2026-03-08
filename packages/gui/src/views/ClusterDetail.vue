@@ -87,6 +87,12 @@ const fetchUnhealthyIndices = async () => {
 
 const executeFix = async (indexName: string, action: string) => {
   if (!state.token) return
+  
+  if (action === 'reduce_replicas' && indexName.startsWith('.')) {
+      const confirmMsg = `WARNING: '${indexName}' appears to be a system or internal index.\n\nElasticsearch heavily protects these indices using 'auto_expand_replicas'. To force the replicas to 0, Elastro must permanently disable auto-expansion for this index. Are you sure you want to proceed?`
+      if (!window.confirm(confirmMsg)) return
+  }
+  
   activeFix.value = indexName
   try {
     await axios.post(
