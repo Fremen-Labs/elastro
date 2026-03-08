@@ -29,6 +29,17 @@ jobs:
         python -m pip install --upgrade pip
         pip install build twine black mypy pip-audit types-requests types-PyYAML types-setuptools
 
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+
+    - name: Build GUI Assets
+      run: |
+        cd packages/gui
+        npm ci
+        npm run build
+
     - name: Code Quality - Black Formatter
       run: black --check .
 
