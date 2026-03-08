@@ -9,11 +9,11 @@ import shlex
 import subprocess
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-import uvicorn
-from fastapi import FastAPI, Depends, HTTPException, Header, Body
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
+import uvicorn  # type: ignore
+from fastapi import FastAPI, Depends, HTTPException, Header, Body  # type: ignore
+from fastapi.staticfiles import StaticFiles  # type: ignore
+from fastapi.responses import HTMLResponse  # type: ignore
+from fastapi.middleware.cors import CORSMiddleware  # type: ignore
 from elastro.core.client import ElasticsearchClient
 
 # Optional Pydantic based schema since Elastro uses Pydantic
@@ -721,17 +721,16 @@ def launch_gui_process() -> str:
         f"from elastro.server import run_server; run_server({port}, '{gui.token}')",
     ]
 
-    kwargs = {}
-    if os.name == "posix":
-        kwargs["start_new_session"] = True
-
-    err_file = open("/tmp/elastro_gui_daemon.err", "w")
+    kwargs: Dict[str, Any] = {}
+    if os.name == 'posix':
+        kwargs['start_new_session'] = True
+        
     p = subprocess.Popen(
         cmd,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
-        stderr=err_file,
-        **kwargs,
+        stderr=subprocess.DEVNULL,
+        **kwargs
     )
 
     if p.pid:
