@@ -534,28 +534,41 @@ class ElastroGUI:
                         unassigned = explain.get("unassigned_info", {})
 
                         routing_filter_fault = False
+                        explanation_parts = []
                         for node_decision in explain.get(
                             "node_allocation_decisions", []
                         ):
                             for decider in node_decision.get("deciders", []):
+                                if decider.get("decision") == "NO":
+                                    msg = decider.get("explanation", "").strip()
+                                    if msg and msg not in explanation_parts:
+                                        explanation_parts.append(msg)
+
                                 if decider.get(
                                     "decider"
                                 ) == "filter" and "index.routing.allocation" in decider.get(
                                     "explanation", ""
                                 ):
                                     routing_filter_fault = True
-                                    break
-                            if routing_filter_fault:
-                                break
+
+                        alloc_explanation = explain.get("allocate_explanation", "")
+                        if (
+                            "Elasticsearch isn't allowed to allocate this shard"
+                            in alloc_explanation
+                            and explanation_parts
+                        ):
+                            alloc_explanation = "Allocation blocked: " + " | ".join(
+                                explanation_parts
+                            )
+                        elif not alloc_explanation:
+                            alloc_explanation = "No explanation"
 
                         results.append(
                             {
                                 "index": name,
                                 "health": idx.get("health"),
                                 "status": idx.get("status"),
-                                "allocate_explanation": explain.get(
-                                    "allocate_explanation", "No explanation"
-                                ),
+                                "allocate_explanation": alloc_explanation,
                                 "reason": unassigned.get("reason", "UNKNOWN"),
                                 "routing_filter_fault": routing_filter_fault,
                             }
