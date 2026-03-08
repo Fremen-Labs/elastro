@@ -453,8 +453,14 @@ const executeCommand = async () => {
                        </div>
                        <p class="text-sm text-muted" style="margin: 0.5rem 0;">{{ idx.allocate_explanation }}</p>
                        
-                       <div v-if="idx.reason === 'ALLOCATION_FAILED' || (idx.health === 'yellow' && (idx.reason === 'CLUSTER_RECOVERED' || idx.reason === 'REPLICA_ADDED' || (idx.allocate_explanation.toLowerCase().includes('replica') && (idx.allocate_explanation.toLowerCase().includes('too many') || idx.allocate_explanation.toLowerCase().includes('permitted') || idx.allocate_explanation.toLowerCase().includes('same node')))))" class="mt-2" style="width: 100%;">
-                          <div v-if="idx.reason === 'ALLOCATION_FAILED'">
+                       <div v-if="idx.routing_filter_fault || idx.reason === 'ALLOCATION_FAILED' || (idx.health === 'yellow' && (idx.reason === 'CLUSTER_RECOVERED' || idx.reason === 'REPLICA_ADDED' || (idx.allocate_explanation.toLowerCase().includes('replica') && (idx.allocate_explanation.toLowerCase().includes('too many') || idx.allocate_explanation.toLowerCase().includes('permitted') || idx.allocate_explanation.toLowerCase().includes('same node')))))" class="mt-2" style="width: 100%;">
+                          <div v-if="idx.routing_filter_fault">
+                            <button class="btn btn-secondary" style="width: 100%; justify-content: center; font-size: 0.85rem;" @click="executeFix(idx.index, 'clear_routing_filters')" :disabled="activeFix === idx.index">
+                               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                               {{ activeFix === idx.index ? 'Clearing Rules...' : 'Clear Explicit Routing Filters' }}
+                            </button>
+                          </div>
+                          <div v-else-if="idx.reason === 'ALLOCATION_FAILED'">
                             <button class="btn btn-secondary" style="width: 100%; justify-content: center; font-size: 0.85rem;" @click="executeFix(idx.index, 'reroute')" :disabled="activeFix === idx.index">
                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
                                {{ activeFix === idx.index ? 'Applying Reroute...' : 'Force Retry Allocation (Reroute)' }}

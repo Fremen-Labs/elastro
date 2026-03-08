@@ -368,8 +368,9 @@ def find_indices(client: ElasticsearchClient, pattern: str) -> None:
     # Duplicating minimal logic for clarity and specific 'Find' header if we wanted,
     # but re-using the exact same function body is DRY.
     # Let's just call the same logic.
-    ctx = click.get_current_context()
-    ctx.invoke(list_indices, pattern=pattern)
+    ctx = click.get_current_context(silent=True)
+    if ctx:
+        ctx.invoke(list_indices, pattern=pattern)
 
 
 @click.command("wizard", no_args_is_help=False)
@@ -629,9 +630,47 @@ def fix_indices(client: ElasticsearchClient) -> None:
                     else:
                         console.print("   [dim]Skipped.[/]")
                 else:
-                    console.print(
-                        "   [dim]No automated quick fix available for this specific constraint. Review explain JSON for details.[/]"
-                    )
+                    routing_filter_fault = False
+                    for node_decision in explain_result.get(
+                        "node_allocation_decisions", []
+                    ):
+                        for decider in node_decision.get("deciders", []):
+                            if decider.get(
+                                "decider"
+                            ) == "filter" and "index.routing.allocation" in decider.get(
+                                "explanation", ""
+                            ):
+                                routing_filter_fault = True
+                                break
+                        if routing_filter_fault:
+                            break
+
+                    if routing_filter_fault:
+                        console.print(
+                            "   [bold cyan]Suggestion:[/] Explicit node routing filters are preventing shard allocation."
+                        )
+                        if Confirm.ask(
+                            f"   Clear all custom node routing allocation filters for '{name}'?",
+                            default=True,
+                        ):
+                            settings_payload = {
+                                "routing.allocation.require._name": None,
+                                "routing.allocation.include._name": None,
+                                "routing.allocation.exclude._name": None,
+                                "routing.allocation.require.*": None,
+                                "routing.allocation.include.*": None,
+                                "routing.allocation.exclude.*": None,
+                            }
+                            index_manager.update(name, {"index": settings_payload})
+                            console.print(
+                                f"   [green]✓ Custom routing allocation filters cleared for {name}.[/]"
+                            )
+                        else:
+                            console.print("   [dim]Skipped.[/]")
+                    else:
+                        console.print(
+                            "   [dim]No automated quick fix available for this specific constraint. Review explain JSON for details.[/]"
+                        )
 
             except Exception as explain_error:
                 console.print(
