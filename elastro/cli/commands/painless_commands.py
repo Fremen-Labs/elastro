@@ -65,21 +65,38 @@ def scaffold() -> None:
         "Select the Script Context", choices=["1", "2", "3", "4"], default="1"
     )
 
+    console.print("\n[bold]Output Configuration:[/bold]")
+    console.print(
+        "Elastro will generate a local file containing your scaffolded script."
+    )
+    console.print(
+        "This file will automatically be saved with a [cyan].painless[/cyan] extension."
+    )
     filename = rich.prompt.Prompt.ask(
-        "Output Filename (without extension)", default="script"
+        "What should the file be named? (e.g., entering 'my_script' creates 'my_script.painless')",
+        default="script",
     )
     filename = f"{filename}.painless"
 
     if os.path.exists(filename):
         overwrite = rich.prompt.Confirm.ask(
-            f"[yellow]File {filename} exists. Overwrite?[/yellow]", default=False
+            f"[yellow]File {filename} already exists in this directory. Overwrite it?[/yellow]",
+            default=False,
         )
         if not overwrite:
             console.print("[red]Aborted.[/red]")
             return
 
+    console.print("\n[bold]Robust Null Checking (Optional):[/bold]")
+    console.print(
+        "Painless scripts throw NullPointerExceptions if you access fields that don't exist in a document."
+    )
+    console.print(
+        "Elastro can automatically generate safe null-check boilerplate for your expected inputs."
+    )
     expected_inputs = rich.prompt.Prompt.ask(
-        "Expected input fields (comma-separated, e.g., 'host.name, @timestamp')"
+        "Which input fields do you plan to use? (comma-separated, e.g., 'host.name, @timestamp', or press Enter to skip)",
+        default="",
     )
     fields = [f.strip() for f in expected_inputs.split(",")] if expected_inputs else []
 
