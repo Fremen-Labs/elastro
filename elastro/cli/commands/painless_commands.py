@@ -43,12 +43,23 @@ def scaffold() -> None:
         )
     )
 
-    contexts = [
-        "Runtime Field (Outputs a value via emit)",
-        "Script Field (Returns a mapped value)",
-        "Ingest Pipeline (Mutates ctx document)",
-        "Update Script (Mutates ctx._source)",
-    ]
+    console.print("\n[bold]Painless Script Contexts:[/bold]")
+    console.print(
+        "The context determines what variables are available to your script (e.g., [cyan]doc[/cyan] vs [cyan]ctx[/cyan]) and how it returns data."
+    )
+    console.print(
+        "  [bold cyan]1)[/bold cyan] Runtime Field   (Outputs a value via emit)"
+    )
+    console.print(
+        "  [bold cyan]2)[/bold cyan] Script Field    (Returns a mapped value directly)"
+    )
+    console.print(
+        "  [bold cyan]3)[/bold cyan] Ingest Pipeline (Mutates incoming document via 'ctx')"
+    )
+    console.print(
+        "  [bold cyan]4)[/bold cyan] Update Script   (Mutates existing document via 'ctx._source')"
+    )
+    console.print()
 
     context_choice = rich.prompt.Prompt.ask(
         "Select the Script Context", choices=["1", "2", "3", "4"], default="1"
