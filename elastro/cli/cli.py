@@ -244,6 +244,7 @@ utils.add_command(utils_templates)
 utils.add_command(aliases)
 
 from elastro.cli.commands.gui import gui
+from elastro.cli.commands.rag import rag_group
 
 # Register Top-Level Groups
 cli.add_command(template_group)
@@ -257,6 +258,7 @@ cli.add_command(ml_group)
 cli.add_command(script_group)
 cli.add_command(painless_group)
 cli.add_command(gui)
+cli.add_command(rag_group)
 
 
 def main() -> None:
