@@ -1,9 +1,10 @@
 from ast_parser import ASTParser
 
+
 def test_ast_polyglot():
     parser = ASTParser()
     print("Languages loaded:", parser.langs.keys())
-    
+
     # 1. Pure Python Test
     py_code = """
 def login_user(username: str):
@@ -15,7 +16,7 @@ def login_user(username: str):
     print("\n--- Python Graph ---")
     print("Defined:", py_graph["functions_defined"])
     print("Called:", py_graph["functions_called"])
-    
+
     # 2. Vue/TS Test (Simulating Elastro/ReleaseFlow Frontend logic)
     ts_code = """
 const updateSettings = async () => {
@@ -28,6 +29,7 @@ const updateSettings = async () => {
     print("\n--- Vue/TS Graph ---")
     print("Defined:", ts_graph["functions_defined"])
     print("Called:", ts_graph["functions_called"])
-    
+
+
 if __name__ == "__main__":
     test_ast_polyglot()
