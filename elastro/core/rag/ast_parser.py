@@ -1,11 +1,12 @@
 """
 Abstract Syntax Tree (AST) parser utilizing tree-sitter for Graph RAG Code Flow Mapping.
 Supports polyglot analysis of Python, Go, JavaScript, TypeScript, and Vue.
+Implements Semantic Chunking and Signature Extraction.
 """
 
 import os
 import tree_sitter
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Any
 
 class ASTParser:
     def __init__(self):
@@ -55,79 +56,131 @@ class ASTParser:
             return "vue"
         return "unsupported"
 
-    def parse_file(self, file_path: str, content: str) -> Dict[str, List[str]]:
+    def parse_file(self, file_path: str, content: str) -> List[Dict[str, Any]]:
         """
-        Parses raw code to extract the deterministic call graph.
-        Returns explicit function definitions and external call expressions.
+        Parses raw code and extracts semantic chunks (functions/classes) with deterministic call graphs.
         """
         ext = os.path.splitext(file_path)[1]
         lang = self._determine_language(ext)
         
         if lang not in self.parsers:
-            return {"functions_defined": [], "functions_called": []}
+            return [{
+                "chunk_type": "file",
+                "name": "module",
+                "content": content,
+                "functions_defined": [],
+                "functions_called": []
+            }]
             
         parser = self.parsers[lang]
-        tree = parser.parse(content.encode('utf-8'))
+        source = content.encode('utf-8')
+        tree = parser.parse(source)
         
-        funcs_defined: Set[str] = set()
-        funcs_called: Set[str] = set()
+        chunks: List[Dict[str, Any]] = []
         
-        # We manually traverse to avoid huge compiled regex TS Queries (keeps it extremely fast)
-        self._traverse_tree(tree.root_node, lang, content.encode('utf-8'), funcs_defined, funcs_called)
+        self._extract_chunks(tree.root_node, lang, source, chunks)
         
-        return {
-            "functions_defined": sorted(list(funcs_defined)),
-            "functions_called": sorted(list(funcs_called))
-        }
+        # If no semantic chunks were found, fallback to parsing the whole file as a single module chunk
+        if not chunks:
+            called: Set[str] = set()
+            self._traverse_for_calls(tree.root_node, lang, source, called)
+            chunks.append({
+                "chunk_type": "file",
+                "name": "module",
+                "content": content,
+                "functions_defined": [],
+                "functions_called": sorted(list(called))
+            })
+            
+        return chunks
 
-    def _traverse_tree(self, node: tree_sitter.Node, lang: str, source: bytes, defined: Set[str], called: Set[str]) -> None:
-        """Recursive AST Walk for unified Graph routing rules."""
+    def _extract_chunks(self, node: tree_sitter.Node, lang: str, source: bytes, chunks: List[Dict[str, Any]]) -> None:
+        """Recursive AST Walk for semantic chunking."""
         node_type = node.type
         
-        # 1. Catch Function Definitions
-        if lang == "python" and node_type == "function_definition":
-            name_node = node.child_by_field_name("name")
-            if name_node:
-                defined.add(source[name_node.start_byte:name_node.end_byte].decode('utf-8'))
-                
-        elif lang == "go" and node_type in ["function_declaration", "method_declaration"]:
-            name_node = node.child_by_field_name("name")
-            if name_node:
-                defined.add(source[name_node.start_byte:name_node.end_byte].decode('utf-8'))
-                
-        elif lang in ["javascript", "typescript", "vue"]:
-            if node_type in ["function_declaration", "method_definition"]:
+        is_chunk = False
+        chunk_name = ""
+        chunk_type = ""
+        
+        if lang == "python":
+            if node_type in ["function_definition", "class_definition"]:
+                is_chunk = True
+                chunk_type = "function" if "function" in node_type else "class"
                 name_node = node.child_by_field_name("name")
                 if name_node:
-                    defined.add(source[name_node.start_byte:name_node.end_byte].decode('utf-8'))
-            # Arrow functions often attached to variable_declarator
-            if node_type == "variable_declarator":
+                    chunk_name = source[name_node.start_byte:name_node.end_byte].decode('utf-8')
+                    
+        elif lang == "go":
+            if node_type in ["function_declaration", "method_declaration", "type_declaration"]:
+                is_chunk = True
+                chunk_type = "function" if "function" in node_type or "method" in node_type else "class"
+                name_node = node.child_by_field_name("name")
+                if name_node:
+                    chunk_name = source[name_node.start_byte:name_node.end_byte].decode('utf-8')
+                    
+        elif lang in ["javascript", "typescript", "vue"]:
+            if node_type in ["function_declaration", "method_definition", "class_declaration"]:
+                is_chunk = True
+                chunk_type = "function" if "function" in node_type or "method" in node_type else "class"
+                name_node = node.child_by_field_name("name")
+                if name_node:
+                    chunk_name = source[name_node.start_byte:name_node.end_byte].decode('utf-8')
+            elif node_type == "variable_declarator":
                 name_node = node.child_by_field_name("name")
                 val_node = node.child_by_field_name("value")
                 if name_node and val_node and val_node.type == "arrow_function":
-                    defined.add(source[name_node.start_byte:name_node.end_byte].decode('utf-8'))
+                    is_chunk = True
+                    chunk_type = "function"
+                    chunk_name = source[name_node.start_byte:name_node.end_byte].decode('utf-8')
 
-        # 2. Catch Call Expressions (The "Graph RAG" Links)
-        # Tree-sitter universally identifies function execution as 'call_expression'
-        if node_type == "call_expression":
+        if is_chunk:
+            called: Set[str] = set()
+            # Traverse specifically inside this chunk's boundaries to extract calls
+            self._traverse_for_calls(node, lang, source, called)
+            
+            # To ensure proper context window, extract the source of just this node
+            chunk_content = source[node.start_byte:node.end_byte].decode('utf-8')
+            
+            chunks.append({
+                "chunk_type": chunk_type,
+                "name": chunk_name or "anonymous",
+                "content": chunk_content,
+                "functions_defined": [chunk_name] if chunk_name else [],
+                "functions_called": sorted(list(called))
+            })
+            
+        # Continue recursing to find nested functions/classes (e.g., methods inside a class)
+        for child in node.children:
+            self._extract_chunks(child, lang, source, chunks)
+
+    def _traverse_for_calls(self, node: tree_sitter.Node, lang: str, source: bytes, called: Set[str]) -> None:
+        """Extracts call chains including their parameters/arguments for exact signature mapping."""
+        if node.type == "call_expression":
             func_node = node.child_by_field_name("function")
             if func_node:
-                # We want to extract the full chained attribute map, e.g "db_session.query.filter.first"
-                # rather than just "first" or the full messy syntax tree text.
                 call_text = self._extract_call_chain(func_node, source)
                 
-                # Filter out standard library noise and wildly long chunks
                 ignore_list = {
                     "print", "len", "range", "str", "int", "list", "dict", "set", "super",
-                    "append", "fmt.Println", "console.log", "console.error", "require"
+                    "append", "fmt.Println", "console.log", "console.error", "require",
+                    "getattr", "setattr", "hasattr", "isinstance", "type"
                 }
 
-                if call_text and call_text not in ignore_list and len(call_text) < 60 and '\n' not in call_text:
-                    called.add(call_text)
-
-        # 3. Recurse down AST
+                if call_text and call_text not in ignore_list:
+                    # Signature Extraction: Pull the arguments as well
+                    args_node = node.child_by_field_name("arguments")
+                    if args_node:
+                        args_text = source[args_node.start_byte:args_node.end_byte].decode('utf-8')
+                        # Sanitize whitespace/newlines
+                        args_text = " ".join(args_text.split())
+                        if len(args_text) < 60:
+                            call_text = f"{call_text}{args_text}"
+                            
+                    if len(call_text) < 120 and '\n' not in call_text:
+                        called.add(call_text)
+                        
         for child in node.children:
-            self._traverse_tree(child, lang, source, defined, called)
+            self._traverse_for_calls(child, lang, source, called)
 
     def _extract_call_chain(self, node: tree_sitter.Node, source: bytes) -> str:
         """Recursively builds pure string representation of chained object method calls."""
@@ -141,10 +194,8 @@ class ASTParser:
                 attr_str = source[attr_node.start_byte:attr_node.end_byte].decode('utf-8')
                 return f"{obj_str}.{attr_str}"
         elif node.type == "call":
-            # Nested call expression logic (e.g. inside an attribute chain)
             func_node = node.child_by_field_name("function")
             if func_node:
                 return self._extract_call_chain(func_node, source)
             
-        # Fallback to pure text extraction
         return source[node.start_byte:node.end_byte].decode('utf-8').strip()

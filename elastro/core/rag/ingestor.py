@@ -2,6 +2,7 @@
 Graph RAG orchestration module.
 Scans physical codebases, leverages the ASTParser to extract functional flow maps,
 and bulk indexes the enriched documents into Elasticsearch.
+Updated with Semantic Chunking and BM25 Support.
 """
 
 import os
@@ -38,33 +39,70 @@ class GraphRAGManager:
 
     def scaffold_index(self) -> None:
         """Safely creates the Graph RAG index if it does not manually exist."""
+        pipeline_deployed = False
+        # 1. Attempt to build the Dense Vector inference pipeline for Hybrid Search
+        try:
+            self.client.client.ingest.put_pipeline(
+                id="elastro-elser-v2",
+                description="Process text via ELSER for Dense Vector Hybrid Search",
+                processors=[
+                    {
+                        "inference": {
+                            "model_id": ".elser_model_2",
+                            "field_map": {"content": "text_field"},
+                            "target_field": "content_embedding",
+                            "inference_config": {
+                                "text_expansion": {"results_field": "tokens"}
+                            },
+                            "ignore_missing": True,
+                            "ignore_failure": True
+                        }
+                    }
+                ]
+            )
+            logger.info("Successfully deployed ELSER inference pipeline framework (Enterprise Mode).")
+            pipeline_deployed = True
+        except Exception as e:
+            logger.warning(f"Could not scaffold ELSER pipeline (requires ML nodes or Platinum/Enterprise license). Falling back to Open Source BM25 Mode. Error: {e}")
+
         # Simple existence check without causing hard errors if it doesn't
         if not self.client.client.indices.exists(index=self.index_name):
             logger.info(f"Creating Graph RAG index '{self.index_name}'")
-            # We enforce standard RAG architecture. 
+            
+            settings = {
+                "number_of_shards": 1,
+                "number_of_replicas": 0
+            }
+            if pipeline_deployed:
+                settings["default_pipeline"] = "elastro-elser-v2"
+
+            mappings = {
+                "properties": {
+                    "repo_name": {"type": "keyword"},
+                    "file_path": {"type": "keyword"},
+                    "extension": {"type": "keyword"},
+                    "chunk_type": {"type": "keyword"},
+                    "chunk_name": {"type": "keyword"},
+                    "content": {"type": "text"},
+                    "functions_defined": {"type": "keyword"},
+                    "functions_called": {"type": "keyword"}
+                }
+            }
+            if pipeline_deployed:
+                mappings["properties"]["content_embedding"] = {"type": "sparse_vector"}
+
+            # We enforce standard RAG architecture with the Semantic Chunking fields.
             self.client.client.indices.create(
                 index=self.index_name,
                 body={
-                    "settings": {
-                        "number_of_shards": 1,
-                        "number_of_replicas": 0
-                    },
-                    "mappings": {
-                        "properties": {
-                            "repo_name": {"type": "keyword"},
-                            "file_path": {"type": "keyword"},
-                            "extension": {"type": "keyword"},
-                            "content": {"type": "text"},
-                            "functions_defined": {"type": "keyword"},
-                            "functions_called": {"type": "keyword"}
-                        }
-                    }
+                    "settings": settings,
+                    "mappings": mappings
                 }
             )
 
     def scan_and_yield(self, repo_path: str) -> Generator[Dict[str, Any], None, None]:
         """
-        Walks the repository sequentially. Applies AST parsing to build the Code Flow.
+        Walks the repository sequentially. Applies Semantic Chunking and AST parsing.
         Yields Elasticsearch Bulk API formatted operation dictionaries.
         """
         # Ensure we have absolute paths.
@@ -87,27 +125,29 @@ class GraphRAGManager:
                     with open(file_path, "r", encoding="utf-8") as f:
                         content = f.read()
                         
-                    # 1. Engage the AST parser to extract the "Graph" metadata
-                    graph_meta = self.ast_parser.parse_file(file_path, content)
-                    
-                    # 2. Determine Single Source of Truth ID
+                    # 1. Engage the AST parser to extract the "Graph" semantic chunks
+                    chunks = self.ast_parser.parse_file(file_path, content)
                     rel_path = os.path.relpath(file_path, repo_path)
-                    doc_id = f"{repo_name}:{rel_path}"
                     
-                    # 3. Yield the Bulk API _index action
-                    yield {
-                        "_op_type": "index",
-                        "_index": self.index_name,
-                        "_id": doc_id,
-                        "_source": {
-                            "repo_name": repo_name,
-                            "file_path": rel_path,
-                            "extension": ext,
-                            "content": content,
-                            "functions_defined": graph_meta["functions_defined"],
-                            "functions_called": graph_meta["functions_called"]
+                    # 2. Yield the Bulk API _index action for each specific chunk
+                    for i, chunk in enumerate(chunks):
+                        doc_id = f"{repo_name}:{rel_path}::{i}"
+                        
+                        yield {
+                            "_op_type": "index",
+                            "_index": self.index_name,
+                            "_id": doc_id,
+                            "_source": {
+                                "repo_name": repo_name,
+                                "file_path": rel_path,
+                                "extension": ext,
+                                "chunk_type": chunk.get("chunk_type", "file"),
+                                "chunk_name": chunk.get("name", "module"),
+                                "content": chunk.get("content", content),
+                                "functions_defined": chunk.get("functions_defined", []),
+                                "functions_called": chunk.get("functions_called", [])
+                            }
                         }
-                    }
                 except UnicodeDecodeError:
                     # Skip binary files that masquerade as text extensions
                     continue
