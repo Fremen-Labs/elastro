@@ -5,23 +5,23 @@ Implements Semantic Chunking and Signature Extraction.
 """
 
 import os
-import tree_sitter
+import tree_sitter  # type: ignore
 from typing import Dict, List, Set, Any
 
 
 class ASTParser:
-    def __init__(self):
+    def __init__(self) -> None:
         self.parsers: Dict[str, tree_sitter.Parser] = {}
         self._initialize_parsers()
 
     def _initialize_parsers(self) -> None:
         """Loads natively compiled tree-sitter language capsules."""
         try:
-            from tree_sitter import Language, Parser
-            import tree_sitter_python as tsp
-            import tree_sitter_go as tsg
-            import tree_sitter_javascript as tsjs
-            import tree_sitter_typescript as tsts
+            from tree_sitter import Language, Parser  # type: ignore
+            import tree_sitter_python as tsp  # type: ignore
+            import tree_sitter_go as tsg  # type: ignore
+            import tree_sitter_javascript as tsjs  # type: ignore
+            import tree_sitter_typescript as tsts  # type: ignore
 
             # v0.25+ API natively imports .language() as PyCapsule pointers
             self.langs = {

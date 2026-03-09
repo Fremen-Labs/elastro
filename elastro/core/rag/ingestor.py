@@ -87,11 +87,11 @@ class GraphRAGManager:
         if not self.client.client.indices.exists(index=self.index_name):
             logger.info(f"Creating Graph RAG index '{self.index_name}'")
 
-            settings = {"number_of_shards": 1, "number_of_replicas": 0}
+            settings: Dict[str, Any] = {"number_of_shards": 1, "number_of_replicas": 0}
             if pipeline_deployed:
                 settings["default_pipeline"] = "elastro-elser-v2"
 
-            mappings = {
+            mappings: Dict[str, Any] = {
                 "properties": {
                     "repo_name": {"type": "keyword"},
                     "file_path": {"type": "keyword"},
