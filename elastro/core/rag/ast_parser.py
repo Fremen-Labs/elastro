@@ -17,7 +17,7 @@ class ASTParser:
     def _initialize_parsers(self) -> None:
         """Loads natively compiled tree-sitter language capsules."""
         try:
-            from tree_sitter import Language, Parser  # type: ignore
+            from tree_sitter import Language, Parser
             import tree_sitter_python as tsp  # type: ignore
             import tree_sitter_go as tsg  # type: ignore
             import tree_sitter_javascript as tsjs  # type: ignore
