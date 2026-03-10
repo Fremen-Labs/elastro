@@ -94,10 +94,15 @@ class ElastroRPCService:
         )
 
         query_body = {"query": inner_query}
-        options = {"size": getattr(parsed, "size", 10), "from": getattr(parsed, "from_", 0)}
+        options = {
+            "size": getattr(parsed, "size", 10),
+            "from": getattr(parsed, "from_", 0),
+        }
 
         try:
-            results = doc_manager.search(getattr(parsed, "index", ""), query_body, options)
+            results = doc_manager.search(
+                getattr(parsed, "index", ""), query_body, options
+            )
             output_format = getattr(parsed, "output", "json")
             output_str = format_output(results, output_format=output_format)
             return output_str
@@ -114,4 +119,3 @@ def start_daemon(host: str = "127.0.0.1", port: int = 9201) -> None:
         server.serve_forever()
     except KeyboardInterrupt:
         print("\nShutting down daemon.")
-
