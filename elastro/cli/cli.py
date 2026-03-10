@@ -15,7 +15,7 @@ if len(sys.argv) >= 3 and sys.argv[1] == "doc" and sys.argv[2] == "search":
             import json
             import urllib.request
             from http.client import HTTPResponse
-            from typing import cast
+            from typing import cast, Dict, Any
 
             req = urllib.request.Request(
                 "http://127.0.0.1:9201/fast-path/doc/search",

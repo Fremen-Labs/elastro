@@ -6,7 +6,7 @@ Maintains a persistent Elasticsearch client for sub-millisecond agentic queries.
 
 import argparse
 from contextlib import asynccontextmanager
-from typing import List, Optional, AsyncGenerator, Any
+from typing import List, Optional, AsyncGenerator, Any, Dict
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -48,7 +48,7 @@ class DocSearchRequest(BaseModel):
 
 
 @app.get("/health")
-def health_check() -> dict[str, Any]:
+def health_check() -> Dict[str, Any]:
     return {
         "status": "alive",
         "client_connected": client.is_connected() if client else False,
