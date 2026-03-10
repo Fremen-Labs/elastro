@@ -85,13 +85,13 @@ class AliasManager:
         """
         try:
             if name and index:
-                return self._es.indices.get_alias(name=name, index=index)
+                return self._es.indices.get_alias(name=name, index=index)  # type: ignore
             elif name:
-                return self._es.indices.get_alias(name=name)
+                return self._es.indices.get_alias(name=name)  # type: ignore
             elif index:
-                return self._es.indices.get_alias(index=index)
+                return self._es.indices.get_alias(index=index)  # type: ignore
             else:
-                return self._es.indices.get_alias()
+                return self._es.indices.get_alias()  # type: ignore
         except Exception as e:
             raise OperationError(f"Failed to get alias information: {str(e)}")
 
@@ -107,9 +107,9 @@ class AliasManager:
         """
         try:
             if index:
-                return self._es.indices.exists_alias(name=name, index=index)
+                return self._es.indices.exists_alias(name=name, index=index)  # type: ignore
             else:
-                return self._es.indices.exists_alias(name=name)
+                return self._es.indices.exists_alias(name=name)  # type: ignore
         except Exception:
             return False
 

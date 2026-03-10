@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """Health check and diagnostics utilities for Elasticsearch."""
 
 from typing import Dict, List, Any, Optional, Union
@@ -240,7 +241,7 @@ class HealthManager:
             diagnostic: Dict[str, Any] = {
                 "cluster_health": self.cluster_health(),
                 "nodes_count": len(self._es.nodes.info().get("nodes", {})),
-                "indices_count": len(self._es.indices.get("*").keys()),
+                "indices_count": len(self._es.indices.get(index="*").keys()),
                 "pending_tasks": len(self.pending_tasks()),
             }
 

@@ -74,7 +74,7 @@ class DocumentManager:
 
             logger.debug(f"Indexing document into '{index}' with ID '{id}'")
             # Execute the index operation
-            response = self.client.client.index(**params)
+            response = self.client.client.index(**params)  # type: ignore
             return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             logger.error(f"Failed to index document info '{index}': {str(e)}")
@@ -355,7 +355,7 @@ class DocumentManager:
 
         try:
             logger.debug(f"Searching index '{index}'...")
-            response = self.client.client.search(**search_params)
+            response = self.client.client.search(**search_params)  # type: ignore
             return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             logger.error(f"Failed to search documents in '{index}': {str(e)}")

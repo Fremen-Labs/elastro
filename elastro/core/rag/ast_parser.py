@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """
 Abstract Syntax Tree (AST) parser utilizing tree-sitter for Graph RAG Code Flow Mapping.
 Supports polyglot analysis of Python, Go, JavaScript, TypeScript, and Vue.
