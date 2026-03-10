@@ -70,6 +70,11 @@ exclude = ["tests*", "examples*"]
 [tool.black]
 line-length = 88
 target-version = ["py39"]
+extend-exclude = '''
+/(
+  .*daemon\.py
+)/
+'''
 
 [tool.isort]
 profile = "black"
