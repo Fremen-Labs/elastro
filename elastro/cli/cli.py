@@ -18,7 +18,7 @@ if len(sys.argv) >= 3 and sys.argv[1] == "doc" and sys.argv[2] == "search":
             # Set a very short timeout so we fallback to heavy CLI if daemon is offline
             socket.setdefaulttimeout(0.05)
             proxy = xmlrpc.client.ServerProxy("http://127.0.0.1:9201")
-            
+
             result = proxy.fast_path_search(sys.argv[3:])
             if result:
                 print(result, end="")
