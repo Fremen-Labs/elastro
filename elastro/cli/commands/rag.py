@@ -70,3 +70,46 @@ def ingest_repo(client: ElasticsearchClient, repo_path: str, index: str) -> None
     except Exception as e:
         console.print(f"[bold red]❌ RAG Ingestion Failed:[/bold red] {str(e)}")
         exit(1)
+
+
+@rag_group.command("update")
+@click.argument(
+    "file_path", type=click.Path(exists=True, file_okay=True, dir_okay=False)
+)
+@click.option(
+    "--index",
+    "-i",
+    type=str,
+    default="fremen_codebase_rag",
+    help="Target Elasticsearch index name (default: fremen_codebase_rag)",
+)
+@click.pass_obj
+def update_file(client: ElasticsearchClient, file_path: str, index: str) -> None:
+    """
+    Surgically perfectly sync the AST of a single modified file.
+
+    Ideal for Agentic usage where building the entire directory tree takes
+    unnecessary toll compared to syncing only the latest refactored Python file.
+
+    Example:
+    ```bash
+    elastro rag update elastro/core/rag/ingestor.py
+    ```
+    """
+    file_name = os.path.basename(file_path)
+    console.print(
+        f"[bold cyan]🔍 Surgically syncing AST Graph RAG for '{file_name}'[/bold cyan]"
+    )
+
+    manager = GraphRAGManager(client, index)
+
+    try:
+        success_count = manager.update_file(file_path)
+
+        console.print(
+            f"[bold green]✅ Success![/bold green] Refreshed [bold]{success_count}[/bold] AST chunks for the file."
+        )
+
+    except Exception as e:
+        console.print(f"[bold red]❌ RAG File Update Failed:[/bold red] {str(e)}")
+        exit(1)

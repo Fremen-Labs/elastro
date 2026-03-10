@@ -8,7 +8,7 @@ Updated with Semantic Chunking and BM25 Support.
 import os
 import json
 import logging
-from typing import List, Dict, Any, Generator
+from typing import List, Dict, Any, Generator, Optional
 from elastro.core.client import ElasticsearchClient
 from elastro.core.rag.ast_parser import ASTParser
 
@@ -186,3 +186,93 @@ class GraphRAGManager:
         )
 
         return success_count
+
+    def update_file(self, file_path: str, repo_path: Optional[str] = None) -> int:
+        """
+        Surgically updates a specific file's AST chunks in Elasticsearch.
+        Uses bulk processing for deletions to comply with performance constraints.
+        """
+        from elasticsearch.helpers import bulk
+
+        file_path = os.path.abspath(file_path)
+        if not repo_path:
+            # Find closest .git dir
+            current = file_path
+            while current != os.path.dirname(current):
+                current = os.path.dirname(current)
+                if os.path.isdir(os.path.join(current, ".git")):
+                    repo_path = current
+                    break
+            if not repo_path:
+                repo_path = os.getcwd()  # Fallback
+
+        repo_name = os.path.basename(repo_path)
+        rel_path = os.path.relpath(file_path, repo_path)
+
+        self.scaffold_index()
+
+        # 1. Yield bulk delete ops for stale chunks matching file_path
+        def generate_deletes() -> Generator[Dict[str, Any], None, None]:
+            query = {
+                "query": {"term": {"file_path": rel_path}},
+                "_source": False,
+                "size": 1000,
+            }
+            try:
+                res = self.client.client.search(index=self.index_name, body=query)
+                for hit in res.get("hits", {}).get("hits", []):
+                    yield {
+                        "_op_type": "delete",
+                        "_index": self.index_name,
+                        "_id": hit["_id"],
+                    }
+            except Exception as e:
+                logger.warning(f"Could not fetch existing chunks for deletion: {e}")
+
+        # Execute deletes
+        try:
+            bulk(self.client.client, generate_deletes(), refresh=True, stats_only=True)
+        except Exception as e:
+            logger.warning(f"Failed to bulk delete stale AST chunks: {e}")
+
+        # 2. Re-ingest
+        def scan_single_file() -> Generator[Dict[str, Any], None, None]:
+            ext = os.path.splitext(file_path)[1].lower()
+            if ext not in self.supported_extensions or self._should_ignore(file_path):
+                return
+
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+
+                chunks = self.ast_parser.parse_file(file_path, content)
+                for i, chunk in enumerate(chunks):
+                    doc_id = f"{repo_name}:{rel_path}::{i}"
+                    yield {
+                        "_op_type": "index",
+                        "_index": self.index_name,
+                        "_id": doc_id,
+                        "_source": {
+                            "repo_name": repo_name,
+                            "file_path": rel_path,
+                            "extension": ext,
+                            "chunk_type": chunk.get("chunk_type", "file"),
+                            "chunk_name": chunk.get("name", "module"),
+                            "content": chunk.get("content", content),
+                            "functions_defined": chunk.get("functions_defined", []),
+                            "functions_called": chunk.get("functions_called", []),
+                        },
+                    }
+            except Exception as e:
+                logger.error(f"Error parsing Graph RAG for {file_path}: {e}")
+
+        success_count, _ = bulk(
+            self.client.client,
+            scan_single_file(),
+            chunk_size=100,
+            stats_only=True,
+            refresh=True,
+        )
+
+        # Re-cast dynamically because bulk returns a tuple
+        return int(success_count)
