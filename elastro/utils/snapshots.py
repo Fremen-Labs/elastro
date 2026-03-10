@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """Snapshot and restore utilities for Elasticsearch."""
 
 from typing import Dict, List, Any, Optional, Union

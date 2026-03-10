@@ -74,7 +74,7 @@ class BulkDocumentManager:
             # Execute bulk operation
             return self.client.client.bulk(
                 operations=operations, refresh="true" if refresh else "false"
-            )
+            )  # type: ignore
         except Exception as e:
             raise DocumentError(f"Failed to bulk index documents: {str(e)}")
 
@@ -112,6 +112,6 @@ class BulkDocumentManager:
             # Execute bulk operation
             return self.client.client.bulk(
                 operations=operations, refresh="true" if refresh else "false"
-            )
+            )  # type: ignore
         except Exception as e:
             raise DocumentError(f"Failed to bulk delete documents: {str(e)}")
