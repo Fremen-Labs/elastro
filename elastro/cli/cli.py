@@ -4,10 +4,37 @@ Command-line interface main module.
 This module defines the main CLI structure using Click.
 """
 
+import sys
+
+# --- FAST PATH INTERCEPTOR ---
+# Must run before any other heavy imports to avoid the ~214ms startup penalty
+if len(sys.argv) >= 3 and sys.argv[1] == "doc" and sys.argv[2] == "search":
+    # Only use the fast path if '--help' is not requested
+    if "--help" not in sys.argv and "-h" not in sys.argv:
+        try:
+            import json
+            import urllib.request
+
+            req = urllib.request.Request(
+                "http://127.0.0.1:9201/fast-path/doc/search",
+                data=json.dumps({"args": sys.argv[3:]}).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=0.05) as response:
+                if response.status == 200:
+                    print(response.read().decode("utf-8"), end="")
+                    sys.exit(0)
+        except Exception:
+            # If the daemon is offline or crashes, silently fall through
+            # to the normal heavy Click execution.
+            pass
+# --- END FAST PATH INTERCEPTOR ---
+
 import os
-import rich_click as click
 import json
 import yaml
+import rich_click as click
 from typing import Dict, Any, Optional, List, Union
 from rich.console import Console
 from rich.table import Table
@@ -245,6 +272,7 @@ utils.add_command(aliases)
 
 from elastro.cli.commands.gui import gui
 from elastro.cli.commands.rag import rag_group
+from elastro.cli.commands.daemon import daemon_group
 
 # Register Top-Level Groups
 cli.add_command(template_group)
@@ -259,6 +287,7 @@ cli.add_command(script_group)
 cli.add_command(painless_group)
 cli.add_command(gui)
 cli.add_command(rag_group)
+cli.add_command(daemon_group)
 
 
 def main() -> None:
