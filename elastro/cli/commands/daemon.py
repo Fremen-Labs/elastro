@@ -1,6 +1,7 @@
 """
 Daemon management commands.
 """
+# fmt: off
 
 import sys
 import urllib.request
