@@ -12,22 +12,17 @@ if len(sys.argv) >= 3 and sys.argv[1] == "doc" and sys.argv[2] == "search":
     # Only use the fast path if '--help' is not requested
     if "--help" not in sys.argv and "-h" not in sys.argv:
         try:
-            import json
-            import urllib.request
-            from http.client import HTTPResponse
-            from typing import cast, Dict, Any
+            import xmlrpc.client
+            import socket
 
-            req = urllib.request.Request(
-                "http://127.0.0.1:9201/fast-path/doc/search",
-                data=json.dumps({"args": sys.argv[3:]}).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=0.05) as _response:
-                response = cast(HTTPResponse, _response)
-                if getattr(response, "status", 0) == 200:
-                    print(response.read().decode("utf-8"), end="")
-                    sys.exit(0)
+            # Set a very short timeout so we fallback to heavy CLI if daemon is offline
+            socket.setdefaulttimeout(0.05)
+            proxy = xmlrpc.client.ServerProxy("http://127.0.0.1:9201")
+            
+            result = proxy.fast_path_search(sys.argv[3:])
+            if result:
+                print(result, end="")
+                sys.exit(0)
         except Exception:
             # If the daemon is offline or crashes, silently fall through
             # to the normal heavy Click execution.
