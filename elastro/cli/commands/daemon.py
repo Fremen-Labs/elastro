@@ -43,11 +43,16 @@ def start(port: int, host: str) -> None:
 def status(port: int) -> None:
     """Check if the Daemon is active."""
     try:
+        import urllib.request
+        from http.client import HTTPResponse
+        from typing import cast
+
         req = urllib.request.Request(f"http://127.0.0.1:{port}/health")
-        with urllib.request.urlopen(req, timeout=1.0) as response:
-            if response.status == 200:
+        with urllib.request.urlopen(req, timeout=1.0) as _response:
+            response = cast(HTTPResponse, _response)
+            if getattr(response, "status", 0) == 200:
                 click.echo("Daemon is ONLINE and responding.")
             else:
-                click.echo(f"Daemon returned status: {response.status}")
+                click.echo(f"Daemon returned status: {getattr(response, 'status', 'unknown')}")
     except Exception as e:
         click.echo(f"Daemon is OFFLINE. ({e})")

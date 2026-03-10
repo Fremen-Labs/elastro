@@ -14,6 +14,8 @@ if len(sys.argv) >= 3 and sys.argv[1] == "doc" and sys.argv[2] == "search":
         try:
             import json
             import urllib.request
+            from http.client import HTTPResponse
+            from typing import cast
 
             req = urllib.request.Request(
                 "http://127.0.0.1:9201/fast-path/doc/search",
@@ -21,8 +23,9 @@ if len(sys.argv) >= 3 and sys.argv[1] == "doc" and sys.argv[2] == "search":
                 headers={"Content-Type": "application/json"},
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=0.05) as response:
-                if response.status == 200:
+            with urllib.request.urlopen(req, timeout=0.05) as _response:
+                response = cast(HTTPResponse, _response)
+                if getattr(response, "status", 0) == 200:
                     print(response.read().decode("utf-8"), end="")
                     sys.exit(0)
         except Exception:
