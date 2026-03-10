@@ -68,7 +68,6 @@ class GraphRAGManager:
                             "inference_config": {
                                 "text_expansion": {"results_field": "tokens"}
                             },
-                            "ignore_missing": True,
                             "ignore_failure": True,
                         }
                     }

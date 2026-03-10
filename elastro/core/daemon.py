@@ -6,7 +6,7 @@ Maintains a persistent Elasticsearch client for sub-millisecond agentic queries.
 
 import argparse
 from contextlib import asynccontextmanager
-from typing import List, Optional, AsyncGenerator
+from typing import List, Optional, AsyncGenerator, Any, Dict
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -48,7 +48,7 @@ class DocSearchRequest(BaseModel):
 
 
 @app.get("/health")
-def health_check() -> dict:
+def health_check() -> Dict[str, Any]:
     return {
         "status": "alive",
         "client_connected": client.is_connected() if client else False,
@@ -98,27 +98,28 @@ async def fast_path_search(req: DocSearchRequest) -> PlainTextResponse:
     doc_manager = DocumentManager(client)
 
     inner_query = QueryBuilder.build_bool_query(
-        must_match=parsed.match if parsed.match else None,
-        must_match_phrase=parsed.match_phrase if parsed.match_phrase else None,
-        must_term=parsed.term if parsed.term else None,
-        must_terms=parsed.terms if parsed.terms else None,
-        must_range=parsed.range if parsed.range else None,
-        must_prefix=parsed.prefix if parsed.prefix else None,
-        must_wildcard=parsed.wildcard if parsed.wildcard else None,
-        must_exists=parsed.exists if parsed.exists else None,
-        must_ids=parsed.ids if parsed.ids else None,
-        must_fuzzy=parsed.fuzzy if parsed.fuzzy else None,
-        exclude_match=parsed.exclude_match if parsed.exclude_match else None,
-        exclude_term=parsed.exclude_term if parsed.exclude_term else None,
-        query_string=parsed.query,
+        must_match=getattr(parsed, "match", None),
+        must_match_phrase=getattr(parsed, "match_phrase", None),
+        must_term=getattr(parsed, "term", None),
+        must_terms=getattr(parsed, "terms", None),
+        must_range=getattr(parsed, "range", None),
+        must_prefix=getattr(parsed, "prefix", None),
+        must_wildcard=getattr(parsed, "wildcard", None),
+        must_exists=getattr(parsed, "exists", None),
+        must_ids=getattr(parsed, "ids", None),
+        must_fuzzy=getattr(parsed, "fuzzy", None),
+        exclude_match=getattr(parsed, "exclude_match", None),
+        exclude_term=getattr(parsed, "exclude_term", None),
+        query_string=getattr(parsed, "query", None),
     )
 
     query_body = {"query": inner_query}
-    options = {"size": parsed.size, "from": parsed.from_}
+    options = {"size": getattr(parsed, "size", 10), "from": getattr(parsed, "from_", 0)}
 
     try:
-        results = doc_manager.search(parsed.index, query_body, options)
-        output_str = format_output(results, output_format=parsed.output)
+        results = doc_manager.search(getattr(parsed, "index", ""), query_body, options)
+        output_format = getattr(parsed, "output", "json")
+        output_str = format_output(results, output_format=output_format)
         return PlainTextResponse(content=output_str)
     except Exception as e:
         return PlainTextResponse(
