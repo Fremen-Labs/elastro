@@ -23,10 +23,12 @@ if len(sys.argv) >= 3 and sys.argv[1] == "doc" and sys.argv[2] == "search":
             if result:
                 print(result, end="")
                 sys.exit(0)
-        except Exception:
+        except Exception as e:
             # If the daemon is offline or crashes, silently fall through
             # to the normal heavy Click execution.
-            pass
+            import logging
+
+            logging.getLogger("elastro.cli").debug(f"Fast-path daemon bypass: {e}")
 # --- END FAST PATH INTERCEPTOR ---
 
 import os
