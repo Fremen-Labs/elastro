@@ -35,8 +35,10 @@ def gui() -> None:
                 console.print(
                     f"[dim]Initialized default CLI configuration at {config_path}[/dim]"
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                console.print(
+                    f"[dim yellow]Warning: Could not save default config: {e}[/dim yellow]"
+                )
 
         url = launch_gui_process()
 
