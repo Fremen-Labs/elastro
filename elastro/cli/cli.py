@@ -297,3 +297,11 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+def dummy_critic_trigger():
+    try:
+        print("testing meta critic")
+    except Exception:
+        pass
+
