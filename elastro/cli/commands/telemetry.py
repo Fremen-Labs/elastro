@@ -32,6 +32,16 @@ def telemetry_group() -> None:
 @click.option("--l1-ms", type=int, default=0, help="L1/L2 Physical Latency ms")
 @click.option("--in-tokens", type=int, default=0, help="Input Tokens")
 @click.option("--out-tokens", type=int, default=0, help="Output Tokens")
+@click.option(
+    "--llm-model", type=str, default="unknown", help="Orchestrator Foundation Model"
+)
+@click.option(
+    "--tools-invoked",
+    type=str,
+    default="",
+    help="Comma-separated list of executed tools",
+)
+@click.option("--rollback-count", type=int, default=0, help="Explicit undo rate")
 @click.pass_obj
 def ingest_telemetry(
     client: ElasticsearchClient,
@@ -52,6 +62,9 @@ def ingest_telemetry(
     l1_ms: int,
     in_tokens: int,
     out_tokens: int,
+    llm_model: str,
+    tools_invoked: str,
+    rollback_count: int,
 ) -> None:
     """
     Ingest standardized session telemetry into the deep analytics index.
@@ -82,6 +95,11 @@ def ingest_telemetry(
             "l2_l1_physical_ms": l1_ms,
         },
         "token_count_query": {"input_tokens": in_tokens, "output_tokens": out_tokens},
+        "provider_model_string": llm_model,
+        "tools_invoked_array": (
+            [t.strip() for t in tools_invoked.split(",")] if tools_invoked else []
+        ),
+        "rollback_undo_count": rollback_count,
     }
 
     try:
