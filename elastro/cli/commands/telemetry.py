@@ -33,7 +33,10 @@ def telemetry_group() -> None:
 @click.option("--in-tokens", type=int, default=0, help="Input Tokens")
 @click.option("--out-tokens", type=int, default=0, help="Output Tokens")
 @click.option(
-    "--llm-model", type=str, default="unknown", help="Orchestrator Foundation Model (e.g. gpt-4o, claude-3-5, gemini-2.5-pro)"
+    "--llm-model",
+    type=str,
+    default="unknown",
+    help="Orchestrator Foundation Model (gpt-4, claude)",
 )
 @click.option(
     "--tools-invoked",
