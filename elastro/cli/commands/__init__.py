@@ -40,6 +40,7 @@ from elastro.cli.commands.config import (
 )
 from elastro.cli.commands.utils import health, templates, aliases
 from elastro.cli.commands.painless_commands import painless_group
+from elastro.cli.commands.telemetry import telemetry_group
 
 __all__ = [
     # Index commands
@@ -78,4 +79,6 @@ __all__ = [
     "aliases",
     # Painless commands
     "painless_group",
+    # Telemetry
+    "telemetry_group",
 ]

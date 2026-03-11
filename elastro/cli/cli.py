@@ -108,6 +108,7 @@ from elastro.cli.commands.ingest import ingest_group
 from elastro.cli.commands.ml import ml_group
 from elastro.cli.commands.script import script_group
 from elastro.cli.commands.painless_commands import painless_group
+from elastro.cli.commands.telemetry import telemetry_group
 
 # Register Top-Level Groups
 
@@ -285,6 +286,7 @@ cli.add_command(ingest_group)
 cli.add_command(ml_group)
 cli.add_command(script_group)
 cli.add_command(painless_group)
+cli.add_command(telemetry_group)
 cli.add_command(gui)
 cli.add_command(rag_group)
 cli.add_command(daemon_group)
