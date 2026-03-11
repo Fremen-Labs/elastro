@@ -7,10 +7,12 @@ from datetime import datetime, timezone
 
 from elastro.core.client import ElasticsearchClient
 
+
 @click.group(name="telemetry")
 def telemetry_group() -> None:
     """Manage and ingest Agent telemetry."""
     pass
+
 
 @telemetry_group.command("ingest")
 @click.argument("workload_reference")
@@ -53,7 +55,7 @@ def ingest_telemetry(
 ) -> None:
     """
     Ingest standardized session telemetry into the deep analytics index.
-    
+
     This command enforces the schema for the Deep Agent Telemetry visualization,
     submitting the performance vector into target index 'agent_telemetry_deep'.
     """
@@ -77,18 +79,19 @@ def ingest_telemetry(
             "l7_application_ms": l7_ms,
             "l4_transport_ms": l4_ms,
             "l3_network_ms": l3_ms,
-            "l2_l1_physical_ms": l1_ms
+            "l2_l1_physical_ms": l1_ms,
         },
-        "token_count_query": {
-            "input_tokens": in_tokens,
-            "output_tokens": out_tokens
-        }
+        "token_count_query": {"input_tokens": in_tokens, "output_tokens": out_tokens},
     }
 
     try:
-        response = client.index(index=index_name, document=payload)
-        click.secho(f">> Sink execution complete for [{workload_reference}]. ID: {response.get('_id', 'unknown')}", fg="green")
+        response = client.client.index(index=index_name, document=payload)
+        click.secho(
+            f">> Sink execution complete for [{workload_reference}]. ID: {response.get('_id', 'unknown')}",
+            fg="green",
+        )
     except Exception as e:
         click.secho(f"Failed to ingest telemetry payload: {e}", fg="red", err=True)
         import sys
+
         sys.exit(1)

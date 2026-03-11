@@ -301,9 +301,8 @@ if __name__ == "__main__":
     main()
 
 
-def dummy_critic_trigger():
+def dummy_critic_trigger() -> None:
     try:
         print("testing meta critic")
     except Exception:
         pass
-
