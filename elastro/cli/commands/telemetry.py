@@ -45,6 +45,18 @@ def telemetry_group() -> None:
     help="Comma-separated list of executed tools",
 )
 @click.option("--rollback-count", type=int, default=0, help="Explicit undo rate")
+@click.option(
+    "--diff-drift",
+    type=float,
+    default=0.0,
+    help="Ratio of code rewritten or discarded",
+)
+@click.option(
+    "--fallback-rate",
+    type=float,
+    default=0.0,
+    help="Rate of bash fallbacks",
+)
 @click.pass_obj
 def ingest_telemetry(
     client: ElasticsearchClient,
@@ -68,6 +80,8 @@ def ingest_telemetry(
     llm_model: str,
     tools_invoked: str,
     rollback_count: int,
+    diff_drift: float,
+    fallback_rate: float,
 ) -> None:
     """
     Ingest standardized session telemetry into the deep analytics index.
@@ -103,6 +117,8 @@ def ingest_telemetry(
             [t.strip() for t in tools_invoked.split(",")] if tools_invoked else []
         ),
         "rollback_undo_count": rollback_count,
+        "diff_drift_ratio": diff_drift,
+        "deterministic_fallback_rate": fallback_rate,
     }
 
     try:
