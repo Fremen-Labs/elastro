@@ -3,7 +3,7 @@ from elastro.config import load_config
 from elastro.core.client import ElasticsearchClient
 
 
-def setup_indices():
+def setup_indices() -> None:
     try:
         cfg = load_config(None, "default")
         client = ElasticsearchClient(
