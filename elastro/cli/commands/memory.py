@@ -119,3 +119,45 @@ def search_memory(
         import sys
 
         sys.exit(1)
+
+
+@memory_group.command("prune")
+@click.option("--days", default=7, help="Number of days to retain tactical notes")
+@click.pass_obj
+def prune_memory(
+    client: ElasticsearchClient,
+    days: int,
+) -> None:
+    """
+    Prune 'tactical' memory notes older than the specified threshold.
+    """
+    index_name = "agent_semantic_memory"
+
+    from datetime import datetime, timezone, timedelta
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff_str = cutoff.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    delete_query = {
+        "query": {
+            "bool": {
+                "must": [
+                    {"term": {"note_type": "tactical"}},
+                    {"range": {"timestamp": {"lt": cutoff_str}}},
+                ]
+            }
+        }
+    }
+
+    try:
+        response = client.client.delete_by_query(index=index_name, body=delete_query)
+        deleted = response.get("deleted", 0)
+        click.secho(
+            f">> Pruned {deleted} tactical memory notes older than {days} days.",
+            fg="green",
+        )
+    except Exception as e:
+        click.secho(f"Failed to prune memory notes: {e}", fg="red", err=True)
+        import sys
+
+        sys.exit(1)

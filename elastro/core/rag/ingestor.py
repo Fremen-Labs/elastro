@@ -23,8 +23,17 @@ class GraphRAGManager:
         self.index_name = index_name
         self.ast_parser = ASTParser()
 
-        # We explicitly target the agent's core polyglot languages
-        self.supported_extensions = {".py", ".go", ".vue", ".js", ".ts", ".jsx", ".tsx"}
+        # We explicitly target the agent's core polyglot languages + Markdown for KI Bridging
+        self.supported_extensions = {
+            ".py",
+            ".go",
+            ".vue",
+            ".js",
+            ".ts",
+            ".jsx",
+            ".tsx",
+            ".md",
+        }
 
         # Prevent indexing binary data, large dependency folders, or generated outputs
         self.ignore_dirs = {
