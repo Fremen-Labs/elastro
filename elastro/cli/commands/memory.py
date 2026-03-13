@@ -78,6 +78,7 @@ def search_memory(
     index_name = "agent_semantic_memory"
 
     from typing import Dict, Any, List
+
     bool_clause: Dict[str, List[Any]] = {
         "must": [
             {
@@ -103,7 +104,8 @@ def search_memory(
 
         click.secho(f"Found {len(hits)} memory notes:", fg="blue")
         for hit in hits:
-            if not isinstance(hit, dict): continue
+            if not isinstance(hit, dict):
+                continue
             source = hit.get("_source", {})
             click.echo(
                 f"\n[{source.get('note_type', 'unknown').upper()}] {source.get('subject', 'Untitled')} ({hit.get('_id', '')})"

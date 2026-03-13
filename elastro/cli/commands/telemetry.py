@@ -46,7 +46,9 @@ def telemetry_group() -> None:
 )
 @click.option("--rollback-count", type=int, default=0, help="Explicit undo rate")
 @click.option("--diff-drift", type=float, default=0.0, help="Diff Drift Ratio")
-@click.option("--fallback-rate", type=float, default=0.0, help="Deterministic Fallback Rate")
+@click.option(
+    "--fallback-rate", type=float, default=0.0, help="Deterministic Fallback Rate"
+)
 @click.option("--complexity", type=float, default=0.0, help="Complexity Score")
 @click.pass_obj
 def ingest_telemetry(

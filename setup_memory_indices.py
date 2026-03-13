@@ -2,6 +2,7 @@ import sys
 from elastro.config import load_config
 from elastro.core.client import ElasticsearchClient
 
+
 def setup_indices():
     try:
         cfg = load_config(None, "default")
@@ -17,8 +18,7 @@ def setup_indices():
     except Exception as e:
         print(f"Failed to connect using Elastro config: {e}")
         sys.exit(1)
-        
-    
+
     # 1. Setup agent_semantic_memory
     memory_mapping = {
         "mappings": {
@@ -31,7 +31,7 @@ def setup_indices():
             }
         }
     }
-    
+
     # 2. Setup flow_tools
     tools_mapping = {
         "mappings": {
@@ -51,17 +51,18 @@ def setup_indices():
             print("Created agent_semantic_memory index.")
         else:
             print("agent_semantic_memory already exists.")
-            
+
         if not es.indices.exists(index="flow_tools"):
             es.indices.create(index="flow_tools", body=tools_mapping)
             print("Created flow_tools index.")
         else:
             print("flow_tools already exists.")
-            
+
         print("Done.")
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     setup_indices()

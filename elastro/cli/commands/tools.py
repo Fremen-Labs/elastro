@@ -86,7 +86,8 @@ def search_tools(
 
         click.secho(f"Found {len(hits)} registered tools:", fg="blue")
         for hit in hits:
-            if not isinstance(hit, dict): continue
+            if not isinstance(hit, dict):
+                continue
             source = hit.get("_source", {})
             click.echo(f"\n[TOOL] {source.get('tool_name', 'Unknown')}")
             click.echo(f"  Path: {source.get('file_path', 'unknown')}")
