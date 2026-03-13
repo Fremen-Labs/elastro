@@ -41,6 +41,7 @@ def setup_indices() -> None:
                 "file_path": {"type": "keyword"},
                 "purpose": {"type": "text", "analyzer": "english"},
                 "parameters": {"type": "text"},
+                "file_hash": {"type": "keyword"},
             }
         }
     }

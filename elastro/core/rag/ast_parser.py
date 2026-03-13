@@ -56,6 +56,8 @@ class ASTParser:
             return "typescript"
         elif ext == ".vue":
             return "vue"
+        elif ext == ".md":
+            return "markdown"
         return "unsupported"
 
     def parse_file(self, file_path: str, content: str) -> List[Dict[str, Any]]:
@@ -64,6 +66,24 @@ class ASTParser:
         """
         ext = os.path.splitext(file_path)[1]
         lang = self._determine_language(ext)
+
+        if lang == "markdown":
+            import re
+
+            # Extract declarative Node-IDs like `repo:path/to/file.py::0` or `path/to/file.py`
+            node_refs = re.findall(
+                r"`([a-zA-Z0-9_\-\.]+:[a-zA-Z0-9_\-\.\/]+::\d+)`", content
+            )
+            file_refs = re.findall(r"`([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z]{2,4})`", content)
+            return [
+                {
+                    "chunk_type": "knowledge_item",
+                    "name": os.path.basename(file_path),
+                    "content": content,
+                    "functions_defined": list(set(node_refs)),
+                    "functions_called": list(set(file_refs)),
+                }
+            ]
 
         if lang not in self.parsers:
             return [
