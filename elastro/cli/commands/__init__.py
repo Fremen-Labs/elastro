@@ -41,6 +41,8 @@ from elastro.cli.commands.config import (
 from elastro.cli.commands.utils import health, templates, aliases
 from elastro.cli.commands.painless_commands import painless_group
 from elastro.cli.commands.telemetry import telemetry_group
+from elastro.cli.commands.memory import memory_group
+from elastro.cli.commands.tools import tools_group
 
 __all__ = [
     # Index commands
@@ -81,4 +83,8 @@ __all__ = [
     "painless_group",
     # Telemetry
     "telemetry_group",
+    # Agentic Memory
+    "memory_group",
+    # Tools Registry
+    "tools_group",
 ]
