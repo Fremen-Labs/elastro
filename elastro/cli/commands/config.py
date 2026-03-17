@@ -1,3 +1,4 @@
+from elastro.utils.async_cli import coro
 """
 Configuration management commands for the CLI.
 """
@@ -33,7 +34,8 @@ def mask_credentials(data: Any) -> Any:
 @click.command("get", no_args_is_help=True)
 @click.argument("key", type=str)
 @click.option("--profile", "-p", default="default", help="Configuration profile")
-def get_config_value(key: str, profile: str) -> None:
+@coro
+async def get_config_value(key: str, profile: str) -> None:
     """
     Get a configuration value.
 
@@ -72,7 +74,8 @@ def get_config_value(key: str, profile: str) -> None:
 @click.argument("key", type=str)
 @click.argument("value", type=str)
 @click.option("--profile", "-p", default="default", help="Configuration profile")
-def set_config_value(key: str, value: str, profile: str) -> None:
+@coro
+async def set_config_value(key: str, value: str, profile: str) -> None:
     """
     Set a configuration value.
 
@@ -116,7 +119,8 @@ def set_config_value(key: str, value: str, profile: str) -> None:
 
 @click.command("list")
 @click.option("--profile", "-p", default="default", help="Configuration profile")
-def list_config(profile: str) -> None:
+@coro
+async def list_config(profile: str) -> None:
     """
     List all configuration values.
 
@@ -137,7 +141,8 @@ def list_config(profile: str) -> None:
 @click.command("init")
 @click.option("--force", is_flag=True, help="Force initialization (overwrite existing)")
 @click.option("--profile", "-p", default="default", help="Configuration profile")
-def init_config(force: bool, profile: str) -> None:
+@coro
+async def init_config(force: bool, profile: str) -> None:
     """
     Initialize the configuration file.
 
@@ -167,7 +172,7 @@ def init_config(force: bool, profile: str) -> None:
             return
 
     # Run the interactive wizard
-    config = run_config_wizard()
+    config = await run_config_wizard()
 
     if not config:
         click.echo("Configuration cancelled.")
@@ -203,7 +208,7 @@ def init_config(force: bool, profile: str) -> None:
     console.print(f"[green]Configuration initialized at {CONFIG_PATH}[/]")
 
 
-def run_config_wizard() -> Dict[str, Any]:
+async def run_config_wizard() -> Dict[str, Any]:
     """Run interactive wizard to build configuration."""
     from rich.console import Console
     from rich.panel import Panel
@@ -253,15 +258,15 @@ def run_config_wizard() -> Dict[str, Any]:
         client = ElasticsearchClient(
             hosts=hosts, auth=auth, verify_certs=False, use_config=False
         )
-        client.connect()
-        info = client.get_client().info()
+        await client.connect()
+        info = await client.get_client().info()
         version = info.get("version", {}).get("number", "Unknown")
         cluster_name = info.get("cluster_name", "Unknown")
 
         console.print(
             f"[bold green]✅ Success! Connected to '{cluster_name}' (v{version})[/]"
         )
-        client.disconnect()
+        await client.disconnect()
 
     except (ConnectionError, AuthenticationError) as e:
         console.print(f"[bold red]❌ Connection Failed:[/]\n   {str(e)}")

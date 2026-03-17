@@ -1,3 +1,4 @@
+from elastro.utils.async_cli import coro
 import rich_click as click
 import json
 from rich.prompt import Prompt, Confirm, IntPrompt
@@ -27,7 +28,8 @@ def template_group() -> None:
 )
 @click.option("--name", type=str, help="Template name pattern")
 @click.pass_obj
-def list_templates(client: ElasticsearchClient, type: str, name: str) -> None:
+@coro
+async def list_templates(client: ElasticsearchClient, type: str, name: str)-> None:
     """
     List templates.
 
@@ -63,7 +65,8 @@ def list_templates(client: ElasticsearchClient, type: str, name: str) -> None:
     help="Template type",
 )
 @click.pass_obj
-def get_template(client: ElasticsearchClient, name: str, type: str) -> None:
+@coro
+async def get_template(client: ElasticsearchClient, name: str, type: str)-> None:
     """
     Get a template.
 
@@ -95,9 +98,10 @@ def get_template(client: ElasticsearchClient, name: str, type: str) -> None:
 )
 @click.option("--force", is_flag=True, help="Force deletion")
 @click.pass_obj
-def delete_template(
+@coro
+async def delete_template(
     client: ElasticsearchClient, name: str, type: str, force: bool
-) -> None:
+)-> None:
     """
     Delete a template.
 
@@ -139,9 +143,10 @@ def delete_template(
     help="Template type",
 )
 @click.pass_obj
-def create_template(
+@coro
+async def create_template(
     client: ElasticsearchClient, name: str, file: Any, type: str
-) -> None:
+)-> None:
     """
     Create a template from file.
 
@@ -170,7 +175,8 @@ def create_template(
 
 @template_group.command("wizard")
 @click.pass_obj
-def wizard(client: ElasticsearchClient) -> None:
+@coro
+async def wizard(client: ElasticsearchClient)-> None:
     """
     Interactive template builder wizard.
 

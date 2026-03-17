@@ -32,8 +32,7 @@ class AliasManager:
         self._client = client
         self._es = client.client
 
-    def create(
-        self,
+    async def create(self,
         name: str,
         index: str,
         filter_query: Optional[Dict[str, Any]] = None,
@@ -63,13 +62,12 @@ class AliasManager:
             if is_write_index:
                 body["is_write_index"] = is_write_index
 
-            response = self._es.indices.put_alias(index=index, name=name, body=body)
+            response = await self._es.indices.put_alias(index=index, name=name, body=body)
             return response.get("acknowledged", False)
         except Exception as e:
             raise OperationError(f"Failed to create alias {name}: {str(e)}")
 
-    def get(
-        self, name: Optional[str] = None, index: Optional[str] = None
+    async def get(self, name: Optional[str] = None, index: Optional[str] = None
     ) -> Dict[str, Any]:
         """Get alias information.
 
@@ -85,17 +83,17 @@ class AliasManager:
         """
         try:
             if name and index:
-                return self._es.indices.get_alias(name=name, index=index)  # type: ignore
+                return await self._es.indices.get_alias(name=name, index=index)  # type: ignore
             elif name:
-                return self._es.indices.get_alias(name=name)  # type: ignore
+                return await self._es.indices.get_alias(name=name)  # type: ignore
             elif index:
-                return self._es.indices.get_alias(index=index)  # type: ignore
+                return await self._es.indices.get_alias(index=index)  # type: ignore
             else:
-                return self._es.indices.get_alias()  # type: ignore
+                return await self._es.indices.get_alias()  # type: ignore
         except Exception as e:
             raise OperationError(f"Failed to get alias information: {str(e)}")
 
-    def exists(self, name: str, index: Optional[str] = None) -> bool:
+    async def exists(self, name: str, index: Optional[str] = None) -> bool:
         """Check if an alias exists.
 
         Args:
@@ -107,13 +105,13 @@ class AliasManager:
         """
         try:
             if index:
-                return self._es.indices.exists_alias(name=name, index=index)  # type: ignore
+                return await self._es.indices.exists_alias(name=name, index=index)  # type: ignore
             else:
-                return self._es.indices.exists_alias(name=name)  # type: ignore
+                return await self._es.indices.exists_alias(name=name)  # type: ignore
         except Exception:
             return False
 
-    def delete(self, name: str, index: Optional[str] = None) -> bool:
+    async def delete(self, name: str, index: Optional[str] = None) -> bool:
         """Delete an alias.
 
         Args:
@@ -127,14 +125,14 @@ class AliasManager:
             OperationError: If alias deletion fails.
         """
         try:
-            response = self._es.indices.delete_alias(
+            response = await self._es.indices.delete_alias(
                 name=name, index=index if index else "*"
             )
             return response.get("acknowledged", False)
         except Exception as e:
             raise OperationError(f"Failed to delete alias {name}: {str(e)}")
 
-    def update(self, actions: List[Union[Dict[str, Any], AliasAction]]) -> bool:
+    async def update(self, actions: List[Union[Dict[str, Any], AliasAction]]) -> bool:
         """Update aliases with multiple actions in a single atomic operation.
 
         Args:
@@ -156,15 +154,14 @@ class AliasManager:
                 if action.remove:
                     validated_actions.append({"remove": action.remove})
 
-            response = self._es.indices.update_aliases(
+            response = await self._es.indices.update_aliases(
                 body={"actions": validated_actions}
             )
             return response.get("acknowledged", False)
         except Exception as e:
             raise OperationError(f"Failed to update aliases: {str(e)}")
 
-    def list(
-        self, index: Optional[str] = None, name: Optional[str] = None
+    async def list(self, index: Optional[str] = None, name: Optional[str] = None
     ) -> List[str]:
         """List all aliases or aliases for a specific index.
 
@@ -179,13 +176,13 @@ class AliasManager:
         """
         try:
             if index:
-                response = self._es.indices.get_alias(
+                response = await self._es.indices.get_alias(
                     index=index, name=name if name else "*"
                 )
             elif name:
-                response = self._es.indices.get_alias(name=name)
+                response = await self._es.indices.get_alias(name=name)
             else:
-                response = self._es.indices.get_alias()
+                response = await self._es.indices.get_alias()
 
             aliases = set()
             for idx_aliases in response.values():

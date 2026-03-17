@@ -49,8 +49,7 @@ class SnapshotManager:
         self._client = client
         self._es = client.client
 
-    def create_repository(
-        self, repo_config: Union[Dict[str, Any], RepositoryConfig]
+    async def create_repository(self, repo_config: Union[Dict[str, Any], RepositoryConfig]
     ) -> bool:
         """Create a snapshot repository.
 
@@ -70,7 +69,7 @@ class SnapshotManager:
             else:
                 config = repo_config
 
-            response = self._es.snapshot.create_repository(
+            response = await self._es.snapshot.create_repository(
                 repository=config.name,
                 body={"type": config.type, "settings": config.settings},
             )
@@ -85,7 +84,7 @@ class SnapshotManager:
             )
             raise OperationError(f"Failed to create repository {repo_name}: {str(e)}")
 
-    def delete_repository(self, name: str) -> bool:
+    async def delete_repository(self, name: str) -> bool:
         """Delete a snapshot repository.
 
         Args:
@@ -98,12 +97,12 @@ class SnapshotManager:
             OperationError: If repository deletion fails.
         """
         try:
-            response = self._es.snapshot.delete_repository(repository=name)
+            response = await self._es.snapshot.delete_repository(repository=name)
             return response.get("acknowledged", False)
         except Exception as e:
             raise OperationError(f"Failed to delete repository {name}: {str(e)}")
 
-    def get_repository(self, name: Optional[str] = None) -> Dict[str, Any]:
+    async def get_repository(self, name: Optional[str] = None) -> Dict[str, Any]:
         """Get repository information.
 
                 Args:
@@ -118,14 +117,13 @@ class SnapshotManager:
         """
         try:
             if name:
-                return self._es.snapshot.get_repository(repository=name)
+                return await self._es.snapshot.get_repository(repository=name)
             else:
-                return self._es.snapshot.get_repository()
+                return await self._es.snapshot.get_repository()
         except Exception as e:
             raise OperationError(f"Failed to get repository information: {str(e)}")
 
-    def create_snapshot(
-        self, repo_name: str, snapshot_config: Union[Dict[str, Any], SnapshotConfig]
+    async def create_snapshot(self, repo_name: str, snapshot_config: Union[Dict[str, Any], SnapshotConfig]
     ) -> Dict[str, Any]:
         """Create a snapshot in the specified repository.
 
@@ -155,7 +153,7 @@ class SnapshotManager:
             if config.indices:
                 body["indices"] = ",".join(config.indices)
 
-            response = self._es.snapshot.create(
+            response = await self._es.snapshot.create(
                 repository=repo_name,
                 snapshot=config.name,
                 body=body,
@@ -170,7 +168,7 @@ class SnapshotManager:
             )
             raise OperationError(f"Failed to create snapshot {snap_name}: {str(e)}")
 
-    def delete_snapshot(self, repo_name: str, snapshot_name: str) -> bool:
+    async def delete_snapshot(self, repo_name: str, snapshot_name: str) -> bool:
         """Delete a snapshot.
 
         Args:
@@ -184,15 +182,14 @@ class SnapshotManager:
             OperationError: If snapshot deletion fails.
         """
         try:
-            response = self._es.snapshot.delete(
+            response = await self._es.snapshot.delete(
                 repository=repo_name, snapshot=snapshot_name
             )
             return response.get("acknowledged", False)
         except Exception as e:
             raise OperationError(f"Failed to delete snapshot {snapshot_name}: {str(e)}")
 
-    def get_snapshot(
-        self, repo_name: str, snapshot_name: str = "_all"
+    async def get_snapshot(self, repo_name: str, snapshot_name: str = "_all"
     ) -> Dict[str, Any]:
         """Get snapshot information.
 
@@ -207,12 +204,11 @@ class SnapshotManager:
                     OperationError: If snapshot retrieval fails.
         """
         try:
-            return self._es.snapshot.get(repository=repo_name, snapshot=snapshot_name)
+            return await self._es.snapshot.get(repository=repo_name, snapshot=snapshot_name)
         except Exception as e:
             raise OperationError(f"Failed to get snapshot information: {str(e)}")
 
-    def restore_snapshot(
-        self,
+    async def restore_snapshot(self,
         repo_name: str,
         snapshot_name: str,
         indices: Optional[List[str]] = None,
@@ -244,7 +240,7 @@ class SnapshotManager:
                 body["rename_pattern"] = rename_pattern
                 body["rename_replacement"] = rename_replacement
 
-            return self._es.snapshot.restore(
+            return await self._es.snapshot.restore(
                 repository=repo_name,
                 snapshot=snapshot_name,
                 body=body,
@@ -255,8 +251,7 @@ class SnapshotManager:
                 f"Failed to restore snapshot {snapshot_name}: {str(e)}"
             )
 
-    def get_snapshot_status(
-        self, repo_name: Optional[str] = None, snapshot_name: Optional[str] = None
+    async def get_snapshot_status(self, repo_name: Optional[str] = None, snapshot_name: Optional[str] = None
     ) -> Dict[str, Any]:
         """Get snapshot status.
 
@@ -272,12 +267,12 @@ class SnapshotManager:
         """
         try:
             if repo_name and snapshot_name:
-                return self._es.snapshot.status(
+                return await self._es.snapshot.status(
                     repository=repo_name, snapshot=snapshot_name
                 )
             elif repo_name:
-                return self._es.snapshot.status(repository=repo_name)
+                return await self._es.snapshot.status(repository=repo_name)
             else:
-                return self._es.snapshot.status()
+                return await self._es.snapshot.status()
         except Exception as e:
             raise OperationError(f"Failed to get snapshot status: {str(e)}")

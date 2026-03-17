@@ -27,7 +27,7 @@ class IlmManager:
         self.client = client
         self._client = client
 
-    def list_policies(self) -> List[Dict[str, Any]]:
+    async def list_policies(self) -> List[Dict[str, Any]]:
         """
         List all ILM policies.
 
@@ -36,7 +36,7 @@ class IlmManager:
         """
         try:
             logger.debug("Listing ILM policies")
-            response = self.client.client.ilm.get_lifecycle()
+            response = await self.client.client.ilm.get_lifecycle()
             body = response.body if hasattr(response, "body") else dict(response)
 
             # Response is a dict {policy_name: {policy_def...}}
@@ -49,7 +49,7 @@ class IlmManager:
             logger.error(f"Failed to list ILM policies: {str(e)}")
             raise OperationError(f"Failed to list ILM policies: {str(e)}")
 
-    def get_policy(self, name: str) -> Dict[str, Any]:
+    async def get_policy(self, name: str) -> Dict[str, Any]:
         """
         Get a specific ILM policy.
 
@@ -64,7 +64,7 @@ class IlmManager:
 
         try:
             logger.debug(f"Getting ILM policy '{name}'")
-            response = self.client.client.ilm.get_lifecycle(name=name)
+            response = await self.client.client.ilm.get_lifecycle(name=name)
             body = response.body if hasattr(response, "body") else dict(response)
 
             if name in body:
@@ -74,7 +74,7 @@ class IlmManager:
             logger.error(f"Failed to get ILM policy '{name}': {str(e)}")
             raise OperationError(f"Failed to get ILM policy '{name}': {str(e)}")
 
-    def create_policy(self, name: str, policy: Dict[str, Any]) -> bool:
+    async def create_policy(self, name: str, policy: Dict[str, Any]) -> bool:
         """
         Create or update an ILM policy.
 
@@ -96,14 +96,14 @@ class IlmManager:
             # put_lifecycle expects 'policy' arg to contain phases.
             # Usually strict JSON is {"policy": {"phases": ...}}
 
-            response = self.client.client.ilm.put_lifecycle(name=name, body=policy)
+            response = await self.client.client.ilm.put_lifecycle(name=name, body=policy)
             body = response.body if hasattr(response, "body") else dict(response)
             return body.get("acknowledged", False)
         except Exception as e:
             logger.error(f"Failed to create ILM policy '{name}': {str(e)}")
             raise OperationError(f"Failed to create ILM policy '{name}': {str(e)}")
 
-    def delete_policy(self, name: str) -> bool:
+    async def delete_policy(self, name: str) -> bool:
         """
         Delete an ILM policy.
 
@@ -118,14 +118,14 @@ class IlmManager:
 
         try:
             logger.info(f"Deleting ILM policy '{name}'")
-            response = self.client.client.ilm.delete_lifecycle(name=name)
+            response = await self.client.client.ilm.delete_lifecycle(name=name)
             body = response.body if hasattr(response, "body") else dict(response)
             return body.get("acknowledged", False)
         except Exception as e:
             logger.error(f"Failed to delete ILM policy '{name}': {str(e)}")
             raise OperationError(f"Failed to delete ILM policy '{name}': {str(e)}")
 
-    def explain_lifecycle(self, index: str) -> Dict[str, Any]:
+    async def explain_lifecycle(self, index: str) -> Dict[str, Any]:
         """
         Explain the lifecycle state of an index.
 
@@ -140,7 +140,7 @@ class IlmManager:
 
         try:
             logger.debug(f"Explaining lifecycle for index '{index}'")
-            response = self.client.client.ilm.explain_lifecycle(index=index)
+            response = await self.client.client.ilm.explain_lifecycle(index=index)
             body = response.body if hasattr(response, "body") else dict(response)
 
             # Usually returns {'indices': {'index_name': {...}}}
@@ -151,19 +151,19 @@ class IlmManager:
             logger.error(f"Failed to explain lifecycle for '{index}': {str(e)}")
             raise OperationError(f"Failed to explain lifecycle for '{index}': {str(e)}")
 
-    def start_ilm(self) -> bool:
+    async def start_ilm(self) -> bool:
         """Start ILM service."""
         try:
-            resp = self.client.client.ilm.start()
+            resp = await self.client.client.ilm.start()
             body = resp.body if hasattr(resp, "body") else dict(resp)
             return body.get("acknowledged", False)
         except Exception as e:
             raise OperationError(f"Failed to start ILM: {e}")
 
-    def stop_ilm(self) -> bool:
+    async def stop_ilm(self) -> bool:
         """Stop ILM service."""
         try:
-            resp = self.client.client.ilm.stop()
+            resp = await self.client.client.ilm.stop()
             body = resp.body if hasattr(resp, "body") else dict(resp)
             return body.get("acknowledged", False)
         except Exception as e:

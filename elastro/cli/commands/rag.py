@@ -1,3 +1,4 @@
+from elastro.utils.async_cli import coro
 """
 Graph RAG Commands for Code Flow Mapping.
 """
@@ -36,7 +37,8 @@ def rag_group() -> None:
     help="Target Elasticsearch index name (default: fremen_codebase_rag)",
 )
 @click.pass_obj
-def ingest_repo(client: ElasticsearchClient, repo_path: str, index: str) -> None:
+@coro
+async def ingest_repo(client: ElasticsearchClient, repo_path: str, index: str)-> None:
     """
     Ingest a repository with AST Code Flow Mapping.
 
@@ -84,7 +86,8 @@ def ingest_repo(client: ElasticsearchClient, repo_path: str, index: str) -> None
     help="Target Elasticsearch index name (default: fremen_codebase_rag)",
 )
 @click.pass_obj
-def update_file(client: ElasticsearchClient, file_path: str, index: str) -> None:
+@coro
+async def update_file(client: ElasticsearchClient, file_path: str, index: str)-> None:
     """
     Surgically perfectly sync the AST of a single modified file.
 

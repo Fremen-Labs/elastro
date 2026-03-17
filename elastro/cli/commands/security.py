@@ -1,3 +1,4 @@
+from elastro.utils.async_cli import coro
 """
 Security and RBAC management commands.
 """
@@ -20,7 +21,8 @@ def security_group() -> None:
 @security_group.command(name="users")
 @click.option("--username", "-u", help="Specific username to fetch")
 @click.pass_obj
-def list_users(client: ElasticsearchClient, username: str) -> None:
+@coro
+async def list_users(client: ElasticsearchClient, username: str)-> None:
     """
     List or fetch native realm users.
     """
@@ -57,7 +59,8 @@ def list_users(client: ElasticsearchClient, username: str) -> None:
 @security_group.command(name="roles")
 @click.option("--name", "-n", help="Specific role name to fetch")
 @click.pass_obj
-def list_roles(client: ElasticsearchClient, name: str) -> None:
+@coro
+async def list_roles(client: ElasticsearchClient, name: str)-> None:
     """
     List or fetch cluster mapping roles.
     """

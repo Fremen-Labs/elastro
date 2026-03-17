@@ -1,3 +1,4 @@
+from elastro.utils.async_cli import coro
 """
 Document management commands for the CLI.
 """
@@ -21,9 +22,10 @@ from elastro.cli.completion import complete_indices
     "--file", type=click.File("r"), help="Path to document file (use '-' for stdin)"
 )
 @click.pass_obj
-def index_document(
+@coro
+async def index_document(
     client: ElasticsearchClient, index: str, id: Optional[str], file: Any
-) -> None:
+)-> None:
     """
     Index a document.
 
@@ -74,7 +76,8 @@ def index_document(
     help="Path to bulk documents file (use '-' for stdin)",
 )
 @click.pass_obj
-def bulk_index(client: ElasticsearchClient, index: str, file: Any) -> None:
+@coro
+async def bulk_index(client: ElasticsearchClient, index: str, file: Any)-> None:
     """
     Bulk index documents.
 
@@ -110,7 +113,8 @@ def bulk_index(client: ElasticsearchClient, index: str, file: Any) -> None:
 @click.argument("index", type=str, shell_complete=complete_indices)
 @click.argument("id", type=str)
 @click.pass_obj
-def get_document(client: ElasticsearchClient, index: str, id: str) -> None:
+@coro
+async def get_document(client: ElasticsearchClient, index: str, id: str)-> None:
     """
     Get a document by ID.
 
@@ -157,7 +161,8 @@ def get_document(client: ElasticsearchClient, index: str, id: str) -> None:
 @click.option("--exclude-match", multiple=True, help="Exclude match (must_not)")
 @click.option("--exclude-term", multiple=True, help="Exclude term (must_not)")
 @click.pass_obj
-def search_documents(
+@coro
+async def search_documents(
     client: ElasticsearchClient,
     index: str,
     query: Optional[str],
@@ -176,7 +181,7 @@ def search_documents(
     fuzzy: Tuple[str, ...],
     exclude_match: Tuple[str, ...],
     exclude_term: Tuple[str, ...],
-) -> None:
+)-> None:
     """
     Search for documents using explicit flags or a query string.
 
@@ -252,9 +257,10 @@ def search_documents(
 )
 @click.option("--partial", is_flag=True, help="Perform partial update")
 @click.pass_obj
-def update_document(
+@coro
+async def update_document(
     client: ElasticsearchClient, index: str, id: str, file: Any, partial: bool
-) -> None:
+)-> None:
     """
     Update a document.
 
@@ -291,7 +297,8 @@ def update_document(
 @click.argument("index", type=str, shell_complete=complete_indices)
 @click.argument("id", type=str)
 @click.pass_obj
-def delete_document(client: ElasticsearchClient, index: str, id: str) -> None:
+@coro
+async def delete_document(client: ElasticsearchClient, index: str, id: str)-> None:
     """
     Delete a document.
 
@@ -325,7 +332,8 @@ def delete_document(client: ElasticsearchClient, index: str, id: str) -> None:
     help="Path to IDs file (use '-' for stdin)",
 )
 @click.pass_obj
-def bulk_delete(client: ElasticsearchClient, index: str, file: Any) -> None:
+@coro
+async def bulk_delete(client: ElasticsearchClient, index: str, file: Any)-> None:
     """
     Bulk delete documents.
 

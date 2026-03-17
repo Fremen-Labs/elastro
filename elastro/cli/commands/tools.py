@@ -1,3 +1,4 @@
+from elastro.utils.async_cli import coro
 """
 Tools registry command group for Elastro CLI.
 """
@@ -22,13 +23,14 @@ def tools_group() -> None:
     "--parameters", default="", help="JSON string or comma-separated list of params"
 )
 @click.pass_obj
-def register_tool(
+@coro
+async def register_tool(
     client: ElasticsearchClient,
     tool_name: str,
     file_path: str,
     purpose: str,
     parameters: str,
-) -> None:
+)-> None:
     """
     Register a custom pipeline script or CLI into the tools registry.
     """
@@ -57,7 +59,7 @@ def register_tool(
     }
 
     try:
-        response = client.client.index(index=index_name, id=tool_name, document=payload)
+        response = await client.client.index(index=index_name, id=tool_name, document=payload)
         click.secho(
             f">> Tool '{tool_name}' registered successfully.",
             fg="green",
@@ -73,11 +75,12 @@ def register_tool(
 @click.argument("query")
 @click.option("--size", default=10, help="Number of results to return")
 @click.pass_obj
-def search_tools(
+@coro
+async def search_tools(
     client: ElasticsearchClient,
     query: str,
     size: int,
-) -> None:
+)-> None:
     """
     Search the flow_tools custom tool registry.
     """
@@ -94,7 +97,7 @@ def search_tools(
     }
 
     try:
-        response = client.client.search(index=index_name, body=search_body)
+        response = await client.client.search(index=index_name, body=search_body)
         hits = response.get("hits", {}).get("hits", [])
 
         click.secho(f"Found {len(hits)} registered tools:", fg="blue")

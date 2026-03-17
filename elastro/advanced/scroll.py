@@ -24,8 +24,7 @@ class ScrollHelper:
         """
         self._client = client
 
-    def scroll(
-        self,
+    async def scroll(self,
         index: str,
         query: Dict[str, Any],
         scroll_timeout: str = "1m",
@@ -49,7 +48,7 @@ class ScrollHelper:
             body["_source"] = source_fields
 
         # Initialize scroll
-        resp = self._client.search(index=index, body=body, scroll=scroll_timeout)
+        resp = await self._client.search(index=index, body=body, scroll=scroll_timeout)
 
         # Get the scroll ID
         scroll_id = resp.get("_scroll_id")
@@ -61,7 +60,7 @@ class ScrollHelper:
                 yield batch
 
                 # Continue scrolling
-                resp = self._client.scroll(scroll_id=scroll_id, scroll=scroll_timeout)
+                resp = await self._client.scroll(scroll_id=scroll_id, scroll=scroll_timeout)
 
                 # Update scroll_id as it may change
                 scroll_id = resp.get("_scroll_id")
@@ -76,12 +75,11 @@ class ScrollHelper:
             # Always clear the scroll context when done
             if scroll_id:
                 try:
-                    self._client.clear_scroll(scroll_id=scroll_id)
+                    await self._client.clear_scroll(scroll_id=scroll_id)
                 except Exception as e:
                     logger.warning(f"Failed to clear scroll context: {str(e)}")
 
-    def process_all(
-        self,
+    async def process_all(self,
         index: str,
         query: Dict[str, Any],
         processor: Callable[[Dict[str, Any]], None],
@@ -117,8 +115,7 @@ class ScrollHelper:
 
         return total_processed
 
-    def collect_all(
-        self,
+    async def collect_all(self,
         index: str,
         query: Dict[str, Any],
         scroll_timeout: str = "1m",

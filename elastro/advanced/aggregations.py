@@ -14,8 +14,7 @@ class AggregationBuilder:
         """Initialize an empty aggregation builder."""
         self._aggregations: Dict[str, Dict[str, Any]] = {}
 
-    def terms(
-        self, name: str, field: str, size: int = 10, min_doc_count: Optional[int] = None
+    async def terms(self, name: str, field: str, size: int = 10, min_doc_count: Optional[int] = None
     ) -> "AggregationBuilder":
         """Add a terms aggregation.
 
@@ -35,8 +34,7 @@ class AggregationBuilder:
         self._aggregations[name] = {"terms": agg}
         return self
 
-    def date_histogram(
-        self, name: str, field: str, interval: str, format: Optional[str] = None
+    async def date_histogram(self, name: str, field: str, interval: str, format: Optional[str] = None
     ) -> "AggregationBuilder":
         """Add a date_histogram aggregation.
 
@@ -56,7 +54,7 @@ class AggregationBuilder:
         self._aggregations[name] = {"date_histogram": agg}
         return self
 
-    def histogram(self, name: str, field: str, interval: float) -> "AggregationBuilder":
+    async def histogram(self, name: str, field: str, interval: float) -> "AggregationBuilder":
         """Add a histogram aggregation.
 
         Args:
@@ -70,8 +68,7 @@ class AggregationBuilder:
         self._aggregations[name] = {"histogram": {"field": field, "interval": interval}}
         return self
 
-    def range(
-        self, name: str, field: str, ranges: List[Dict[str, Any]]
+    async def range(self, name: str, field: str, ranges: List[Dict[str, Any]]
     ) -> "AggregationBuilder":
         """Add a range aggregation.
 
@@ -86,7 +83,7 @@ class AggregationBuilder:
         self._aggregations[name] = {"range": {"field": field, "ranges": ranges}}
         return self
 
-    def avg(self, name: str, field: str) -> "AggregationBuilder":
+    async def avg(self, name: str, field: str) -> "AggregationBuilder":
         """Add an avg metric aggregation.
 
         Args:
@@ -99,7 +96,7 @@ class AggregationBuilder:
         self._aggregations[name] = {"avg": {"field": field}}
         return self
 
-    def sum(self, name: str, field: str) -> "AggregationBuilder":
+    async def sum(self, name: str, field: str) -> "AggregationBuilder":
         """Add a sum metric aggregation.
 
         Args:
@@ -112,7 +109,7 @@ class AggregationBuilder:
         self._aggregations[name] = {"sum": {"field": field}}
         return self
 
-    def min(self, name: str, field: str) -> "AggregationBuilder":
+    async def min(self, name: str, field: str) -> "AggregationBuilder":
         """Add a min metric aggregation.
 
         Args:
@@ -125,7 +122,7 @@ class AggregationBuilder:
         self._aggregations[name] = {"min": {"field": field}}
         return self
 
-    def max(self, name: str, field: str) -> "AggregationBuilder":
+    async def max(self, name: str, field: str) -> "AggregationBuilder":
         """Add a max metric aggregation.
 
         Args:
@@ -138,7 +135,7 @@ class AggregationBuilder:
         self._aggregations[name] = {"max": {"field": field}}
         return self
 
-    def cardinality(self, name: str, field: str) -> "AggregationBuilder":
+    async def cardinality(self, name: str, field: str) -> "AggregationBuilder":
         """Add a cardinality metric aggregation (unique count).
 
         Args:
@@ -151,8 +148,7 @@ class AggregationBuilder:
         self._aggregations[name] = {"cardinality": {"field": field}}
         return self
 
-    def nested_agg(
-        self, parent_name: str, child_builder: "AggregationBuilder"
+    async def nested_agg(self, parent_name: str, child_builder: "AggregationBuilder"
     ) -> "AggregationBuilder":
         """Add nested aggregations to a parent aggregation.
 
@@ -169,7 +165,7 @@ class AggregationBuilder:
         self._aggregations[parent_name]["aggs"] = child_builder.to_dict()
         return self
 
-    def to_dict(self) -> Dict[str, Dict[str, Any]]:
+    async def to_dict(self) -> Dict[str, Dict[str, Any]]:
         """Convert the built aggregations to a dictionary.
 
         Returns:

@@ -1,3 +1,4 @@
+from elastro.utils.async_cli import coro
 """
 Tasks management commands.
 """
@@ -23,7 +24,8 @@ def tasks_group() -> None:
 )
 @click.option("--detailed", "-d", is_flag=True, help="Show full detail payloads")
 @click.pass_obj
-def list_tasks(client: ElasticsearchClient, action: str, detailed: bool) -> None:
+@coro
+async def list_tasks(client: ElasticsearchClient, action: str, detailed: bool)-> None:
     """
     List active node tasks.
     """
@@ -73,7 +75,8 @@ def list_tasks(client: ElasticsearchClient, action: str, detailed: bool) -> None
 @tasks_group.command(name="cancel")
 @click.argument("task_id")
 @click.pass_obj
-def cancel_task(client: ElasticsearchClient, task_id: str) -> None:
+@coro
+async def cancel_task(client: ElasticsearchClient, task_id: str)-> None:
     """
     Cancel an active task.
 

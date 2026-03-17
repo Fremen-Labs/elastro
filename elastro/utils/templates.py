@@ -37,26 +37,25 @@ class TemplateManager:
         self._client = client
         self._es = client.client
 
-    def create(
-        self, name: str, body: Dict[str, Any], template_type: str = "index"
+    async def create(self, name: str, body: Dict[str, Any], template_type: str = "index"
     ) -> bool:
         """Create a new template (index or component)."""
         try:
             if template_type == "component":
-                resp = self._es.cluster.put_component_template(name=name, body=body)
+                resp = await self._es.cluster.put_component_template(name=name, body=body)
             else:
-                resp = self._es.indices.put_index_template(name=name, body=body)
+                resp = await self._es.indices.put_index_template(name=name, body=body)
             return resp.get("acknowledged", False)
         except Exception as e:
             raise OperationError(
                 f"Failed to create {template_type} template {name}: {str(e)}"
             )
 
-    def get(self, name: str, template_type: str = "index") -> Dict[str, Any]:
+    async def get(self, name: str, template_type: str = "index") -> Dict[str, Any]:
         """Get a template by name."""
         try:
             if template_type == "component":
-                resp = self._es.cluster.get_component_template(name=name)
+                resp = await self._es.cluster.get_component_template(name=name)
                 # Response format: {'component_templates': [{'name': 'foo', 'component_template': {...}}]}
                 if "component_templates" in resp:
                     for t in resp["component_templates"]:
@@ -64,7 +63,7 @@ class TemplateManager:
                             return t
                 return {}
             else:
-                resp = self._es.indices.get_index_template(name=name)
+                resp = await self._es.indices.get_index_template(name=name)
                 if "index_templates" in resp:
                     for t in resp["index_templates"]:
                         if t["name"] == name:
@@ -75,30 +74,29 @@ class TemplateManager:
                 f"Failed to get {template_type} template {name}: {str(e)}"
             )
 
-    def delete(self, name: str, template_type: str = "index") -> bool:
+    async def delete(self, name: str, template_type: str = "index") -> bool:
         """Delete a template."""
         try:
             if template_type == "component":
-                resp = self._es.cluster.delete_component_template(name=name)
+                resp = await self._es.cluster.delete_component_template(name=name)
             else:
-                resp = self._es.indices.delete_index_template(name=name)
+                resp = await self._es.indices.delete_index_template(name=name)
             return resp.get("acknowledged", False)
         except Exception as e:
             raise OperationError(
                 f"Failed to delete {template_type} template {name}: {str(e)}"
             )
 
-    def list(
-        self, template_type: str = "index", name: Optional[str] = None
+    async def list(self, template_type: str = "index", name: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """List templates."""
         try:
             pattern = name if name else "*"
             if template_type == "component":
-                resp = self._es.cluster.get_component_template(name=pattern)
+                resp = await self._es.cluster.get_component_template(name=pattern)
                 return resp.get("component_templates", [])
             else:
-                resp = self._es.indices.get_index_template(name=pattern)
+                resp = await self._es.indices.get_index_template(name=pattern)
                 return resp.get("index_templates", [])
         except Exception as e:
             raise OperationError(f"Failed to list {template_type} templates: {str(e)}")

@@ -16,7 +16,7 @@ logger = logging.getLogger("elastro.rag")
 
 
 class GraphRAGManager:
-    def __init__(
+    async def __init__(
         self, client: ElasticsearchClient, index_name: str = "fremen_codebase_rag"
     ):
         self.client = client
@@ -52,7 +52,7 @@ class GraphRAGManager:
             ".vscode",
         }
 
-    def _should_ignore(self, path: str) -> bool:
+    async def _should_ignore(self, path: str) -> bool:
         """Determines if a directory or file should be skipped during ingestion."""
         parts = os.path.normpath(path).split(os.sep)
         for part in parts:
@@ -60,12 +60,12 @@ class GraphRAGManager:
                 return True
         return False
 
-    def scaffold_index(self) -> None:
+    async def scaffold_index(self) -> None:
         """Safely creates the Graph RAG index if it does not manually exist."""
         pipeline_deployed = False
         # 1. Attempt to build the Dense Vector inference pipeline for Hybrid Search
         try:
-            self.client.client.ingest.put_pipeline(
+            await self.client.client.ingest.put_pipeline(
                 id="elastro-elser-v2",
                 description="Process text via ELSER for Dense Vector Hybrid Search",
                 processors=[
@@ -92,7 +92,7 @@ class GraphRAGManager:
             )
 
         # Simple existence check without causing hard errors if it doesn't
-        if not self.client.client.indices.exists(index=self.index_name):
+        if not await self.client.client.indices.exists(index=self.index_name):
             logger.info(f"Creating Graph RAG index '{self.index_name}'")
 
             settings: Dict[str, Any] = {"number_of_shards": 1, "number_of_replicas": 0}
@@ -115,11 +115,11 @@ class GraphRAGManager:
                 mappings["properties"]["content_embedding"] = {"type": "sparse_vector"}
 
             # We enforce standard RAG architecture with the Semantic Chunking fields.
-            self.client.client.indices.create(
+            await self.client.client.indices.create(
                 index=self.index_name, body={"settings": settings, "mappings": mappings}
             )
 
-    def scan_and_yield(self, repo_path: str) -> Generator[Dict[str, Any], None, None]:
+    async def scan_and_yield(self, repo_path: str) -> Any:
         """
         Walks the repository sequentially. Applies Semantic Chunking and AST parsing.
         Yields Elasticsearch Bulk API formatted operation dictionaries.
@@ -177,17 +177,17 @@ class GraphRAGManager:
                 except Exception as e:
                     logger.error(f"Error parsing Graph RAG for {file_path}: {e}")
 
-    def ingest_repository(self, repo_path: str) -> int:
+    async def ingest_repository(self, repo_path: str) -> int:
         """
         Orchestrates Elasticsearch bulk insertion directly leveraging the client helpers.
         """
-        from elasticsearch.helpers import bulk
+        from elasticsearch.helpers import async_bulk
 
         # Fire up the index blueprint
         self.scaffold_index()
 
         # Extract AST Flows & Stream seamlessly to Elastic
-        success_count, failed_inserts = bulk(
+        success_count, failed_inserts = await async_bulk(
             self.client.client,
             self.scan_and_yield(repo_path),
             chunk_size=500,  # Large batch sizes for fast performance on local M4 Mini
@@ -196,12 +196,12 @@ class GraphRAGManager:
 
         return success_count
 
-    def update_file(self, file_path: str, repo_path: Optional[str] = None) -> int:
+    async def update_file(self, file_path: str, repo_path: Optional[str] = None) -> int:
         """
         Surgically updates a specific file's AST chunks in Elasticsearch.
         Uses bulk processing for deletions to comply with performance constraints.
         """
-        from elasticsearch.helpers import bulk
+        from elasticsearch.helpers import async_bulk
 
         file_path = os.path.abspath(file_path)
         if not repo_path:
@@ -221,14 +221,14 @@ class GraphRAGManager:
         self.scaffold_index()
 
         # 1. Yield bulk delete ops for stale chunks matching file_path
-        def generate_deletes() -> Generator[Dict[str, Any], None, None]:
+        async def generate_deletes() -> Any:
             query = {
                 "query": {"term": {"file_path": rel_path}},
                 "_source": False,
                 "size": 1000,
             }
             try:
-                res = self.client.client.search(index=self.index_name, body=query)
+                res = await self.client.client.search(index=self.index_name, body=query)
                 for hit in res.get("hits", {}).get("hits", []):
                     yield {
                         "_op_type": "delete",
@@ -240,12 +240,12 @@ class GraphRAGManager:
 
         # Execute deletes
         try:
-            bulk(self.client.client, generate_deletes(), refresh=True, stats_only=True)
+            await async_bulk(self.client.client, generate_deletes(), refresh=True, stats_only=True)
         except Exception as e:
             logger.warning(f"Failed to bulk delete stale AST chunks: {e}")
 
         # 2. Re-ingest
-        def scan_single_file() -> Generator[Dict[str, Any], None, None]:
+        async def scan_single_file() -> Any:
             ext = os.path.splitext(file_path)[1].lower()
             if ext not in self.supported_extensions or self._should_ignore(file_path):
                 return
@@ -275,7 +275,7 @@ class GraphRAGManager:
             except Exception as e:
                 logger.error(f"Error parsing Graph RAG for {file_path}: {e}")
 
-        success_count, _ = bulk(
+        success_count, _ = await async_bulk(
             self.client.client,
             scan_single_file(),
             chunk_size=100,

@@ -1,3 +1,4 @@
+from elastro.utils.async_cli import coro
 """
 Ingest mapping and pipeline commands.
 """
@@ -21,7 +22,8 @@ def ingest_group() -> None:
 @ingest_group.command(name="pipelines")
 @click.option("--id", help="Fetch a specific pipeline ID")
 @click.pass_obj
-def list_pipelines(client: ElasticsearchClient, id: str) -> None:
+@coro
+async def list_pipelines(client: ElasticsearchClient, id: str)-> None:
     """
     List or fetch ingest pipelines.
     """
@@ -58,7 +60,8 @@ def list_pipelines(client: ElasticsearchClient, id: str) -> None:
     help="Raw JSON Document String to simulate against the ingest nodes",
 )
 @click.pass_obj
-def simulate_pipeline(client: ElasticsearchClient, id: str, doc: str) -> None:
+@coro
+async def simulate_pipeline(client: ElasticsearchClient, id: str, doc: str)-> None:
     """
     Simulate a document through an ingest pipeline securely.
 

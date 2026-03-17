@@ -15,7 +15,7 @@ class ASTParser:
         self.parsers: Dict[str, tree_sitter.Parser] = {}
         self._initialize_parsers()
 
-    def _initialize_parsers(self) -> None:
+    async def _initialize_parsers(self) -> None:
         """Loads natively compiled tree-sitter language capsules."""
         try:
             from tree_sitter import Language, Parser
@@ -44,7 +44,7 @@ class ASTParser:
             print(f"Graph RAG AST Parser initialization warning: {e}")
             pass
 
-    def _determine_language(self, ext: str) -> str:
+    async def _determine_language(self, ext: str) -> str:
         ext = ext.lower()
         if ext == ".py":
             return "python"
@@ -60,7 +60,7 @@ class ASTParser:
             return "markdown"
         return "unsupported"
 
-    def parse_file(self, file_path: str, content: str) -> List[Dict[str, Any]]:
+    async def parse_file(self, file_path: str, content: str) -> List[Dict[str, Any]]:
         """
         Parses raw code and extracts semantic chunks (functions/classes) with deterministic call graphs.
         """
@@ -120,8 +120,7 @@ class ASTParser:
 
         return chunks
 
-    def _extract_chunks(
-        self,
+    async def _extract_chunks(self,
         node: tree_sitter.Node,
         lang: str,
         source: bytes,
@@ -211,8 +210,7 @@ class ASTParser:
         for child in node.children:
             self._extract_chunks(child, lang, source, chunks)
 
-    def _traverse_for_calls(
-        self, node: tree_sitter.Node, lang: str, source: bytes, called: Set[str]
+    async def _traverse_for_calls(self, node: tree_sitter.Node, lang: str, source: bytes, called: Set[str]
     ) -> None:
         """Extracts call chains including their parameters/arguments for exact signature mapping."""
         if node.type == "call_expression":
@@ -260,7 +258,7 @@ class ASTParser:
         for child in node.children:
             self._traverse_for_calls(child, lang, source, called)
 
-    def _extract_call_chain(self, node: tree_sitter.Node, source: bytes) -> str:
+    async def _extract_call_chain(self, node: tree_sitter.Node, source: bytes) -> str:
         """Recursively builds pure string representation of chained object method calls."""
         if node.type == "identifier":
             return source[node.start_byte : node.end_byte].decode("utf-8")

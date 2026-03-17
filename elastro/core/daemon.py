@@ -20,7 +20,7 @@ class ElastroRPCService:
         self.client: Optional[ElasticsearchClient] = None
         self._connect()
 
-    def _connect(self) -> None:
+    async def _connect(self) -> None:
         config = get_config()
         self.client = ElasticsearchClient(
             hosts=config["elasticsearch"]["hosts"],
@@ -29,14 +29,14 @@ class ElastroRPCService:
             retry_on_timeout=config["elasticsearch"].get("retry_on_timeout", True),
             max_retries=config["elasticsearch"].get("max_retries", 3),
         )
-        self.client.connect()
+        await self.client.connect()
 
-    def health_check(self) -> bool:
+    async def health_check(self) -> bool:
         if self.client:
             return self.client.is_connected()
         return False
 
-    def fast_path_search(self, args: List[str]) -> str:
+    async def fast_path_search(self, args: List[str]) -> str:
         if not self.client:
             return "Error: Elasticsearch client not connected in daemon."
 

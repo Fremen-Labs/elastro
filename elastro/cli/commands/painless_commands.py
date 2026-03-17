@@ -1,3 +1,4 @@
+from elastro.utils.async_cli import coro
 """
 Painless scripting CLI commands.
 """
@@ -174,13 +175,14 @@ from elastro.core.client import ElasticsearchClient
     "--index", type=str, help="Optional index name if the context requires it."
 )
 @click.pass_obj
-def test_command(
+@coro
+async def test_command(
     client: ElasticsearchClient,
     script_file: Any,
     doc: str,
     context: str,
     index: str,
-) -> None:
+)-> None:
     """
     Test a Painless script locally against a mock JSON document.
 

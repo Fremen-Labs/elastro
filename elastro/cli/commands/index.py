@@ -1,3 +1,4 @@
+from elastro.utils.async_cli import coro
 """
 Index management commands for the CLI.
 """
@@ -30,14 +31,15 @@ from elastro.cli.completion import complete_indices
     help="Path to settings file",
 )
 @click.pass_obj
-def create_index(
+@coro
+async def create_index(
     client: ElasticsearchClient,
     name: str,
     shards: int,
     replicas: int,
     mapping: Any,
     settings: Any,
-) -> None:
+)-> None:
     """
     Create an index with the specified configuration.
 
@@ -91,7 +93,8 @@ def create_index(
 @click.command("get")
 @click.argument("name", type=str, shell_complete=complete_indices)
 @click.pass_obj
-def get_index(client: ElasticsearchClient, name: str) -> None:
+@coro
+async def get_index(client: ElasticsearchClient, name: str)-> None:
     """
     Get information about an index.
 
@@ -117,7 +120,8 @@ def get_index(client: ElasticsearchClient, name: str) -> None:
 @click.command("exists")
 @click.argument("name", type=str, shell_complete=complete_indices)
 @click.pass_obj
-def index_exists(client: ElasticsearchClient, name: str) -> None:
+@coro
+async def index_exists(client: ElasticsearchClient, name: str)-> None:
     """
     Check if an index exists.
 
@@ -149,7 +153,8 @@ def index_exists(client: ElasticsearchClient, name: str) -> None:
     help="Path to settings file",
 )
 @click.pass_obj
-def update_index(client: ElasticsearchClient, name: str, settings: Any) -> None:
+@coro
+async def update_index(client: ElasticsearchClient, name: str, settings: Any)-> None:
     """
     Update index settings.
 
@@ -181,7 +186,8 @@ def update_index(client: ElasticsearchClient, name: str, settings: Any) -> None:
 @click.argument("name", type=str, shell_complete=complete_indices)
 @click.option("--force", is_flag=True, help="Force deletion without confirmation")
 @click.pass_obj
-def delete_index(client: ElasticsearchClient, name: str, force: bool) -> None:
+@coro
+async def delete_index(client: ElasticsearchClient, name: str, force: bool)-> None:
     """
     Delete an index.
 
@@ -221,7 +227,8 @@ def delete_index(client: ElasticsearchClient, name: str, force: bool) -> None:
 @click.command("open")
 @click.argument("name", type=str, shell_complete=complete_indices)
 @click.pass_obj
-def open_index(client: ElasticsearchClient, name: str) -> None:
+@coro
+async def open_index(client: ElasticsearchClient, name: str)-> None:
     """
     Open an index.
 
@@ -248,7 +255,8 @@ def open_index(client: ElasticsearchClient, name: str) -> None:
 @click.command("close")
 @click.argument("name", type=str, shell_complete=complete_indices)
 @click.pass_obj
-def close_index(client: ElasticsearchClient, name: str) -> None:
+@coro
+async def close_index(client: ElasticsearchClient, name: str)-> None:
     """
     Close an index.
 
@@ -276,7 +284,8 @@ def close_index(client: ElasticsearchClient, name: str) -> None:
 @click.command("list")
 @click.argument("pattern", type=str, default="*", required=False)
 @click.pass_obj
-def list_indices(client: ElasticsearchClient, pattern: str) -> None:
+@coro
+async def list_indices(client: ElasticsearchClient, pattern: str)-> None:
     """
     List indices.
 
@@ -344,7 +353,8 @@ def list_indices(client: ElasticsearchClient, pattern: str) -> None:
 @click.command("find", no_args_is_help=True)
 @click.argument("pattern", type=str)
 @click.pass_obj
-def find_indices(client: ElasticsearchClient, pattern: str) -> None:
+@coro
+async def find_indices(client: ElasticsearchClient, pattern: str)-> None:
     """
     Find indices matching a pattern.
 
@@ -375,7 +385,8 @@ def find_indices(client: ElasticsearchClient, pattern: str) -> None:
 
 @click.command("wizard", no_args_is_help=False)
 @click.pass_obj
-def index_wizard(client: ElasticsearchClient) -> None:
+@coro
+async def index_wizard(client: ElasticsearchClient)-> None:
     """
     Interactive index creation wizard.
 
@@ -515,7 +526,8 @@ def index_wizard(client: ElasticsearchClient) -> None:
 
 @click.command("fix", no_args_is_help=False)
 @click.pass_obj
-def fix_indices(client: ElasticsearchClient) -> None:
+@coro
+async def fix_indices(client: ElasticsearchClient)-> None:
     """
     Automated diagnostic and remediation wizard for unhealthy indices.
 

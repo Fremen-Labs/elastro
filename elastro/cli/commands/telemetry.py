@@ -1,3 +1,4 @@
+from elastro.utils.async_cli import coro
 """
 Telemetry ingest command for Elastro CLI.
 """
@@ -51,7 +52,8 @@ def telemetry_group() -> None:
 )
 @click.option("--complexity", type=float, default=0.0, help="Complexity Score")
 @click.pass_obj
-def ingest_telemetry(
+@coro
+async def ingest_telemetry(
     client: ElasticsearchClient,
     workload_reference: str,
     exec_mins: float,
@@ -76,7 +78,7 @@ def ingest_telemetry(
     diff_drift: float,
     fallback_rate: float,
     complexity: float,
-) -> None:
+)-> None:
     """
     Ingest standardized session telemetry into the deep analytics index.
 
@@ -117,7 +119,7 @@ def ingest_telemetry(
     }
 
     try:
-        response = client.client.index(index=index_name, document=payload)
+        response = await client.client.index(index=index_name, document=payload)
         click.secho(
             f">> Sink execution complete for [{workload_reference}]. ID: {response.get('_id', 'unknown')}",
             fg="green",

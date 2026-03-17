@@ -127,7 +127,7 @@ class Validator:
     documents, queries, and other Elasticsearch operations.
     """
 
-    def validate_index_settings(self, settings: Dict[str, Any]) -> None:
+    async def validate_index_settings(self, settings: Dict[str, Any]) -> None:
         """
         Validate index settings.
 
@@ -152,7 +152,7 @@ class Validator:
                 f"Invalid index settings: {', '.join(error_messages)}"
             )
 
-    def validate_index_mappings(self, mappings: Dict[str, Any]) -> None:
+    async def validate_index_mappings(self, mappings: Dict[str, Any]) -> None:
         """
         Validate index mappings.
 
@@ -180,8 +180,7 @@ class Validator:
                 f"Invalid index mappings: {', '.join(error_messages)}"
             )
 
-    def validate_document_schema(
-        self, document: Dict[str, Any], schema: Optional[Dict[str, Any]] = None
+    async def validate_document_schema(self, document: Dict[str, Any], schema: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Validate document against schema.
@@ -243,7 +242,7 @@ class Validator:
                 raise
             raise ValidationError(f"Document validation failed: {str(e)}")
 
-    def validate_query(self, query: Dict[str, Any]) -> None:
+    async def validate_query(self, query: Dict[str, Any]) -> None:
         """
         Validate Elasticsearch query.
 
@@ -276,7 +275,7 @@ class Validator:
             ]
             raise ValidationError(f"Invalid query: {', '.join(error_messages)}")
 
-    def validate_datastream_settings(self, settings: Dict[str, Any]) -> None:
+    async def validate_datastream_settings(self, settings: Dict[str, Any]) -> None:
         """
         Validate datastream settings.
 

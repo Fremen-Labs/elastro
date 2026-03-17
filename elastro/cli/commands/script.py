@@ -1,3 +1,4 @@
+from elastro.utils.async_cli import coro
 """
 Painless scripting management commands for the CLI.
 """
@@ -26,7 +27,8 @@ def script_group() -> None:
 
 @script_group.command("list")
 @click.pass_obj
-def list_scripts(client: ElasticsearchClient) -> None:
+@coro
+async def list_scripts(client: ElasticsearchClient)-> None:
     """
     List all stored Painless scripts.
 
@@ -35,7 +37,7 @@ def list_scripts(client: ElasticsearchClient) -> None:
     """
     try:
         # Pull cluster state selecting only metadata.stored_scripts
-        response = client.client.cluster.state(
+        response = await client.client.cluster.state(
             metric="metadata", filter_path="metadata.stored_scripts"
         )
 
@@ -52,12 +54,13 @@ def list_scripts(client: ElasticsearchClient) -> None:
 @script_group.command("get")
 @click.argument("id", type=str)
 @click.pass_obj
-def get_script(client: ElasticsearchClient, id: str) -> None:
+@coro
+async def get_script(client: ElasticsearchClient, id: str)-> None:
     """
     Get a stored Painless script by its ID.
     """
     try:
-        response = client.client.get_script(id=id)
+        response = await client.client.get_script(id=id)
         console.print(format_output(response, output_format="json"))
     except Exception as e:
         console.print(f"[bold red]Error getting script '{id}':[/bold red] {str(e)}")
@@ -66,13 +69,14 @@ def get_script(client: ElasticsearchClient, id: str) -> None:
 @script_group.command("delete")
 @click.argument("id", type=str)
 @click.pass_obj
-def delete_script(client: ElasticsearchClient, id: str) -> None:
+@coro
+async def delete_script(client: ElasticsearchClient, id: str)-> None:
     """
     Delete a stored Painless script.
     """
     if Confirm.ask(f"Are you sure you want to delete script '{id}'?"):
         try:
-            response = client.client.delete_script(id=id)
+            response = await client.client.delete_script(id=id)
             if response.get("acknowledged"):
                 console.print(
                     f"[bold green]Success![/bold green] Script '{id}' deleted."
@@ -97,9 +101,10 @@ def delete_script(client: ElasticsearchClient, id: str) -> None:
     "--interactive", "-i", is_flag=True, help="Open nano/vim to write visually"
 )
 @click.pass_obj
-def create_script(
+@coro
+async def create_script(
     client: ElasticsearchClient, id: str, file: str, interactive: bool
-) -> None:
+)-> None:
     """
     Create or update a stored Painless script.
 
@@ -148,7 +153,7 @@ def create_script(
     script_payload = {"script": {"lang": "painless", "source": script_source}}
 
     try:
-        response = client.client.put_script(id=id, body=script_payload)
+        response = await client.client.put_script(id=id, body=script_payload)
         if response.get("acknowledged"):
             console.print(f"[bold green]Success![/bold green] Script '{id}' stored.")
         else:
@@ -164,9 +169,10 @@ def create_script(
     "--context", "-c", type=str, help="JSON context (e.g. {'score': 2})", default="{}"
 )
 @click.pass_obj
-def execute_script(
+@coro
+async def execute_script(
     client: ElasticsearchClient, source: str, id: str, context: str
-) -> None:
+)-> None:
     """
     Validate and execute a Painless script temporarily against dummy contexts.
 
@@ -197,7 +203,7 @@ def execute_script(
         payload["context_setup"] = {"document": ctx_data}
 
     try:
-        response = client.client.perform_request(
+        response = await client.client.perform_request(
             "POST", "/_scripts/painless/_execute", body=payload
         )
         console.print("[bold green]Execution Result:[/bold green]")

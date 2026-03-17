@@ -33,8 +33,7 @@ class DocumentManager:
         self._client = client  # Add this for compatibility with tests
         self.validator = Validator()
 
-    def index(
-        self,
+    async def index(self,
         index: str,
         id: Optional[str],
         document: Dict[str, Any],
@@ -74,14 +73,13 @@ class DocumentManager:
 
             logger.debug(f"Indexing document into '{index}' with ID '{id}'")
             # Execute the index operation
-            response = self.client.client.index(**params)  # type: ignore
+            response = await self.client.client.index(**params)  # type: ignore
             return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             logger.error(f"Failed to index document info '{index}': {str(e)}")
             raise DocumentError(f"Failed to index document: {str(e)}")
 
-    def bulk_index(
-        self, index: str, documents: List[Dict[str, Any]], refresh: bool = False
+    async def bulk_index(self, index: str, documents: List[Dict[str, Any]], refresh: bool = False
     ) -> Dict[str, Any]:
         """
         Bulk index multiple documents.
@@ -138,7 +136,7 @@ class DocumentManager:
                     await async_client.close()
 
             # Use optimized async streaming mapped back to synchronous blocking thread
-            success_count, errors = asyncio.run(_do_async_bulk())
+            success_count, errors = await _do_async_bulk()
 
             logger.info(f"Bulk index complete: {success_count} successful")
 
@@ -151,8 +149,7 @@ class DocumentManager:
             logger.error(f"Failed to bulk index documents: {str(e)}")
             raise OperationError(f"Failed to bulk index documents: {str(e)}")
 
-    def bulk_delete(
-        self, index: str, ids: List[str], refresh: bool = False
+    async def bulk_delete(self, index: str, ids: List[str], refresh: bool = False
     ) -> Dict[str, Any]:
         """
         Bulk delete multiple documents.
@@ -191,7 +188,7 @@ class DocumentManager:
                     await async_client.close()
 
             # Use optimized async streaming mapped back to synchronous blocking thread
-            success_count, errors = asyncio.run(_do_async_bulk())
+            success_count, errors = await _do_async_bulk()
 
             return {
                 "success_count": success_count,
@@ -202,7 +199,7 @@ class DocumentManager:
             logger.error(f"Failed to bulk delete documents: {str(e)}")
             raise OperationError(f"Failed to bulk delete documents: {str(e)}")
 
-    def get(self, index: str, id: str) -> Any:
+    async def get(self, index: str, id: str) -> Any:
         """
         Get a document by ID.
 
@@ -221,15 +218,14 @@ class DocumentManager:
             raise ValidationError("Document ID cannot be empty")
 
         try:
-            response = self.client.client.get(index=index, id=id)
+            response = await self.client.client.get(index=index, id=id)
             return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             # Log only if it's an unexpected error
             logger.error(f"Failed to get document '{id}' from '{index}': {str(e)}")
             raise DocumentError(f"Failed to get document: {str(e)}")
 
-    def update(
-        self,
+    async def update(self,
         index: str,
         id: str,
         document: Dict[str, Any],
@@ -264,7 +260,7 @@ class DocumentManager:
             if partial:
                 # For partial updates, wrap in "doc" field
                 body = {"doc": document}
-                response = self.client.client.update(
+                response = await self.client.client.update(
                     index=index,
                     id=id,
                     body=body,
@@ -280,7 +276,7 @@ class DocumentManager:
             logger.error(f"Failed to update document '{id}': {str(e)}")
             raise DocumentError(f"Failed to update document: {str(e)}")
 
-    def delete(self, index: str, id: str, refresh: bool = False) -> Any:
+    async def delete(self, index: str, id: str, refresh: bool = False) -> Any:
         """
         Delete a document by ID.
 
@@ -301,7 +297,7 @@ class DocumentManager:
 
         try:
             logger.info(f"Deleting document '{id}' from '{index}'")
-            response = self.client.client.delete(
+            response = await self.client.client.delete(
                 index=index, id=id, refresh="true" if refresh else "false"
             )
             return response.body if hasattr(response, "body") else dict(response)
@@ -309,8 +305,7 @@ class DocumentManager:
             logger.error(f"Failed to delete document '{id}': {str(e)}")
             raise DocumentError(f"Failed to delete document: {str(e)}")
 
-    def search(
-        self,
+    async def search(self,
         index: str,
         query: Dict[str, Any],
         options: Optional[Dict[str, Any]] = None,
@@ -355,7 +350,7 @@ class DocumentManager:
 
         try:
             logger.debug(f"Searching index '{index}'...")
-            response = self.client.client.search(**search_params)  # type: ignore
+            response = await self.client.client.search(**search_params)  # type: ignore
             return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             logger.error(f"Failed to search documents in '{index}': {str(e)}")

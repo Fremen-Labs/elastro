@@ -14,8 +14,7 @@ class QueryBuilder:
         """Initialize an empty query builder."""
         self._query: Dict[str, Any] = {}
 
-    def match(
-        self,
+    async def match(self,
         field: str,
         value: Any,
         operator: str = "or",
@@ -41,7 +40,7 @@ class QueryBuilder:
         self._query = match_query
         return self
 
-    def match_phrase(self, field: str, value: str, slop: int = 0) -> "QueryBuilder":
+    async def match_phrase(self, field: str, value: str, slop: int = 0) -> "QueryBuilder":
         """Create a match_phrase query.
 
         Args:
@@ -55,7 +54,7 @@ class QueryBuilder:
         self._query = {"match_phrase": {field: {"query": value, "slop": slop}}}
         return self
 
-    def term(self, field: str, value: Any) -> "QueryBuilder":
+    async def term(self, field: str, value: Any) -> "QueryBuilder":
         """Create a term query (exact match).
 
         Args:
@@ -68,7 +67,7 @@ class QueryBuilder:
         self._query = {"term": {field: value}}
         return self
 
-    def terms(self, field: str, values: List[Any]) -> "QueryBuilder":
+    async def terms(self, field: str, values: List[Any]) -> "QueryBuilder":
         """Create a terms query (multiple exact matches).
 
         Args:
@@ -81,8 +80,7 @@ class QueryBuilder:
         self._query = {"terms": {field: values}}
         return self
 
-    def range(
-        self,
+    async def range(self,
         field: str,
         gte: Optional[Any] = None,
         lte: Optional[Any] = None,
@@ -114,7 +112,7 @@ class QueryBuilder:
         self._query = {"range": {field: range_params}}
         return self
 
-    def exists(self, field: str) -> "QueryBuilder":
+    async def exists(self, field: str) -> "QueryBuilder":
         """Create an exists query.
 
         Args:
@@ -126,7 +124,7 @@ class QueryBuilder:
         self._query = {"exists": {"field": field}}
         return self
 
-    def wildcard(self, field: str, value: str) -> "QueryBuilder":
+    async def wildcard(self, field: str, value: str) -> "QueryBuilder":
         """Create a wildcard query.
 
         Args:
@@ -139,7 +137,7 @@ class QueryBuilder:
         self._query = {"wildcard": {field: value}}
         return self
 
-    def bool(self) -> "BoolQueryBuilder":
+    async def bool(self) -> "BoolQueryBuilder":
         """Start building a bool query.
 
         Returns:
@@ -147,7 +145,7 @@ class QueryBuilder:
         """
         return BoolQueryBuilder(self)
 
-    def to_dict(self) -> Dict[str, Any]:
+    async def to_dict(self) -> Dict[str, Any]:
         """Convert the built query to a dictionary.
 
         Returns:
@@ -155,7 +153,7 @@ class QueryBuilder:
         """
         return self._query
 
-    def build(self) -> Dict[str, Any]:
+    async def build(self) -> Dict[str, Any]:
         """Build the query and return the dictionary representation.
 
         Returns:
@@ -180,7 +178,7 @@ class BoolQueryBuilder:
         self._filter: List[Dict[str, Any]] = []
         self._minimum_should_match: Optional[Union[int, str]] = None
 
-    def must(self, query: Union[QueryBuilder, Dict[str, Any]]) -> "BoolQueryBuilder":
+    async def must(self, query: Union[QueryBuilder, Dict[str, Any]]) -> "BoolQueryBuilder":
         """Add a must clause to the bool query.
 
         Args:
@@ -195,8 +193,7 @@ class BoolQueryBuilder:
             self._must.append(query)
         return self
 
-    def must_not(
-        self, query: Union[QueryBuilder, Dict[str, Any]]
+    async def must_not(self, query: Union[QueryBuilder, Dict[str, Any]]
     ) -> "BoolQueryBuilder":
         """Add a must_not clause to the bool query.
 
@@ -212,7 +209,7 @@ class BoolQueryBuilder:
             self._must_not.append(query)
         return self
 
-    def should(self, query: Union[QueryBuilder, Dict[str, Any]]) -> "BoolQueryBuilder":
+    async def should(self, query: Union[QueryBuilder, Dict[str, Any]]) -> "BoolQueryBuilder":
         """Add a should clause to the bool query.
 
         Args:
@@ -227,7 +224,7 @@ class BoolQueryBuilder:
             self._should.append(query)
         return self
 
-    def filter(self, query: Union[QueryBuilder, Dict[str, Any]]) -> "BoolQueryBuilder":
+    async def filter(self, query: Union[QueryBuilder, Dict[str, Any]]) -> "BoolQueryBuilder":
         """Add a filter clause to the bool query.
 
         Args:
@@ -242,7 +239,7 @@ class BoolQueryBuilder:
             self._filter.append(query)
         return self
 
-    def minimum_should_match(self, value: Union[int, str]) -> "BoolQueryBuilder":
+    async def minimum_should_match(self, value: Union[int, str]) -> "BoolQueryBuilder":
         """Set the minimum_should_match parameter.
 
         Args:
@@ -254,7 +251,7 @@ class BoolQueryBuilder:
         self._minimum_should_match = value
         return self
 
-    def build(self) -> QueryBuilder:
+    async def build(self) -> QueryBuilder:
         """Build the bool query and return to the parent builder.
 
         Returns:

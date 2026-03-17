@@ -1,3 +1,4 @@
+from elastro.utils.async_cli import coro
 """
 Datastream management commands for the CLI.
 """
@@ -19,9 +20,10 @@ from elastro.cli.completion import complete_datastreams
     help="Path to settings file",
 )
 @click.pass_obj
-def create_datastream(
+@coro
+async def create_datastream(
     client: ElasticsearchClient, name: str, settings: Optional[str]
-) -> None:
+)-> None:
     """
     Create a datastream.
 
@@ -54,7 +56,8 @@ def create_datastream(
 
 @click.command("list")
 @click.pass_obj
-def list_datastreams(client: ElasticsearchClient) -> None:
+@coro
+async def list_datastreams(client: ElasticsearchClient)-> None:
     """
     List all datastreams.
 
@@ -80,7 +83,8 @@ def list_datastreams(client: ElasticsearchClient) -> None:
 @click.command("get", no_args_is_help=True)
 @click.argument("name", type=str, shell_complete=complete_datastreams)
 @click.pass_obj
-def get_datastream(client: ElasticsearchClient, name: str) -> None:
+@coro
+async def get_datastream(client: ElasticsearchClient, name: str)-> None:
     """
     Get information about a datastream.
 
@@ -107,7 +111,8 @@ def get_datastream(client: ElasticsearchClient, name: str) -> None:
 @click.argument("name", type=str, shell_complete=complete_datastreams)
 @click.option("--force", is_flag=True, help="Force deletion without confirmation")
 @click.pass_obj
-def delete_datastream(client: ElasticsearchClient, name: str, force: bool) -> None:
+@coro
+async def delete_datastream(client: ElasticsearchClient, name: str, force: bool)-> None:
     """
     Delete a datastream.
 
@@ -144,13 +149,14 @@ def delete_datastream(client: ElasticsearchClient, name: str, force: bool) -> No
 @click.option("--max-docs", type=int, help="Maximum number of documents")
 @click.option("--max-size", type=str, help="Maximum size (e.g., '5gb')")
 @click.pass_obj
-def rollover_datastream(
+@coro
+async def rollover_datastream(
     client: ElasticsearchClient,
     name: str,
     max_age: Optional[str],
     max_docs: Optional[int],
     max_size: Optional[str],
-) -> None:
+)-> None:
     """
     Rollover a datastream.
 

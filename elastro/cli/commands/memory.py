@@ -1,3 +1,4 @@
+from elastro.utils.async_cli import coro
 """
 Memory command group for Elastro CLI.
 """
@@ -20,13 +21,14 @@ def memory_group() -> None:
 @click.argument("content")
 @click.option("--tags", default="", help="Comma-separated tags")
 @click.pass_obj
-def ingest_memory(
+@coro
+async def ingest_memory(
     client: ElasticsearchClient,
     note_type: str,
     subject: str,
     content: str,
     tags: str,
-) -> None:
+)-> None:
     """
     Ingest a semantic memory note for agent knowledge sharing.
 
@@ -44,7 +46,7 @@ def ingest_memory(
     }
 
     try:
-        response = client.client.index(index=index_name, document=payload)
+        response = await client.client.index(index=index_name, document=payload)
         click.secho(
             f">> Memory ingested successfully. ID: {response.get('_id', 'unknown')}",
             fg="green",
@@ -66,12 +68,13 @@ def ingest_memory(
 )
 @click.option("--size", default=10, help="Number of results to return")
 @click.pass_obj
-def search_memory(
+@coro
+async def search_memory(
     client: ElasticsearchClient,
     query: str,
     note_type: str,
     size: int,
-) -> None:
+)-> None:
     """
     Search semantic memory notes via vector/BM25 retrieval.
     """
@@ -99,7 +102,7 @@ def search_memory(
     }
 
     try:
-        response = client.client.search(index=index_name, body=search_body)
+        response = await client.client.search(index=index_name, body=search_body)
         hits = response.get("hits", {}).get("hits", [])
 
         click.secho(f"Found {len(hits)} memory notes:", fg="blue")
@@ -124,10 +127,11 @@ def search_memory(
 @memory_group.command("prune")
 @click.option("--days", default=7, help="Number of days to retain tactical notes")
 @click.pass_obj
-def prune_memory(
+@coro
+async def prune_memory(
     client: ElasticsearchClient,
     days: int,
-) -> None:
+)-> None:
     """
     Prune 'tactical' memory notes older than the specified threshold.
     """
@@ -150,7 +154,7 @@ def prune_memory(
     }
 
     try:
-        response = client.client.delete_by_query(index=index_name, body=delete_query)
+        response = await client.client.delete_by_query(index=index_name, body=delete_query)
         deleted = response.get("deleted", 0)
         click.secho(
             f">> Pruned {deleted} tactical memory notes older than {days} days.",

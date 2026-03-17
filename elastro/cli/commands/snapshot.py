@@ -1,3 +1,4 @@
+from elastro.utils.async_cli import coro
 import rich_click as click
 import json
 from typing import Dict, Any, List, Optional
@@ -29,7 +30,8 @@ def repo_group() -> None:
 
 @repo_group.command("list")
 @click.pass_obj
-def list_repositories(client: ElasticsearchClient) -> None:
+@coro
+async def list_repositories(client: ElasticsearchClient)-> None:
     """
     List all snapshot repositories.
 
@@ -75,9 +77,10 @@ def list_repositories(client: ElasticsearchClient) -> None:
     help="Repo settings key=value (e.g. location=/tmp)",
 )
 @click.pass_obj
-def create_repository(
+@coro
+async def create_repository(
     client: ElasticsearchClient, name: str, type: str, setting: Any
-) -> None:
+)-> None:
     """
     Create a snapshot repository.
 
@@ -117,7 +120,8 @@ def create_repository(
 @repo_group.command("delete", no_args_is_help=True)
 @click.argument("name", type=str)
 @click.pass_obj
-def delete_repository(client: ElasticsearchClient, name: str) -> None:
+@coro
+async def delete_repository(client: ElasticsearchClient, name: str)-> None:
     """
     Delete a snapshot repository.
 
@@ -150,7 +154,8 @@ def delete_repository(client: ElasticsearchClient, name: str) -> None:
 @snapshot_group.command("list", no_args_is_help=True)
 @click.argument("repository", type=str)
 @click.pass_obj
-def list_snapshots(client: ElasticsearchClient, repository: str) -> None:
+@coro
+async def list_snapshots(client: ElasticsearchClient, repository: str)-> None:
     """
     List snapshots in a repository.
 
@@ -195,13 +200,14 @@ def list_snapshots(client: ElasticsearchClient, repository: str) -> None:
 @click.option("--indices", default="_all", help="Indices to snapshot")
 @click.option("--wait", is_flag=True, help="Wait for completion")
 @click.pass_obj
-def create_snapshot(
+@coro
+async def create_snapshot(
     client: ElasticsearchClient,
     repository: str,
     snapshot: str,
     indices: str,
     wait: bool,
-) -> None:
+)-> None:
     """
     Create a snapshot.
 
@@ -243,9 +249,10 @@ def create_snapshot(
 @click.argument("repository", required=False)
 @click.argument("snapshot", required=False)
 @click.pass_obj
-def restore_snapshot(
+@coro
+async def restore_snapshot(
     client: ElasticsearchClient, repository: Optional[str], snapshot: Optional[str]
-) -> None:
+)-> None:
     """
     Restore a snapshot.
 
@@ -374,9 +381,10 @@ def restore_snapshot(
 @click.argument("repository", type=str)
 @click.argument("snapshot", type=str)
 @click.pass_obj
-def delete_snapshot(
+@coro
+async def delete_snapshot(
     client: ElasticsearchClient, repository: str, snapshot: str
-) -> None:
+)-> None:
     """
     Delete a snapshot.
 

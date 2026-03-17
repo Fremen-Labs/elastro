@@ -1,3 +1,4 @@
+from elastro.utils.async_cli import coro
 """
 Machine Learning commands for the CLI.
 """
@@ -22,7 +23,8 @@ def ml_group() -> None:
 
 @ml_group.command("init-job")
 @click.pass_obj
-def init_job(client: ElasticsearchClient) -> None:
+@coro
+async def init_job(client: ElasticsearchClient)-> None:
     """
     Interactive wizard to deploy a Machine Learning Anomaly Detection Job.
 
@@ -99,13 +101,13 @@ def init_job(client: ElasticsearchClient) -> None:
 
     try:
         # ES API call: PUT _ml/anomaly_detectors/<job_id>
-        response = client.client.ml.put_job(job_id=job_id, body=job_config)
+        response = await client.client.ml.put_job(job_id=job_id, body=job_config)
         console.print(f"[bold green]Success![/bold green] ML Job '{job_id}' deployed.")
 
         # Scaffold the datafeed
         datafeed_id = f"datafeed-{job_id}"
         datafeed_config = {"job_id": job_id, "indices": [index_pattern]}
-        client.client.ml.put_datafeed(datafeed_id=datafeed_id, body=datafeed_config)
+        await client.client.ml.put_datafeed(datafeed_id=datafeed_id, body=datafeed_config)
         console.print(
             f"[bold green]Success![/bold green] Datafeed '{datafeed_id}' attached."
         )

@@ -172,18 +172,9 @@ def cli(
         max_retries=cfg["elasticsearch"]["max_retries"],
     )
 
-    # Establish connection
-    try:
-        client.connect()
-    except Exception as e:
-        if verbose:
-            click.echo(f"Failed to connect to Elasticsearch: {e}", err=True)
-        # We don't exit here because some commands might not need connection (e.g. config),
-        # but most do. For now, let's let individual commands fail if they need connection,
-        # or better, just Log it. client.connect() raises ConnectionError.
-        # Actually, if we fail to connect, most commands will fail.
-        # Let's print a warning but continue, as 'config' commands shouldn't fail.
-        pass
+    # Establish connection is now deferred to the @coro decorator
+    # so that the AsyncElasticsearch transport binds to the correct event loop
+    pass
 
     # Store in context
     ctx.obj = client

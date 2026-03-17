@@ -11,10 +11,10 @@ class IndexRecipe:
     customizable_fields: Optional[List[str]] = None
     prompts: Optional[List[Dict[str, Any]]] = None
 
-    def get_settings(self) -> Dict[str, Any]:
+    async def get_settings(self) -> Dict[str, Any]:
         return self.settings.copy()
 
-    def get_mappings(self) -> Dict[str, Any]:
+    async def get_mappings(self) -> Dict[str, Any]:
         return self.mappings.copy()
 
 

@@ -53,7 +53,7 @@ class ElastroGUI:
 
         self._setup_routes()
 
-    def _ensure_config(self) -> None:
+    async def _ensure_config(self) -> None:
         if not self.config_dir.exists():
             self.config_dir.mkdir(parents=True, exist_ok=True)
         if not self.config_file.exists():
@@ -84,7 +84,7 @@ class ElastroGUI:
             with open(self.config_file, "w") as f:
                 json.dump({"clusters": initial_clusters}, f)
 
-    def _read_config(self) -> Dict[str, Any]:
+    async def _read_config(self) -> Dict[str, Any]:
         self._ensure_config()
         try:
             with open(self.config_file, "r") as f:
@@ -92,12 +92,12 @@ class ElastroGUI:
         except json.JSONDecodeError:
             return {"clusters": []}
 
-    def _write_config(self, config: Dict[str, Any]) -> None:
+    async def _write_config(self, config: Dict[str, Any]) -> None:
         self._ensure_config()
         with open(self.config_file, "w") as f:
             json.dump(config, f, indent=4)
 
-    def verify_token(self, authorization: Optional[str] = Header(None)) -> str:
+    async def verify_token(self, authorization: Optional[str] = Header(None)) -> str:
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Unauthorized")
         token = authorization.split(" ")[1]
@@ -107,7 +107,7 @@ class ElastroGUI:
             raise HTTPException(status_code=401, detail="Unauthorized")
         return token
 
-    def _setup_routes(self) -> None:
+    async def _setup_routes(self) -> None:
         # Enable CORS for local dev logic
         self.app.add_middleware(
             CORSMiddleware,
@@ -154,7 +154,7 @@ class ElastroGUI:
             return {"status": "success"}
 
         @self.app.get("/api/clusters")
-        def get_clusters_health(
+        async def get_clusters_health(
             token: str = Depends(self.verify_token),
         ) -> Dict[str, Any]:
             config = self._read_config()
@@ -183,15 +183,15 @@ class ElastroGUI:
 
                     client = ElasticsearchClient(hosts=[host], **auth_kwargs)
 
-                    client.connect()
+                    await client.connect()
 
                     # Get index stats
                     es = client.client
-                    health = es.cluster.health()
+                    health = await es.cluster.health()
 
                     # Get index stats
                     # Omit bytes="b" so we get standard ES string formats like '35.6mb' safely
-                    idx_res = es.cat.indices(format="json")
+                    idx_res = await es.cat.indices(format="json")
 
                     unstable: List[Dict[str, Any]] = []
                     largest_idx_name = "N/A"
@@ -274,7 +274,7 @@ class ElastroGUI:
             return {"clusters": results}
 
         @self.app.get("/api/cluster/{cluster_name}")
-        def get_cluster_details(
+        async def get_cluster_details(
             cluster_name: str, token: str = Depends(self.verify_token)
         ) -> Dict[str, Any]:
             config = self._read_config()
@@ -310,14 +310,14 @@ class ElastroGUI:
 
                 client = ElasticsearchClient(hosts=[host], **auth_kwargs)
 
-                client.connect()
+                await client.connect()
                 es = client.client
 
                 # Fetch detailed metrics
-                health = es.cluster.health()
+                health = await es.cluster.health()
 
                 # Node stats
-                nodes_info = es.nodes.info()
+                nodes_info = await es.nodes.info()
                 node_count = nodes_info.get("_nodes", {}).get("total", 0)
 
                 node_roles: Dict[str, int] = {}
@@ -328,7 +328,7 @@ class ElastroGUI:
 
                 # ILM Policies
                 try:
-                    ilm_policies = es.ilm.get_lifecycle()
+                    ilm_policies = await es.ilm.get_lifecycle()
                     ilm_count = len(ilm_policies)
                 except Exception as e:
                     logging.warning(f"Could not fetch ILM for {cluster_name}: {e}")
@@ -337,7 +337,7 @@ class ElastroGUI:
                 # Snapshots / Backups
                 repos = []
                 try:
-                    repo_res = es.snapshot.get_repository()
+                    repo_res = await es.snapshot.get_repository()
                     for r_name, r_data in repo_res.items():
                         repos.append(
                             {"name": r_name, "type": r_data.get("type", "unknown")}
@@ -346,7 +346,7 @@ class ElastroGUI:
                     logging.warning(f"Could not fetch Repos for {cluster_name}: {e}")
 
                 # Indices detailed summary
-                idx_res = es.cat.indices(format="json")
+                idx_res = await es.cat.indices(format="json")
                 red_indices = 0
                 yellow_indices = 0
                 total_indices = len(idx_res)
@@ -381,7 +381,7 @@ class ElastroGUI:
                 )
 
         @self.app.post("/api/cluster/{cluster_name}/cli")
-        def execute_cli_command(
+        async def execute_cli_command(
             cluster_name: str,
             req: ClusterCLIRequestSchema,
             token: str = Depends(self.verify_token),
@@ -450,29 +450,37 @@ class ElastroGUI:
                 run_env["ELASTIC_PASSWORD"] = auth_conf.get("password", "")
 
             try:
+                import asyncio
                 # Capture both stderr and stdout multiplexed
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    input=req.stdin,
-                    timeout=30,
+                process = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    stdin=asyncio.subprocess.PIPE if req.stdin else None,
                     env=run_env,
                 )
 
+                try:
+                    stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                        process.communicate(input=req.stdin.encode() if req.stdin else None),
+                        timeout=30.0
+                    )
+                except asyncio.TimeoutError:
+                    process.kill()
+                    await process.wait()
+                    raise HTTPException(
+                        status_code=408,
+                        detail="Command execution timed out after 30 seconds",
+                    )
+
                 # Always combine stdout and stderr so the user sees errors naturally
                 output = ""
-                if result.stdout:
-                    output += result.stdout
-                if result.stderr:
-                    output += "\n" + result.stderr
+                if stdout_bytes:
+                    output += stdout_bytes.decode(errors='replace')
+                if stderr_bytes:
+                    output += "\n" + stderr_bytes.decode(errors='replace')
 
-                return {"exit_code": result.returncode, "output": output}
-            except subprocess.TimeoutExpired:
-                raise HTTPException(
-                    status_code=408,
-                    detail="Command execution timed out after 30 seconds",
-                )
+                return {"exit_code": process.returncode, "output": output}
             except FileNotFoundError:
                 raise HTTPException(
                     status_code=500,
@@ -484,7 +492,7 @@ class ElastroGUI:
                 )
 
         @self.app.get("/api/clusters/{cluster_name}/indices/unhealthy")
-        def get_unhealthy_indices(
+        async def get_unhealthy_indices(
             cluster_name: str, token: str = Depends(self.verify_token)
         ) -> Dict[str, Any]:
             config = self._read_config()
@@ -511,13 +519,13 @@ class ElastroGUI:
                     host = "http://" + host
 
                 client = ElasticsearchClient(hosts=[host], **auth_kwargs)
-                client.connect()
+                await client.connect()
 
                 from elastro.core.index import IndexManager
 
                 idx_mgr = IndexManager(client)
 
-                indices = idx_mgr.list()
+                indices = await idx_mgr.list()
                 unhealthy = [
                     idx
                     for idx in indices
@@ -530,7 +538,7 @@ class ElastroGUI:
                     if not name:
                         continue
                     try:
-                        explain = idx_mgr.allocation_explain(name)
+                        explain = await idx_mgr.allocation_explain(name)
                         unassigned = explain.get("unassigned_info", {})
 
                         routing_filter_fault = False
@@ -590,7 +598,7 @@ class ElastroGUI:
                 raise HTTPException(status_code=500, detail=str(e))
 
         @self.app.post("/api/clusters/{cluster_name}/indices/{index_name}/fix")
-        def fix_index(
+        async def fix_index(
             cluster_name: str,
             index_name: str,
             req: IndexFixRequestSchema,
@@ -620,7 +628,7 @@ class ElastroGUI:
                     host = "http://" + host
 
                 client = ElasticsearchClient(hosts=[host], **auth_kwargs)
-                client.connect()
+                await client.connect()
 
                 from elastro.core.index import IndexManager
 
@@ -637,10 +645,10 @@ class ElastroGUI:
                     }
                     try:
                         # Attempt to update via standard wrapper (works without expand_wildcards on user indices)
-                        idx_mgr.update(index_name, payload)
+                        await idx_mgr.update(index_name, payload)
                     except Exception as e:
                         # If it fails due to being a hidden/system index, fallback to raw client call with expand_wildcards
-                        client.client.indices.put_settings(
+                        await client.client.indices.put_settings(
                             index=index_name,
                             body=payload,
                             allow_no_indices=False,
@@ -653,7 +661,7 @@ class ElastroGUI:
                         "message": f"Replicas reduced to 0 and auto-expand disabled for {index_name}",
                     }
                 elif req.action == "reroute":
-                    idx_mgr.reroute(retry_failed=True)
+                    await idx_mgr.reroute(retry_failed=True)
                     return {
                         "status": "success",
                         "message": "Cluster rerouted successfully",
@@ -667,7 +675,7 @@ class ElastroGUI:
                         "routing.allocation.include.*": None,
                         "routing.allocation.exclude.*": None,
                     }
-                    idx_mgr.update(index_name, {"index": settings_payload})
+                    await idx_mgr.update(index_name, {"index": settings_payload})
                     return {
                         "status": "success",
                         "message": f"Custom routing allocation filters cleared for {index_name}",

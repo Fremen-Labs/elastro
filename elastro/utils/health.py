@@ -23,8 +23,7 @@ class HealthManager:
         self._client = client
         self._es = client.client
 
-    def cluster_health(
-        self,
+    async def cluster_health(self,
         index: Optional[str] = None,
         level: str = "cluster",
         timeout: str = "30s",
@@ -50,14 +49,13 @@ class HealthManager:
                 params["wait_for_status"] = wait_for_status
 
             if index:
-                return self._es.cluster.health(index=index, **params)
+                return await self._es.cluster.health(index=index, **params)
             else:
-                return self._es.cluster.health(**params)
+                return await self._es.cluster.health(**params)
         except Exception as e:
             raise OperationError(f"Failed to get cluster health: {str(e)}")
 
-    def node_stats(
-        self, node_id: Optional[str] = None, metrics: Optional[List[str]] = None
+    async def node_stats(self, node_id: Optional[str] = None, metrics: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """Get node statistics.
 
@@ -73,18 +71,17 @@ class HealthManager:
         """
         try:
             if node_id and metrics:
-                return self._es.nodes.stats(node_id=node_id, metric=",".join(metrics))
+                return await self._es.nodes.stats(node_id=node_id, metric=",".join(metrics))
             elif node_id:
-                return self._es.nodes.stats(node_id=node_id)
+                return await self._es.nodes.stats(node_id=node_id)
             elif metrics:
-                return self._es.nodes.stats(metric=",".join(metrics))
+                return await self._es.nodes.stats(metric=",".join(metrics))
             else:
-                return self._es.nodes.stats()
+                return await self._es.nodes.stats()
         except Exception as e:
             raise OperationError(f"Failed to get node stats: {str(e)}")
 
-    def node_info(
-        self, node_id: Optional[str] = None, metrics: Optional[List[str]] = None
+    async def node_info(self, node_id: Optional[str] = None, metrics: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """Get node information.
 
@@ -100,17 +97,17 @@ class HealthManager:
         """
         try:
             if node_id and metrics:
-                return self._es.nodes.info(node_id=node_id, metric=",".join(metrics))
+                return await self._es.nodes.info(node_id=node_id, metric=",".join(metrics))
             elif node_id:
-                return self._es.nodes.info(node_id=node_id)
+                return await self._es.nodes.info(node_id=node_id)
             elif metrics:
-                return self._es.nodes.info(metric=",".join(metrics))
+                return await self._es.nodes.info(metric=",".join(metrics))
             else:
-                return self._es.nodes.info()
+                return await self._es.nodes.info()
         except Exception as e:
             raise OperationError(f"Failed to get node info: {str(e)}")
 
-    def cluster_stats(self) -> Dict[str, Any]:
+    async def cluster_stats(self) -> Dict[str, Any]:
         """Get cluster statistics.
 
         Returns:
@@ -120,11 +117,11 @@ class HealthManager:
             OperationError: If cluster stats retrieval fails.
         """
         try:
-            return self._es.cluster.stats()
+            return await self._es.cluster.stats()
         except Exception as e:
             raise OperationError(f"Failed to get cluster stats: {str(e)}")
 
-    def pending_tasks(self) -> List[Dict[str, Any]]:
+    async def pending_tasks(self) -> List[Dict[str, Any]]:
         """Get pending cluster tasks.
 
         Returns:
@@ -134,12 +131,11 @@ class HealthManager:
             OperationError: If pending tasks retrieval fails.
         """
         try:
-            return self._es.cluster.pending_tasks().get("tasks", [])
+            return await self._es.cluster.pending_tasks().get("tasks", [])
         except Exception as e:
             raise OperationError(f"Failed to get pending tasks: {str(e)}")
 
-    def allocation_explain(
-        self,
+    async def allocation_explain(self,
         index: Optional[str] = None,
         shard: Optional[int] = None,
         primary: bool = False,
@@ -167,13 +163,13 @@ class HealthManager:
                 body["primary"] = primary
 
             if body:
-                return self._es.cluster.allocation_explain(body=body)
+                return await self._es.cluster.allocation_explain(body=body)
             else:
-                return self._es.cluster.allocation_explain()
+                return await self._es.cluster.allocation_explain()
         except Exception as e:
             raise OperationError(f"Failed to explain allocation: {str(e)}")
 
-    def cluster_settings(self, include_defaults: bool = False) -> Dict[str, Any]:
+    async def cluster_settings(self, include_defaults: bool = False) -> Dict[str, Any]:
         """Get cluster settings.
 
         Args:
@@ -186,11 +182,11 @@ class HealthManager:
             OperationError: If settings retrieval fails.
         """
         try:
-            return self._es.cluster.get_settings(include_defaults=include_defaults)
+            return await self._es.cluster.get_settings(include_defaults=include_defaults)
         except Exception as e:
             raise OperationError(f"Failed to get cluster settings: {str(e)}")
 
-    def verify_repository(self, repository: str) -> bool:
+    async def verify_repository(self, repository: str) -> bool:
         """Verify a snapshot repository.
 
         Args:
@@ -203,12 +199,12 @@ class HealthManager:
             OperationError: If repository verification fails.
         """
         try:
-            response = self._es.snapshot.verify_repository(repository=repository)
+            response = await self._es.snapshot.verify_repository(repository=repository)
             return "nodes" in response
         except Exception as e:
             raise OperationError(f"Failed to verify repository {repository}: {str(e)}")
 
-    def index_stats(self, index: Optional[str] = None) -> Dict[str, Any]:
+    async def index_stats(self, index: Optional[str] = None) -> Dict[str, Any]:
         """Get index statistics.
 
         Args:
@@ -222,13 +218,13 @@ class HealthManager:
         """
         try:
             if index:
-                return self._es.indices.stats(index=index)
+                return await self._es.indices.stats(index=index)
             else:
-                return self._es.indices.stats()
+                return await self._es.indices.stats()
         except Exception as e:
             raise OperationError(f"Failed to get index stats: {str(e)}")
 
-    def diagnose(self) -> Dict[str, Any]:
+    async def diagnose(self) -> Dict[str, Any]:
         """Perform a basic diagnostic check on the cluster.
 
         Returns:
@@ -239,10 +235,10 @@ class HealthManager:
         """
         try:
             diagnostic: Dict[str, Any] = {
-                "cluster_health": self.cluster_health(),
-                "nodes_count": len(self._es.nodes.info().get("nodes", {})),
-                "indices_count": len(self._es.indices.get(index="*").keys()),
-                "pending_tasks": len(self.pending_tasks()),
+                "cluster_health": await self.cluster_health(),
+                "nodes_count": len(await self._es.nodes.info().get("nodes", {})),
+                "indices_count": len(await self._es.indices.get(index="*").keys()),
+                "pending_tasks": len(await self.pending_tasks()),
             }
 
             # Add status assessment

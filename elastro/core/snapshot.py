@@ -29,7 +29,7 @@ class SnapshotManager:
 
     # --- Repository Management ---
 
-    def list_repositories(self) -> Dict[str, Any]:
+    async def list_repositories(self) -> Dict[str, Any]:
         """
         List all snapshot repositories.
 
@@ -39,13 +39,13 @@ class SnapshotManager:
         try:
             logger.debug("Listing snapshot repositories")
             # Get all repositories
-            response = self.client.client.snapshot.get_repository(name="_all")
+            response = await self.client.client.snapshot.get_repository(name="_all")
             return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             logger.error(f"Failed to list repositories: {str(e)}")
             raise OperationError(f"Failed to list repositories: {str(e)}")
 
-    def get_repository(self, name: str) -> Dict[str, Any]:
+    async def get_repository(self, name: str) -> Dict[str, Any]:
         """
         Get a specific snapshot repository.
 
@@ -60,14 +60,13 @@ class SnapshotManager:
 
         try:
             logger.debug(f"Getting repository '{name}'")
-            response = self.client.client.snapshot.get_repository(name=name)
+            response = await self.client.client.snapshot.get_repository(name=name)
             return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             logger.error(f"Failed to get repository '{name}': {str(e)}")
             raise OperationError(f"Failed to get repository '{name}': {str(e)}")
 
-    def create_repository(
-        self, name: str, repo_type: str, settings: Dict[str, Any]
+    async def create_repository(self, name: str, repo_type: str, settings: Dict[str, Any]
     ) -> bool:
         """
         Create or update a snapshot repository.
@@ -86,7 +85,7 @@ class SnapshotManager:
         try:
             logger.info(f"Creating repository '{name}' (type={repo_type})")
             body = {"type": repo_type, "settings": settings}
-            response = self.client.client.snapshot.create_repository(
+            response = await self.client.client.snapshot.create_repository(
                 name=name, body=body
             )
             body_resp = response.body if hasattr(response, "body") else dict(response)
@@ -95,7 +94,7 @@ class SnapshotManager:
             logger.error(f"Failed to create repository '{name}': {str(e)}")
             raise OperationError(f"Failed to create repository '{name}': {str(e)}")
 
-    def delete_repository(self, name: str) -> bool:
+    async def delete_repository(self, name: str) -> bool:
         """
         Delete a snapshot repository.
 
@@ -110,7 +109,7 @@ class SnapshotManager:
 
         try:
             logger.info(f"Deleting repository '{name}'")
-            response = self.client.client.snapshot.delete_repository(name=name)
+            response = await self.client.client.snapshot.delete_repository(name=name)
             body_resp = response.body if hasattr(response, "body") else dict(response)
             return body_resp.get("acknowledged", False)
         except Exception as e:
@@ -119,7 +118,7 @@ class SnapshotManager:
 
     # --- Snapshot Management ---
 
-    def list_snapshots(self, repository: str) -> List[Dict[str, Any]]:
+    async def list_snapshots(self, repository: str) -> List[Dict[str, Any]]:
         """
         List all snapshots in a repository.
 
@@ -134,7 +133,7 @@ class SnapshotManager:
 
         try:
             logger.debug(f"Listing snapshots in '{repository}'")
-            response = self.client.client.snapshot.get(
+            response = await self.client.client.snapshot.get(
                 repository=repository, snapshot="_all"
             )
             body = response.body if hasattr(response, "body") else dict(response)
@@ -145,7 +144,7 @@ class SnapshotManager:
                 f"Failed to list snapshots in '{repository}': {str(e)}"
             )
 
-    def get_snapshot(self, repository: str, snapshot: str) -> Dict[str, Any]:
+    async def get_snapshot(self, repository: str, snapshot: str) -> Dict[str, Any]:
         """
         Get details of a specific snapshot.
 
@@ -161,7 +160,7 @@ class SnapshotManager:
 
         try:
             logger.debug(f"Getting snapshot '{snapshot}' from '{repository}'")
-            response = self.client.client.snapshot.get(
+            response = await self.client.client.snapshot.get(
                 repository=repository, snapshot=snapshot
             )
             body = response.body if hasattr(response, "body") else dict(response)
@@ -173,8 +172,7 @@ class SnapshotManager:
             logger.error(f"Failed to get snapshot '{snapshot}': {str(e)}")
             raise OperationError(f"Failed to get snapshot '{snapshot}': {str(e)}")
 
-    def create_snapshot(
-        self,
+    async def create_snapshot(self,
         repository: str,
         snapshot: str,
         indices: str = "_all",
@@ -211,7 +209,7 @@ class SnapshotManager:
             if metadata:
                 body["metadata"] = metadata
 
-            response = self.client.client.snapshot.create(
+            response = await self.client.client.snapshot.create(
                 repository=repository,
                 snapshot=snapshot,
                 body=body,
@@ -222,7 +220,7 @@ class SnapshotManager:
             logger.error(f"Failed to create snapshot '{snapshot}': {str(e)}")
             raise OperationError(f"Failed to create snapshot '{snapshot}': {str(e)}")
 
-    def delete_snapshot(self, repository: str, snapshot: str) -> bool:
+    async def delete_snapshot(self, repository: str, snapshot: str) -> bool:
         """
         Delete a snapshot.
 
@@ -238,7 +236,7 @@ class SnapshotManager:
 
         try:
             logger.info(f"Deleting snapshot '{snapshot}' from '{repository}'")
-            response = self.client.client.snapshot.delete(
+            response = await self.client.client.snapshot.delete(
                 repository=repository, snapshot=snapshot
             )
             body = response.body if hasattr(response, "body") else dict(response)
@@ -247,8 +245,7 @@ class SnapshotManager:
             logger.error(f"Failed to delete snapshot '{snapshot}': {str(e)}")
             raise OperationError(f"Failed to delete snapshot '{snapshot}': {str(e)}")
 
-    def restore_snapshot(
-        self,
+    async def restore_snapshot(self,
         repository: str,
         snapshot: str,
         indices: str = "_all",
@@ -282,7 +279,7 @@ class SnapshotManager:
                 body["rename_pattern"] = rename_pattern
                 body["rename_replacement"] = rename_replacement
 
-            response = self.client.client.snapshot.restore(
+            response = await self.client.client.snapshot.restore(
                 repository=repository,
                 snapshot=snapshot,
                 body=body,

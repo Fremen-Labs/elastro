@@ -1,3 +1,4 @@
+from elastro.utils.async_cli import coro
 """
 Cluster management commands.
 """
@@ -21,7 +22,8 @@ def cluster_group() -> None:
 @cluster_group.command(name="allocation")
 @click.option("--index", "-i", help="Specific index name to check allocation for")
 @click.pass_obj
-def explain_allocation(client: ElasticsearchClient, index: str) -> None:
+@coro
+async def explain_allocation(client: ElasticsearchClient, index: str)-> None:
     """
     Explain unassigned shards.
 
@@ -82,7 +84,8 @@ def explain_allocation(client: ElasticsearchClient, index: str) -> None:
     help="Update cluster.routing.allocation.enable setting (Transient)",
 )
 @click.pass_obj
-def cluster_settings(client: ElasticsearchClient, enable_routing: str) -> None:
+@coro
+async def cluster_settings(client: ElasticsearchClient, enable_routing: str)-> None:
     """
     View or update cluster routing allocation settings.
 

@@ -31,8 +31,7 @@ class IndexManager:
         self._client = client  # Add this for compatibility with tests
         self.validator = Validator()
 
-    def create(
-        self,
+    async def create(self,
         name: str,
         settings: Optional[Dict[str, Any]] = None,
         mappings: Optional[Dict[str, Any]] = None,
@@ -80,14 +79,14 @@ class IndexManager:
 
         try:
             logger.info(f"Creating index '{name}'...")
-            response = self.client.client.indices.create(index=name, body=body)
+            response = await self.client.client.indices.create(index=name, body=body)
             logger.info(f"Index '{name}' created successfully")
             return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             logger.error(f"Failed to create index '{name}': {str(e)}")
             raise ElasticIndexError(f"Failed to create index '{name}': {str(e)}")
 
-    def exists(self, name: str) -> bool:
+    async def exists(self, name: str) -> bool:
         """
         Check if an index exists.
 
@@ -102,7 +101,7 @@ class IndexManager:
 
         try:
             # exists() returns a boolean in the python client usually, but types might say HeadApiResponse
-            exists = self.client.client.indices.exists(index=name)
+            exists = await self.client.client.indices.exists(index=name)
             logger.debug(f"Index '{name}' exists: {exists}")
             # Ensure boolean return
             if hasattr(exists, "body"):
@@ -114,7 +113,7 @@ class IndexManager:
                 f"Failed to check if index '{name}' exists: {str(e)}"
             )
 
-    def get(self, name: str) -> Any:
+    async def get(self, name: str) -> Any:
         """
         Get index information.
 
@@ -131,7 +130,7 @@ class IndexManager:
             if not self.exists(name):
                 raise ElasticIndexError(f"Index '{name}' does not exist")
 
-            response = self.client.client.indices.get(index=name)
+            response = await self.client.client.indices.get(index=name)
             return response.body if hasattr(response, "body") else dict(response)
         except ElasticIndexError:
             raise
@@ -139,7 +138,7 @@ class IndexManager:
             logger.error(f"Failed to get index '{name}': {str(e)}")
             raise ElasticIndexError(f"Failed to get index '{name}': {str(e)}")
 
-    def update(self, name: str, settings: Dict[str, Any]) -> Any:
+    async def update(self, name: str, settings: Dict[str, Any]) -> Any:
         """
         Update index settings.
 
@@ -168,7 +167,7 @@ class IndexManager:
 
             logger.info(f"Updating settings for index '{name}'")
             # Unlike create, update expects the settings without the 'settings' wrapper
-            response = self.client.client.indices.put_settings(
+            response = await self.client.client.indices.put_settings(
                 index=name, body=settings
             )
             return response.body if hasattr(response, "body") else dict(response)
@@ -178,7 +177,7 @@ class IndexManager:
             logger.error(f"Failed to update index '{name}': {str(e)}")
             raise ElasticIndexError(f"Failed to update index '{name}': {str(e)}")
 
-    def delete(self, name: str) -> Any:
+    async def delete(self, name: str) -> Any:
         """
         Delete an index.
 
@@ -196,7 +195,7 @@ class IndexManager:
                 raise ElasticIndexError(f"Index '{name}' does not exist")
 
             logger.info(f"Deleting index '{name}'")
-            response = self.client.client.indices.delete(index=name)
+            response = await self.client.client.indices.delete(index=name)
             return response.body if hasattr(response, "body") else dict(response)
         except ElasticIndexError:
             raise
@@ -204,7 +203,7 @@ class IndexManager:
             logger.error(f"Failed to delete index '{name}': {str(e)}")
             raise ElasticIndexError(f"Failed to delete index '{name}': {str(e)}")
 
-    def open(self, name: str) -> Any:
+    async def open(self, name: str) -> Any:
         """
         Open an index.
 
@@ -222,7 +221,7 @@ class IndexManager:
                 raise ElasticIndexError(f"Index '{name}' does not exist")
 
             logger.info(f"Opening index '{name}'")
-            response = self.client.client.indices.open(index=name)
+            response = await self.client.client.indices.open(index=name)
             return response.body if hasattr(response, "body") else dict(response)
         except ElasticIndexError:
             raise
@@ -230,7 +229,7 @@ class IndexManager:
             logger.error(f"Failed to open index '{name}': {str(e)}")
             raise ElasticIndexError(f"Failed to open index '{name}': {str(e)}")
 
-    def close(self, name: str) -> Any:
+    async def close(self, name: str) -> Any:
         """
         Close an index.
 
@@ -248,7 +247,7 @@ class IndexManager:
                 raise ElasticIndexError(f"Index '{name}' does not exist")
 
             logger.info(f"Closing index '{name}'")
-            response = self.client.client.indices.close(index=name)
+            response = await self.client.client.indices.close(index=name)
             return response.body if hasattr(response, "body") else dict(response)
         except ElasticIndexError:
             raise
@@ -256,7 +255,7 @@ class IndexManager:
             logger.error(f"Failed to close index '{name}': {str(e)}")
             raise ElasticIndexError(f"Failed to close index '{name}': {str(e)}")
 
-    def list(self, pattern: str = "*", verbose: bool = False) -> List[Dict[str, Any]]:
+    async def list(self, pattern: str = "*", verbose: bool = False) -> List[Dict[str, Any]]:
         """
         List indices matching a pattern.
 
@@ -270,7 +269,7 @@ class IndexManager:
         try:
             # use cat.indices for efficient summary
             # headers: health, status, index, uuid, pri, rep, docs.count, docs.deleted, store.size, pri.store.size
-            response = self.client.client.cat.indices(index=pattern, format="json")
+            response = await self.client.client.cat.indices(index=pattern, format="json")
 
             # The Elasticsearch python client returns a ListAPIResponse which is a list-like object
             # Convert to standard list of dicts
@@ -291,7 +290,7 @@ class IndexManager:
             logger.error(f"Failed to list indices with pattern '{pattern}': {str(e)}")
             raise ElasticIndexError(f"Failed to list indices: {str(e)}")
 
-    def allocation_explain(self, name: str) -> Dict[str, Any]:
+    async def allocation_explain(self, name: str) -> Dict[str, Any]:
         """
         Explain allocation for an index.
 
@@ -307,7 +306,7 @@ class IndexManager:
         try:
             # First, we must find a specific unassigned shard for this index.
             # The Elasticsearch API STRICTLY requires `shard` and `primary` when `index` is provided.
-            shards = self.client.client.cat.shards(index=name, format="json")
+            shards = await self.client.client.cat.shards(index=name, format="json")
             unassigned = [
                 s
                 for s in shards
@@ -329,7 +328,7 @@ class IndexManager:
             shard_id = int(target_shard.get("shard", 0))
             is_primary = target_shard.get("prirep") == "p"
 
-            response = self.client.client.cluster.allocation_explain(
+            response = await self.client.client.cluster.allocation_explain(
                 body={"index": name, "shard": shard_id, "primary": is_primary}
             )
             return response.body if hasattr(response, "body") else dict(response)
@@ -337,7 +336,7 @@ class IndexManager:
             logger.error(f"Failed to explain allocation for index '{name}': {str(e)}")
             raise ElasticIndexError(f"Failed to explain allocation: {str(e)}")
 
-    def reroute(self, retry_failed: bool = True) -> Any:
+    async def reroute(self, retry_failed: bool = True) -> Any:
         """
         Reroute unassigned shards.
 
@@ -348,7 +347,7 @@ class IndexManager:
             Reroute response
         """
         try:
-            response = self.client.client.cluster.reroute(retry_failed=retry_failed)
+            response = await self.client.client.cluster.reroute(retry_failed=retry_failed)
             return response.body if hasattr(response, "body") else dict(response)
         except Exception as e:
             logger.error(f"Failed to reroute cluster: {str(e)}")

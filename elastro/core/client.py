@@ -27,8 +27,7 @@ class ElasticsearchClient:
     the base client instance for all operations.
     """
 
-    def __init__(
-        self,
+    def __init__(self,
         hosts: Optional[Union[str, List[str]]] = None,
         auth: Optional[Dict[str, str]] = None,
         timeout: Optional[int] = None,
@@ -109,7 +108,7 @@ class ElasticsearchClient:
         logger.debug(f"Initialized ElasticsearchClient with hosts: {self.hosts}")
 
     @property
-    def auth_type(self) -> Optional[str]:
+    async def auth_type(self) -> Optional[str]:
         """Get the authentication type."""
         if not self.auth:
             return None
@@ -176,9 +175,9 @@ class ElasticsearchClient:
 
         return client_params
 
-    def connect(self) -> None:
+    async def connect(self) -> None:
         """
-        Establish connection to Elasticsearch.
+        Establish connection to Elasticsearch asynchronously.
 
         Raises:
             ConnectionError: If unable to connect to Elasticsearch
@@ -205,10 +204,10 @@ class ElasticsearchClient:
         )
 
         try:
-            self._client = Elasticsearch(**client_params)
+            self._client = AsyncElasticsearch(**client_params)
             assert self._client is not None
-            # Verify connection by making a ping request
-            ping_result = self._client.ping()
+            # Verify connection by making an async ping request
+            ping_result = await self._client.ping()
             if not ping_result:
                 logger.error("Ping failed during connection attempt")
                 raise ConnectionError("Failed to connect to Elasticsearch")
@@ -232,20 +231,20 @@ class ElasticsearchClient:
                 f"Unexpected error connecting to Elasticsearch: {str(e)}"
             )
 
-    def disconnect(self) -> None:
+    async def disconnect(self) -> None:
         """Disconnect from Elasticsearch and clean up resources."""
         if self._client:
-            self._client.close()
+            await self._client.close()
             logger.info("Disconnected from Elasticsearch")
         self._client = None
         self._connected = False
 
-    def get_client(self) -> Elasticsearch:
+    def get_client(self) -> AsyncElasticsearch:
         """
-        Get the underlying Elasticsearch client instance.
+        Get the underlying AsyncElasticsearch client instance.
 
         Returns:
-            Elasticsearch client instance
+            AsyncElasticsearch client instance
 
         Raises:
             ConnectionError: If client is not connected
@@ -263,7 +262,7 @@ class ElasticsearchClient:
         """
         return AsyncElasticsearch(**self._get_client_params())
 
-    def is_connected(self) -> bool:
+    async def is_connected(self) -> bool:
         """
         Check if the client is connected to Elasticsearch.
 
@@ -274,12 +273,12 @@ class ElasticsearchClient:
             return False
 
         try:
-            return self._client.ping()
+            return await self._client.ping()
         except Exception:
             self._connected = False
             return False
 
-    def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> Dict[str, Any]:
         """
         Check the health of the Elasticsearch cluster.
 
@@ -294,8 +293,8 @@ class ElasticsearchClient:
             raise ConnectionError("Client is not connected. Call connect() first.")
 
         try:
-            health = self._client.cluster.health()
-            info = self._client.info()
+            health = await self._client.cluster.health()
+            info = await self._client.info()
 
             result = {
                 "cluster_name": health.get("cluster_name"),
@@ -324,12 +323,12 @@ class ElasticsearchClient:
             raise OperationError(f"Unexpected error during health check: {str(e)}")
 
     @property
-    def client(self) -> Elasticsearch:
+    def client(self) -> AsyncElasticsearch:
         """
-        Get the underlying Elasticsearch client instance.
+        Get the underlying AsyncElasticsearch client instance.
 
         Returns:
-            Elasticsearch client instance
+            AsyncElasticsearch client instance
 
         Raises:
             ConnectionError: If client is not connected

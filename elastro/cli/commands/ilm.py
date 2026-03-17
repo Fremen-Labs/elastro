@@ -1,3 +1,4 @@
+from elastro.utils.async_cli import coro
 import rich_click as click
 import json
 from typing import Dict, Any, Optional
@@ -24,7 +25,8 @@ def ilm_group() -> None:
     "--full", is_flag=True, help="Show full JSON definition (limited to 2 policies)"
 )
 @click.pass_obj
-def list_policies(client: ElasticsearchClient, full: bool) -> None:
+@coro
+async def list_policies(client: ElasticsearchClient, full: bool)-> None:
     """
     List all ILM policies.
 
@@ -84,7 +86,8 @@ def list_policies(client: ElasticsearchClient, full: bool) -> None:
 @ilm_group.command("get", no_args_is_help=True)
 @click.argument("name", type=str, shell_complete=complete_policies)
 @click.pass_obj
-def get_policy(client: ElasticsearchClient, name: str) -> None:
+@coro
+async def get_policy(client: ElasticsearchClient, name: str)-> None:
     """
     Get an ILM policy definition.
 
@@ -115,7 +118,8 @@ def get_policy(client: ElasticsearchClient, name: str) -> None:
     help="Policy definition file (JSON)",
 )
 @click.pass_obj
-def create_policy(client: ElasticsearchClient, name: str, file: Optional[str]) -> None:
+@coro
+async def create_policy(client: ElasticsearchClient, name: str, file: Optional[str])-> None:
     """
     Create or update an ILM policy.
 
@@ -249,7 +253,8 @@ def run_ilm_wizard(name: str) -> Optional[Dict[str, Any]]:
 @click.argument("name", type=str, shell_complete=complete_policies)
 @click.option("--force", is_flag=True, help="Force deletion")
 @click.pass_obj
-def delete_policy(client: ElasticsearchClient, name: str, force: bool) -> None:
+@coro
+async def delete_policy(client: ElasticsearchClient, name: str, force: bool)-> None:
     """
     Delete an ILM policy.
 
@@ -279,7 +284,8 @@ def delete_policy(client: ElasticsearchClient, name: str, force: bool) -> None:
 @ilm_group.command("explain", no_args_is_help=True)
 @click.argument("index", type=str, shell_complete=complete_indices)
 @click.pass_obj
-def explain_lifecycle(client: ElasticsearchClient, index: str) -> None:
+@coro
+async def explain_lifecycle(client: ElasticsearchClient, index: str)-> None:
     """
     Explain the lifecycle state of an index.
 
@@ -317,7 +323,8 @@ def explain_lifecycle(client: ElasticsearchClient, index: str) -> None:
 
 @ilm_group.command("start")
 @click.pass_obj
-def start_ilm(client: ElasticsearchClient) -> None:
+@coro
+async def start_ilm(client: ElasticsearchClient)-> None:
     """
     Start the ILM service.
 
@@ -343,7 +350,8 @@ def start_ilm(client: ElasticsearchClient) -> None:
 
 @ilm_group.command("stop")
 @click.pass_obj
-def stop_ilm(client: ElasticsearchClient) -> None:
+@coro
+async def stop_ilm(client: ElasticsearchClient)-> None:
     """
     Stop the ILM service.
 

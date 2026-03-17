@@ -7,7 +7,7 @@ import sys
 
 secret = b"dev-secret-key"
 payload_dict = {
-    "ref": "refs/heads/feature/telemetry-ingest-subcommand",
+    "ref": "refs/heads/feature/async-client",
     "repository": {
         "name": "elastro",
         "full_name": "Fremen-Labs/elastro",
@@ -15,7 +15,7 @@ payload_dict = {
     },
     "head_commit": {
         "id": "master",  # just to pass validation if any
-        "message": "Update",
+        "message": "AsyncElasticsearch Migration",
     },
 }
 payload = json.dumps(payload_dict).encode("utf-8")

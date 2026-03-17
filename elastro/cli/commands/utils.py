@@ -1,3 +1,4 @@
+from elastro.utils.async_cli import coro
 """
 Utility commands for the CLI.
 """
@@ -23,7 +24,8 @@ from elastro.cli.output import format_output
 @click.option("--wait", type=str, help="Wait for specified status (green, yellow, red)")
 @click.option("--timeout", type=str, default="30s", help="Timeout for health check")
 @click.pass_obj
-def health(client: ElasticsearchClient, level: str, wait: str, timeout: str) -> None:
+@coro
+async def health(client: ElasticsearchClient, level: str, wait: str, timeout: str)-> None:
     """
     Check Elasticsearch cluster health.
 
@@ -46,7 +48,7 @@ def health(client: ElasticsearchClient, level: str, wait: str, timeout: str) -> 
     try:
         # Note: wait_for_status needs to be supported by health manager API, if not we pass only supported args
         # For now assume we fixed it or pass as kwargs if we can
-        result = health_manager.cluster_health(level=level, timeout=timeout)
+        result = await health_manager.cluster_health(level=level, timeout=timeout)
 
         # Format output based on status
         status = result.get("status", "unknown")
@@ -83,7 +85,8 @@ def templates() -> None:
 @click.option("--type", type=click.Choice(["index", "component"]), help="Template type")
 @click.option("--name", type=str, help="Template name pattern")
 @click.pass_obj
-def list_templates(client: ElasticsearchClient, type: str, name: str) -> None:
+@coro
+async def list_templates(client: ElasticsearchClient, type: str, name: str)-> None:
     """List index templates."""
     template_manager = TemplateManager(client)
 
@@ -104,7 +107,8 @@ def list_templates(client: ElasticsearchClient, type: str, name: str) -> None:
     help="Template type",
 )
 @click.pass_obj
-def get_template(client: ElasticsearchClient, name: str, type: str) -> None:
+@coro
+async def get_template(client: ElasticsearchClient, name: str, type: str)-> None:
     """Get an index template."""
     template_manager = TemplateManager(client)
 
@@ -131,9 +135,10 @@ def get_template(client: ElasticsearchClient, name: str, type: str) -> None:
     help="Template type",
 )
 @click.pass_obj
-def create_template(
+@coro
+async def create_template(
     client: ElasticsearchClient, name: str, file: str, type: str
-) -> None:
+)-> None:
     """Create an index template."""
     template_manager = TemplateManager(client)
 
@@ -160,9 +165,10 @@ def create_template(
 )
 @click.option("--force", is_flag=True, help="Force deletion without confirmation")
 @click.pass_obj
-def delete_template(
+@coro
+async def delete_template(
     client: ElasticsearchClient, name: str, type: str, force: bool
-) -> None:
+)-> None:
     """Delete an index template."""
     template_manager = TemplateManager(client)
 
@@ -192,7 +198,8 @@ def aliases() -> None:
 @click.option("--index", type=str, help="Filter by index")
 @click.option("--name", type=str, help="Filter by alias name")
 @click.pass_obj
-def list_aliases(client: ElasticsearchClient, index: str, name: str) -> None:
+@coro
+async def list_aliases(client: ElasticsearchClient, index: str, name: str)-> None:
     """
     List index aliases.
 
@@ -227,14 +234,15 @@ def list_aliases(client: ElasticsearchClient, index: str, name: str) -> None:
 @click.option("--routing", type=str, help="Routing value")
 @click.option("--filter", type=str, help="Filter query (JSON string)")
 @click.pass_obj
-def create_alias(
+@coro
+async def create_alias(
     client: ElasticsearchClient,
     name: str,
     index: str,
     is_write_index: bool,
     routing: str,
     filter: str,
-) -> None:
+)-> None:
     """
     Create an index alias.
 
@@ -283,9 +291,10 @@ def create_alias(
 @click.argument("index", type=str)
 @click.option("--force", is_flag=True, help="Force deletion without confirmation")
 @click.pass_obj
-def delete_alias(
+@coro
+async def delete_alias(
     client: ElasticsearchClient, name: str, index: str, force: bool
-) -> None:
+)-> None:
     """
     Delete an index alias.
 
