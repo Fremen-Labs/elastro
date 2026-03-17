@@ -60,7 +60,7 @@ async def ingest_repo(client: ElasticsearchClient, repo_path: str, index: str)->
 
     try:
         # We handle index scaffolding internally in GraphRAGManager
-        success_count = manager.ingest_repository(repo_path)
+        success_count = await manager.ingest_repository(repo_path)
 
         console.print(
             f"[bold green]✅ Success![/bold green] Ingested and mapped Code Flows for [bold]{success_count}[/bold] files."
@@ -107,7 +107,7 @@ async def update_file(client: ElasticsearchClient, file_path: str, index: str)->
     manager = GraphRAGManager(client, index)
 
     try:
-        success_count = manager.update_file(file_path)
+        success_count = await manager.update_file(file_path)
 
         console.print(
             f"[bold green]✅ Success![/bold green] Refreshed [bold]{success_count}[/bold] AST chunks for the file."

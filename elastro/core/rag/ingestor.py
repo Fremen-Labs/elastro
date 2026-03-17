@@ -16,7 +16,7 @@ logger = logging.getLogger("elastro.rag")
 
 
 class GraphRAGManager:
-    async def __init__(
+    def __init__(
         self, client: ElasticsearchClient, index_name: str = "fremen_codebase_rag"
     ):
         self.client = client
@@ -52,7 +52,7 @@ class GraphRAGManager:
             ".vscode",
         }
 
-    async def _should_ignore(self, path: str) -> bool:
+    def _should_ignore(self, path: str) -> bool:
         """Determines if a directory or file should be skipped during ingestion."""
         parts = os.path.normpath(path).split(os.sep)
         for part in parts:
@@ -184,7 +184,7 @@ class GraphRAGManager:
         from elasticsearch.helpers import async_bulk
 
         # Fire up the index blueprint
-        self.scaffold_index()
+        await self.scaffold_index()
 
         # Extract AST Flows & Stream seamlessly to Elastic
         success_count, failed_inserts = await async_bulk(
@@ -218,7 +218,7 @@ class GraphRAGManager:
         repo_name = os.path.basename(repo_path)
         rel_path = os.path.relpath(file_path, repo_path)
 
-        self.scaffold_index()
+        await self.scaffold_index()
 
         # 1. Yield bulk delete ops for stale chunks matching file_path
         async def generate_deletes() -> Any:
