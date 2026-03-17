@@ -82,7 +82,7 @@ async def create_index(
         index_settings["settings"].update(settings_data)
 
     try:
-        result = index_manager.create(name, index_settings)
+        result = await index_manager.create(name, index_settings)
         click.echo(json.dumps(result, indent=2))
         click.echo(f"Index '{name}' created successfully.")
     except OperationError as e:
@@ -110,7 +110,7 @@ async def get_index(client: ElasticsearchClient, name: str)-> None:
     index_manager = IndexManager(client)
 
     try:
-        result = index_manager.get(name)
+        result = await index_manager.get(name)
         click.echo(json.dumps(result, indent=2))
     except OperationError as e:
         click.echo(f"Error retrieving index: {str(e)}", err=True)
@@ -137,7 +137,7 @@ async def index_exists(client: ElasticsearchClient, name: str)-> None:
     index_manager = IndexManager(client)
 
     try:
-        exists = index_manager.exists(name)
+        exists = await index_manager.exists(name)
         click.echo(json.dumps({"exists": exists}, indent=2))
     except OperationError as e:
         click.echo(f"Error checking index: {str(e)}", err=True)
@@ -174,7 +174,7 @@ async def update_index(client: ElasticsearchClient, name: str, settings: Any)-> 
     settings_data = json.load(settings)
 
     try:
-        result = index_manager.update(name, settings_data)
+        result = await index_manager.update(name, settings_data)
         click.echo(json.dumps(result, indent=2))
         click.echo(f"Index '{name}' updated successfully.")
     except OperationError as e:
@@ -216,7 +216,7 @@ async def delete_index(client: ElasticsearchClient, name: str, force: bool)-> No
             return
 
     try:
-        result = index_manager.delete(name)
+        result = await index_manager.delete(name)
         click.echo(json.dumps(result, indent=2))
         click.echo(f"Index '{name}' deleted successfully.")
     except OperationError as e:
@@ -244,7 +244,7 @@ async def open_index(client: ElasticsearchClient, name: str)-> None:
     index_manager = IndexManager(client)
 
     try:
-        result = index_manager.open(name)
+        result = await index_manager.open(name)
         click.echo(json.dumps(result, indent=2))
         click.echo(f"Index '{name}' opened successfully.")
     except OperationError as e:
@@ -273,7 +273,7 @@ async def close_index(client: ElasticsearchClient, name: str)-> None:
     index_manager = IndexManager(client)
 
     try:
-        result = index_manager.close(name)
+        result = await index_manager.close(name)
         click.echo(json.dumps(result, indent=2))
         click.echo(f"Index '{name}' closed successfully.")
     except OperationError as e:
@@ -312,7 +312,7 @@ async def list_indices(client: ElasticsearchClient, pattern: str)-> None:
     console = Console()
 
     try:
-        indices = index_manager.list(pattern=pattern)
+        indices = await index_manager.list(pattern=pattern)
 
         if not indices:
             console.print(f"[yellow]No indices found matching pattern '{pattern}'[/]")
@@ -508,7 +508,7 @@ async def index_wizard(client: ElasticsearchClient)-> None:
     # 6. Confirmation and Creation
     if Confirm.ask(f"\nCreate index [bold cyan]{index_name}[/]?", default=True):
         try:
-            result = index_manager.create(index_name, final_config)
+            result = await index_manager.create(index_name, final_config)
             console.print(
                 Panel(
                     f"[bold green]Success![/]\nIndex [cyan]{index_name}[/] created.\n"
@@ -563,7 +563,7 @@ async def fix_indices(client: ElasticsearchClient)-> None:
     try:
         # 1. Fetch all indices
         # We catch any potential parsing empty responses as we are converting cat responses
-        indices = index_manager.list()
+        indices = await index_manager.list()
         unhealthy_indices = [
             idx for idx in indices if idx.get("health", "green") in ["yellow", "red"]
         ]
@@ -601,7 +601,7 @@ async def fix_indices(client: ElasticsearchClient)-> None:
             console.print(f"[bold]Diagnosing index:[/] {name} ({health})")
 
             try:
-                explain_result = index_manager.allocation_explain(name)
+                explain_result = await index_manager.allocation_explain(name)
 
                 # Basic parsed reasons
                 allocate_explanation = explain_result.get(
