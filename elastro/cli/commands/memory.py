@@ -161,3 +161,85 @@ def prune_memory(
         import sys
 
         sys.exit(1)
+
+
+@memory_group.command("wake")
+@click.argument("heuristic_query")
+@click.option("--anchor", "anchor_hash", default="", help="Deterministic tool hash to anchor the activation wave")
+@click.option("--k", default=5, help="Top-K bounded node subset (500-1k tokens max)")
+@click.pass_obj
+def wake_memory(
+    client: ElasticsearchClient,
+    heuristic_query: str,
+    anchor_hash: str,
+    k: int,
+) -> None:
+    """
+    Primed Activation 'Wake' Query: Bounded Activation Wave.
+    Uses exponential decay (TTL) on timestamps and strictly bounds the subgraph 
+    context to slash API latency.
+    """
+    index_name = "agent_semantic_memory"
+    
+    from typing import Dict, Any, List
+
+    # Core textual RAG retrieval
+    must_clauses: List[Dict[str, Any]] = [
+        {
+            "multi_match": {
+                "query": heuristic_query,
+                "fields": ["subject^3", "content", "tags"],
+            }
+        }
+    ]
+
+    # Deterministic API Hash anchoring
+    if anchor_hash:
+        must_clauses.append({"term": {"anchor_hash": anchor_hash}})
+
+    # Exponential TTL Similarity Decay (Bioelectric node stimulation mimicry)
+    function_score_query = {
+        "function_score": {
+            "query": {"bool": {"must": must_clauses}},
+            "functions": [
+                {
+                    "exp": {
+                        "timestamp": {
+                            "scale": "7d",
+                            "offset": "1d",
+                            "decay": 0.5
+                        }
+                    }
+                }
+            ],
+            "boost_mode": "multiply"
+        }
+    }
+
+    search_body: Dict[str, Any] = {
+        "size": k,
+        "query": function_score_query,
+    }
+
+    try:
+        response = client.client.search(index=index_name, body=search_body)
+        hits = response.get("hits", {}).get("hits", [])
+
+        click.secho(f"Primed Activation Wave [{len(hits)} Nodes Awakened]", fg="cyan")
+        for hit in hits:
+            if not isinstance(hit, dict):
+                continue
+            source = hit.get("_source", {})
+            score = hit.get("_score", 0.0)
+            click.echo(
+                f"\n[STIMULATED] {source.get('subject', 'Untitled')} (Score: {score:.2f})"
+            )
+            click.echo(f"  {source.get('content', '')}")
+            if source.get("anchor_hash"):
+                click.echo(f"  Anchor: {source['anchor_hash']}")
+
+    except Exception as e:
+        click.secho(f"Activation wave failed: {e}", fg="red", err=True)
+        import sys
+
+        sys.exit(1)
