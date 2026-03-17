@@ -65,19 +65,27 @@ def ingest_memory(
     help="Filter by note type",
 )
 @click.option("--size", default=10, help="Number of results to return")
+@click.option(
+    "--half-life",
+    default="",
+    help="Time interval string for exp decay (e.g. '5m', '1d'). Mimics node stimulation decay.",
+)
 @click.pass_obj
 def search_memory(
     client: ElasticsearchClient,
     query: str,
     note_type: str,
     size: int,
+    half_life: str,
 ) -> None:
     """
     Search semantic memory notes via vector/BM25 retrieval.
+    Optionally applies Primed Activation decay via --half-life.
     """
     index_name = "agent_semantic_memory"
 
     from typing import Dict, Any, List
+    import time
 
     bool_clause: Dict[str, List[Any]] = {
         "must": [
@@ -93,26 +101,73 @@ def search_memory(
     if note_type:
         bool_clause["filter"] = [{"term": {"note_type": note_type}}]
 
+    base_query: Dict[str, Any] = {"bool": bool_clause}
+
+    # Bioelectric Node Priming: Apply exponential decay based on TTL
+    if half_life:
+        base_query = {
+            "function_score": {
+                "query": base_query,
+                "functions": [
+                    {
+                        "exp": {
+                            "timestamp": {
+                                "origin": "now",
+                                "scale": half_life,
+                                "decay": 0.5,
+                            }
+                        }
+                    }
+                ],
+                "score_mode": "multiply",
+                "boost_mode": "multiply",
+            }
+        }
+
     search_body: Dict[str, Any] = {
         "size": size,
-        "query": {"bool": bool_clause},
+        "query": base_query,
     }
 
+    t0 = time.perf_counter()
     try:
         response = client.client.search(index=index_name, body=search_body)
+        duration_ms = (time.perf_counter() - t0) * 1000
         hits = response.get("hits", {}).get("hits", [])
 
-        click.secho(f"Found {len(hits)} memory notes:", fg="blue")
+        click.secho(
+            f"Found {len(hits)} memory nodes connected in {duration_ms:.2f}ms:",
+            fg="blue",
+            bold=True,
+        )
+
+        total_injected_tokens = 0
+
         for hit in hits:
             if not isinstance(hit, dict):
                 continue
             source = hit.get("_source", {})
+            score = hit.get("_score", 0.0)
+
+            # Approximate token extraction proxy based on text chunks length
+            raw_text = f"{source.get('subject', '')} {source.get('content', '')}"
+            token_proxy_count = len(raw_text.split())
+            total_injected_tokens += token_proxy_count
+
             click.echo(
-                f"\n[{source.get('note_type', 'unknown').upper()}] {source.get('subject', 'Untitled')} ({hit.get('_id', '')})"
+                f"\n[{source.get('note_type', 'unknown').upper()}] {source.get('subject', 'Untitled')} "
+                f"(ID: {hit.get('_id', '')} | Similarity Score: {score:.4f} | Tokens: ~{token_proxy_count})"
             )
             click.echo(f"  {source.get('content', '')}")
             if source.get("tags"):
                 click.echo(f"  Tags: {', '.join(source['tags'])}")
+
+        if half_life:
+            click.secho(
+                f"\n[METRICS] Wake Priming Completed - Injected Tokens: {total_injected_tokens} | Effective Latency: {duration_ms:.2f}ms | Decay Profile: Exp(50%/{half_life})",
+                fg="cyan",
+            )
+
 
     except Exception as e:
         click.secho(f"Search failed: {e}", fg="red", err=True)
