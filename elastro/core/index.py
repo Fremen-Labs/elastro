@@ -274,7 +274,7 @@ class IndexManager(BaseManager):
             # The Elasticsearch python client returns a ListAPIResponse which is a list-like object
             # Convert to standard list of dicts
             result: List[Dict[str, Any]] = []
-            
+
             raw_data = self._handle_response(response)
 
             # If raw_data is just a list, great.
