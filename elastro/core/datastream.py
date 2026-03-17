@@ -6,29 +6,19 @@ This module provides functionality for managing Elasticsearch datastreams.
 
 from typing import Dict, List, Any, Optional
 from elastro.core.client import ElasticsearchClient
+from elastro.core.base import BaseManager
 from elastro.core.errors import DatastreamError, ValidationError
-from elastro.core.validation import Validator
 from elastro.core.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-class DatastreamManager:
+class DatastreamManager(BaseManager):
     """
     Manager for Elasticsearch datastream operations.
 
     This class provides methods for creating and managing Elasticsearch datastreams.
     """
-
-    def __init__(self, client: ElasticsearchClient):
-        """
-        Initialize the datastream manager.
-
-        Args:
-            client: ElasticsearchClient instance
-        """
-        self._client = client
-        self.validator = Validator()
 
     def create_index_template(
         self, name: str, pattern: str, settings: Dict[str, Any]
@@ -61,8 +51,7 @@ class DatastreamManager:
                     self.validator.validate_index_settings(settings)
 
             # Ensure the client is connected
-            if not self._client.is_connected():
-                self._client.connect()
+            self._ensure_connected()
 
             # Prepare template definition
             template_def = {
@@ -78,10 +67,10 @@ class DatastreamManager:
                 template_def["mappings"] = settings["mappings"]
 
             # Create the template
-            response = self._client.client.indices.put_index_template(
+            response = self._client.get_client().indices.put_index_template(
                 name=name, body=template_def
             )
-            return response.body if hasattr(response, "body") else dict(response)
+            return self._handle_response(response)
         except ValidationError as e:
             raise e
         except Exception as e:
@@ -94,6 +83,9 @@ class DatastreamManager:
         Note: In Elasticsearch 8.x, a matching index template with data_stream enabled
         must exist before creating the data stream. This method will create the data stream
         only; the index template must be created separately.
+
+        Example:
+            manager.create("metrics-app", description="App Metrics")
 
         Args:
             name: Name of the datastream
@@ -111,8 +103,7 @@ class DatastreamManager:
 
         try:
             # Ensure the client is connected
-            if not self._client.is_connected():
-                self._client.connect()
+            self._ensure_connected()
 
             # Create params for datastream creation
             create_params: Dict[str, Any] = {
@@ -123,8 +114,10 @@ class DatastreamManager:
                 create_params["aliases"] = {"default": {"is_write_index": True}}
 
             # Create datastream
-            response = self._client.client.indices.create_data_stream(**create_params)
-            return response.body if hasattr(response, "body") else dict(response)
+            response = self._client.get_client().indices.create_data_stream(
+                **create_params
+            )
+            return self._handle_response(response)
         except Exception as e:
             raise DatastreamError(f"Failed to create datastream: {str(e)}")
 
@@ -143,18 +136,17 @@ class DatastreamManager:
         """
         try:
             # Ensure the client is connected
-            if not self._client.is_connected():
-                self._client.connect()
+            self._ensure_connected()
 
             # Get datastreams matching the pattern
             try:
-                response = self._client.client.indices.get_data_stream(name=pattern)
+                response = self._client.get_client().indices.get_data_stream(
+                    name=pattern
+                )
 
                 # Format the response
                 datastreams = []
-                # response['data_streams'] access works on ObjectApiResponse too, so this might be fine already
-                # but to be safe:
-                body = response.body if hasattr(response, "body") else dict(response)
+                body = self._handle_response(response)
 
                 if "data_streams" in body:
                     datastreams = body["data_streams"]
@@ -188,12 +180,11 @@ class DatastreamManager:
                 raise ValidationError("Datastream name cannot be empty")
 
             # Ensure the client is connected
-            if not self._client.is_connected():
-                self._client.connect()
+            self._ensure_connected()
 
             # Get the datastream
-            response = self._client.client.indices.get_data_stream(name=name)
-            body = response.body if hasattr(response, "body") else dict(response)
+            response = self._client.get_client().indices.get_data_stream(name=name)
+            body = self._handle_response(response)
 
             # Format the response to match test expectations
             if "data_streams" in body and len(body["data_streams"]) > 0:
@@ -228,12 +219,11 @@ class DatastreamManager:
                 raise ValidationError("Datastream name cannot be empty")
 
             # Ensure the client is connected
-            if not self._client.is_connected():
-                self._client.connect()
+            self._ensure_connected()
 
             # Check if datastream exists
             try:
-                self._client.client.indices.get_data_stream(name=name)
+                self._client.get_client().indices.get_data_stream(name=name)
                 return True
             except Exception as e:
                 # If datastream doesn't exist, a 404 error is raised
@@ -267,22 +257,23 @@ class DatastreamManager:
                 raise ValidationError("Datastream name cannot be empty")
 
             # Ensure the client is connected
-            if not self._client.is_connected():
-                self._client.connect()
+            self._ensure_connected()
 
             # Delete the datastream
-            response = self._client.client.indices.delete_data_stream(name=name)
+            response = self._client.get_client().indices.delete_data_stream(name=name)
 
             # Delete associated index template if it exists
             template_name = f"{name}-template"
             try:
-                self._client.client.indices.delete_index_template(name=template_name)
+                self._client.get_client().indices.delete_index_template(
+                    name=template_name
+                )
             except Exception as e:
                 logger.warning(
                     f"Failed to delete associated template '{template_name}': {str(e)}"
                 )
 
-            return response.body if hasattr(response, "body") else dict(response)
+            return self._handle_response(response)
         except ValidationError as e:
             raise e
         except Exception as e:
@@ -311,8 +302,7 @@ class DatastreamManager:
                 raise ValidationError("Datastream name cannot be empty")
 
             # Ensure the client is connected
-            if not self._client.is_connected():
-                self._client.connect()
+            self._ensure_connected()
 
             # Prepare rollover parameters
             rollover_params: Dict[str, Any] = {
@@ -324,8 +314,8 @@ class DatastreamManager:
                 rollover_params["body"] = {"conditions": conditions}
 
             # Execute rollover
-            response = self._client.client.indices.rollover(**rollover_params)
-            return response.body if hasattr(response, "body") else dict(response)
+            response = self._client.get_client().indices.rollover(**rollover_params)
+            return self._handle_response(response)
         except ValidationError as e:
             raise e
         except Exception as e:

@@ -4,34 +4,23 @@ Document management module.
 This module provides functionality for managing Elasticsearch documents.
 """
 
-from typing import Dict, List, Any, Optional, Union
+from typing import Dict, Any, Optional, List, cast
 import asyncio
 from elasticsearch import helpers
 from elastro.core.client import ElasticsearchClient
+from elastro.core.base import BaseManager
 from elastro.core.errors import DocumentError, ValidationError, OperationError
-from elastro.core.validation import Validator
 from elastro.core.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-class DocumentManager:
+class DocumentManager(BaseManager):
     """
     Manager for Elasticsearch document operations.
 
     This class provides methods for indexing, updating, and searching documents.
     """
-
-    def __init__(self, client: ElasticsearchClient):
-        """
-        Initialize the document manager.
-
-        Args:
-            client: ElasticsearchClient instance
-        """
-        self.client = client
-        self._client = client  # Add this for compatibility with tests
-        self.validator = Validator()
 
     def index(
         self,
@@ -69,22 +58,21 @@ class DocumentManager:
             }
 
             # Add ID if provided
-            if id:
-                params["id"] = id
+            self._ensure_connected()
 
             logger.debug(f"Indexing document into '{index}' with ID '{id}'")
-            # Execute the index operation
-            response = self.client.client.index(**params)  # type: ignore
-            return response.body if hasattr(response, "body") else dict(response)
+            # Execute the index operation with explicit cast to Any to bypass kwargs mapping checks
+            response = cast(Any, self._client.get_client()).index(**params)
+            return self._handle_response(response)
         except Exception as e:
             logger.error(f"Failed to index document info '{index}': {str(e)}")
             raise DocumentError(f"Failed to index document: {str(e)}")
 
-    def bulk_index(
+    async def bulk_index(
         self, index: str, documents: List[Dict[str, Any]], refresh: bool = False
     ) -> Dict[str, Any]:
         """
-        Bulk index multiple documents.
+        Bulk index multiple documents asynchronously.
 
         Args:
             index: Name of the index
@@ -124,21 +112,18 @@ class DocumentManager:
 
             logger.info(f"Bulk indexing {len(actions)} documents into '{index}'...")
 
-            async def _do_async_bulk() -> Any:
-                async_client = self.client.get_async_client()
-                try:
-                    return await helpers.async_bulk(
-                        async_client,
-                        actions,
-                        refresh="true" if refresh else "false",
-                        stats_only=False,
-                        raise_on_error=True,
-                    )
-                finally:
-                    await async_client.close()
-
-            # Use optimized async streaming mapped back to synchronous blocking thread
-            success_count, errors = asyncio.run(_do_async_bulk())
+            self._ensure_connected()
+            async_client = self._client.get_async_client()
+            try:
+                success_count, errors = await helpers.async_bulk(
+                    async_client,
+                    actions,
+                    refresh="true" if refresh else "false",
+                    stats_only=False,
+                    raise_on_error=True,
+                )
+            finally:
+                await async_client.close()
 
             logger.info(f"Bulk index complete: {success_count} successful")
 
@@ -151,11 +136,11 @@ class DocumentManager:
             logger.error(f"Failed to bulk index documents: {str(e)}")
             raise OperationError(f"Failed to bulk index documents: {str(e)}")
 
-    def bulk_delete(
+    async def bulk_delete(
         self, index: str, ids: List[str], refresh: bool = False
     ) -> Dict[str, Any]:
         """
-        Bulk delete multiple documents.
+        Bulk delete multiple documents asynchronously.
 
         Args:
             index: Name of the index
@@ -178,20 +163,17 @@ class DocumentManager:
 
             logger.info(f"Bulk deleting {len(actions)} documents from '{index}'...")
 
-            async def _do_async_bulk() -> Any:
-                async_client = self.client.get_async_client()
-                try:
-                    return await helpers.async_bulk(
-                        async_client,
-                        actions,
-                        refresh="true" if refresh else "false",
-                        raise_on_error=True,
-                    )
-                finally:
-                    await async_client.close()
-
-            # Use optimized async streaming mapped back to synchronous blocking thread
-            success_count, errors = asyncio.run(_do_async_bulk())
+            self._ensure_connected()
+            async_client = self._client.get_async_client()
+            try:
+                success_count, errors = await helpers.async_bulk(
+                    async_client,
+                    actions,
+                    refresh="true" if refresh else "false",
+                    raise_on_error=True,
+                )
+            finally:
+                await async_client.close()
 
             return {
                 "success_count": success_count,
@@ -221,8 +203,9 @@ class DocumentManager:
             raise ValidationError("Document ID cannot be empty")
 
         try:
-            response = self.client.client.get(index=index, id=id)
-            return response.body if hasattr(response, "body") else dict(response)
+            self._ensure_connected()
+            response = self._client.get_client().get(index=index, id=id)
+            return self._handle_response(response)
         except Exception as e:
             # Log only if it's an unexpected error
             logger.error(f"Failed to get document '{id}' from '{index}': {str(e)}")
@@ -261,16 +244,18 @@ class DocumentManager:
 
         try:
             logger.debug(f"Updating document '{id}' in '{index}' (partial={partial})")
+
+            self._ensure_connected()
             if partial:
                 # For partial updates, wrap in "doc" field
                 body = {"doc": document}
-                response = self.client.client.update(
+                response = self._client.get_client().update(
                     index=index,
                     id=id,
                     body=body,
                     refresh="true" if refresh else "false",
                 )
-                return response.body if hasattr(response, "body") else dict(response)
+                return self._handle_response(response)
             else:
                 # For full document updates, just index it again
                 return self.index(
@@ -301,10 +286,11 @@ class DocumentManager:
 
         try:
             logger.info(f"Deleting document '{id}' from '{index}'")
-            response = self.client.client.delete(
+            self._ensure_connected()
+            response = self._client.get_client().delete(
                 index=index, id=id, refresh="true" if refresh else "false"
             )
-            return response.body if hasattr(response, "body") else dict(response)
+            return self._handle_response(response)
         except Exception as e:
             logger.error(f"Failed to delete document '{id}': {str(e)}")
             raise DocumentError(f"Failed to delete document: {str(e)}")
@@ -355,8 +341,10 @@ class DocumentManager:
 
         try:
             logger.debug(f"Searching index '{index}'...")
-            response = self.client.client.search(**search_params)  # type: ignore
-            return response.body if hasattr(response, "body") else dict(response)
+            self._ensure_connected()
+            # Explicit cast to Any allows flexible kwargs passed from builders
+            response = cast(Any, self._client.get_client()).search(**search_params)
+            return self._handle_response(response)
         except Exception as e:
             logger.error(f"Failed to search documents in '{index}': {str(e)}")
             raise DocumentError(f"Failed to search documents: {str(e)}")

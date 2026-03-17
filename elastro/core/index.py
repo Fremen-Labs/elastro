@@ -6,30 +6,19 @@ This module provides functionality for managing Elasticsearch indices.
 
 from typing import Dict, Optional, Any, List, Union
 from elastro.core.client import ElasticsearchClient
+from elastro.core.base import BaseManager
 from elastro.core.errors import ElasticIndexError, ValidationError
-from elastro.core.validation import Validator
 from elastro.core.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-class IndexManager:
+class IndexManager(BaseManager):
     """
     Manager for Elasticsearch index operations.
 
     This class provides methods for creating, updating, and managing Elasticsearch indices.
     """
-
-    def __init__(self, client: ElasticsearchClient):
-        """
-        Initialize the index manager.
-
-        Args:
-            client: ElasticsearchClient instance
-        """
-        self.client = client
-        self._client = client  # Add this for compatibility with tests
-        self.validator = Validator()
 
     def create(
         self,
@@ -80,9 +69,10 @@ class IndexManager:
 
         try:
             logger.info(f"Creating index '{name}'...")
-            response = self.client.client.indices.create(index=name, body=body)
+            self._ensure_connected()
+            response = self._client.get_client().indices.create(index=name, body=body)
             logger.info(f"Index '{name}' created successfully")
-            return response.body if hasattr(response, "body") else dict(response)
+            return self._handle_response(response)
         except Exception as e:
             logger.error(f"Failed to create index '{name}': {str(e)}")
             raise ElasticIndexError(f"Failed to create index '{name}': {str(e)}")
@@ -101,8 +91,9 @@ class IndexManager:
             raise ValidationError("Index name is required")
 
         try:
+            self._ensure_connected()
             # exists() returns a boolean in the python client usually, but types might say HeadApiResponse
-            exists = self.client.client.indices.exists(index=name)
+            exists = self._client.get_client().indices.exists(index=name)
             logger.debug(f"Index '{name}' exists: {exists}")
             # Ensure boolean return
             if hasattr(exists, "body"):
@@ -131,8 +122,9 @@ class IndexManager:
             if not self.exists(name):
                 raise ElasticIndexError(f"Index '{name}' does not exist")
 
-            response = self.client.client.indices.get(index=name)
-            return response.body if hasattr(response, "body") else dict(response)
+            self._ensure_connected()
+            response = self._client.get_client().indices.get(index=name)
+            return self._handle_response(response)
         except ElasticIndexError:
             raise
         except Exception as e:
@@ -167,11 +159,12 @@ class IndexManager:
                 raise ElasticIndexError(f"Index '{name}' does not exist")
 
             logger.info(f"Updating settings for index '{name}'")
+            self._ensure_connected()
             # Unlike create, update expects the settings without the 'settings' wrapper
-            response = self.client.client.indices.put_settings(
+            response = self._client.get_client().indices.put_settings(
                 index=name, body=settings
             )
-            return response.body if hasattr(response, "body") else dict(response)
+            return self._handle_response(response)
         except ElasticIndexError:
             raise
         except Exception as e:
@@ -196,8 +189,9 @@ class IndexManager:
                 raise ElasticIndexError(f"Index '{name}' does not exist")
 
             logger.info(f"Deleting index '{name}'")
-            response = self.client.client.indices.delete(index=name)
-            return response.body if hasattr(response, "body") else dict(response)
+            self._ensure_connected()
+            response = self._client.get_client().indices.delete(index=name)
+            return self._handle_response(response)
         except ElasticIndexError:
             raise
         except Exception as e:
@@ -222,8 +216,9 @@ class IndexManager:
                 raise ElasticIndexError(f"Index '{name}' does not exist")
 
             logger.info(f"Opening index '{name}'")
-            response = self.client.client.indices.open(index=name)
-            return response.body if hasattr(response, "body") else dict(response)
+            self._ensure_connected()
+            response = self._client.get_client().indices.open(index=name)
+            return self._handle_response(response)
         except ElasticIndexError:
             raise
         except Exception as e:
@@ -248,8 +243,9 @@ class IndexManager:
                 raise ElasticIndexError(f"Index '{name}' does not exist")
 
             logger.info(f"Closing index '{name}'")
-            response = self.client.client.indices.close(index=name)
-            return response.body if hasattr(response, "body") else dict(response)
+            self._ensure_connected()
+            response = self._client.get_client().indices.close(index=name)
+            return self._handle_response(response)
         except ElasticIndexError:
             raise
         except Exception as e:
@@ -268,17 +264,18 @@ class IndexManager:
             List of dictionaries containing index details (name, health, status, docs.count, etc.)
         """
         try:
+            self._ensure_connected()
             # use cat.indices for efficient summary
             # headers: health, status, index, uuid, pri, rep, docs.count, docs.deleted, store.size, pri.store.size
-            response = self.client.client.cat.indices(index=pattern, format="json")
+            response = self._client.get_client().cat.indices(
+                index=pattern, format="json"
+            )
 
             # The Elasticsearch python client returns a ListAPIResponse which is a list-like object
             # Convert to standard list of dicts
-            result = []
-            if hasattr(response, "body"):
-                raw_data = response.body
-            else:
-                raw_data = response
+            result: List[Dict[str, Any]] = []
+            
+            raw_data = self._handle_response(response)
 
             # If raw_data is just a list, great.
             if isinstance(raw_data, list):
@@ -307,7 +304,8 @@ class IndexManager:
         try:
             # First, we must find a specific unassigned shard for this index.
             # The Elasticsearch API STRICTLY requires `shard` and `primary` when `index` is provided.
-            shards = self.client.client.cat.shards(index=name, format="json")
+            self._ensure_connected()
+            shards = self._client.get_client().cat.shards(index=name, format="json")
             unassigned = [
                 s
                 for s in shards
@@ -329,10 +327,11 @@ class IndexManager:
             shard_id = int(target_shard.get("shard", 0))
             is_primary = target_shard.get("prirep") == "p"
 
-            response = self.client.client.cluster.allocation_explain(
+            self._ensure_connected()
+            response = self._client.get_client().cluster.allocation_explain(
                 body={"index": name, "shard": shard_id, "primary": is_primary}
             )
-            return response.body if hasattr(response, "body") else dict(response)
+            return self._handle_response(response)
         except Exception as e:
             logger.error(f"Failed to explain allocation for index '{name}': {str(e)}")
             raise ElasticIndexError(f"Failed to explain allocation: {str(e)}")
@@ -348,8 +347,11 @@ class IndexManager:
             Reroute response
         """
         try:
-            response = self.client.client.cluster.reroute(retry_failed=retry_failed)
-            return response.body if hasattr(response, "body") else dict(response)
+            self._ensure_connected()
+            response = self._client.get_client().cluster.reroute(
+                retry_failed=retry_failed
+            )
+            return self._handle_response(response)
         except Exception as e:
             logger.error(f"Failed to reroute cluster: {str(e)}")
             raise ElasticIndexError(f"Failed to reroute cluster: {str(e)}")

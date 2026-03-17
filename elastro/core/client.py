@@ -64,7 +64,10 @@ class ElasticsearchClient:
 
             # Apply configuration with explicit parameters taking precedence
             self.hosts = hosts or es_config.get("hosts")
-            self.auth = auth or es_config.get("auth") or {}
+            _auth_config = auth or es_config.get("auth") or {}
+            self.auth = (
+                dict(_auth_config) if isinstance(_auth_config, dict) else _auth_config
+            )
             self.timeout = timeout or es_config.get("timeout")
             self.retry_on_timeout = (
                 retry_on_timeout
@@ -82,7 +85,7 @@ class ElasticsearchClient:
         else:
             # Use only explicitly provided parameters
             self.hosts = hosts
-            self.auth = auth or {}
+            self.auth = dict(auth) if auth else {}
             self.timeout = timeout
             self.retry_on_timeout = retry_on_timeout
             self.max_retries = max_retries
@@ -284,7 +287,16 @@ class ElasticsearchClient:
         Check the health of the Elasticsearch cluster.
 
         Returns:
-            Dict containing cluster health information
+            Dict[str, Any]: Dictionary containing cluster health metrics:
+                - cluster_name (str): Name of the cluster
+                - status (str): Cluster health status (green, yellow, red)
+                - number_of_nodes (int): Total number of nodes
+                - active_shards (int): Number of active primary and replica shards
+                - elasticsearch_version (str): The version of the cluster
+                - active_primary_shards (int): Number of active primary shards
+                - relocating_shards (int): Number of shards currently relocating
+                - initializing_shards (int): Number of shards currently initializing
+                - unassigned_shards (int): Number of unassigned shards
 
         Raises:
             ConnectionError: If unable to connect to Elasticsearch

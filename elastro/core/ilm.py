@@ -6,26 +6,17 @@ This module provides functionality for managing Index Lifecycle Policies.
 
 from typing import Dict, List, Any, Optional
 from elastro.core.client import ElasticsearchClient
+from elastro.core.base import BaseManager
 from elastro.core.errors import OperationError, ValidationError
 from elastro.core.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-class IlmManager:
+class IlmManager(BaseManager):
     """
     Manager for Index Lifecycle Management (ILM) operations.
     """
-
-    def __init__(self, client: ElasticsearchClient):
-        """
-        Initialize the ILM manager.
-
-        Args:
-            client: ElasticsearchClient instance
-        """
-        self.client = client
-        self._client = client
 
     def list_policies(self) -> List[Dict[str, Any]]:
         """
@@ -36,8 +27,9 @@ class IlmManager:
         """
         try:
             logger.debug("Listing ILM policies")
-            response = self.client.client.ilm.get_lifecycle()
-            body = response.body if hasattr(response, "body") else dict(response)
+            self._ensure_connected()
+            response = self._client.get_client().ilm.get_lifecycle()
+            body = self._handle_response(response)
 
             # Response is a dict {policy_name: {policy_def...}}
             policies = []
@@ -64,8 +56,9 @@ class IlmManager:
 
         try:
             logger.debug(f"Getting ILM policy '{name}'")
-            response = self.client.client.ilm.get_lifecycle(name=name)
-            body = response.body if hasattr(response, "body") else dict(response)
+            self._ensure_connected()
+            response = self._client.get_client().ilm.get_lifecycle(name=name)
+            body = self._handle_response(response)
 
             if name in body:
                 return body[name]
@@ -96,8 +89,11 @@ class IlmManager:
             # put_lifecycle expects 'policy' arg to contain phases.
             # Usually strict JSON is {"policy": {"phases": ...}}
 
-            response = self.client.client.ilm.put_lifecycle(name=name, body=policy)
-            body = response.body if hasattr(response, "body") else dict(response)
+            self._ensure_connected()
+            response = self._client.get_client().ilm.put_lifecycle(
+                name=name, body=policy
+            )
+            body = self._handle_response(response)
             return body.get("acknowledged", False)
         except Exception as e:
             logger.error(f"Failed to create ILM policy '{name}': {str(e)}")
@@ -118,9 +114,10 @@ class IlmManager:
 
         try:
             logger.info(f"Deleting ILM policy '{name}'")
-            response = self.client.client.ilm.delete_lifecycle(name=name)
-            body = response.body if hasattr(response, "body") else dict(response)
-            return body.get("acknowledged", False)
+            self._ensure_connected()
+            response = self._client.get_client().ilm.delete_lifecycle(name=name)
+            body_resp = self._handle_response(response)
+            return body_resp.get("acknowledged", False)
         except Exception as e:
             logger.error(f"Failed to delete ILM policy '{name}': {str(e)}")
             raise OperationError(f"Failed to delete ILM policy '{name}': {str(e)}")
@@ -140,8 +137,9 @@ class IlmManager:
 
         try:
             logger.debug(f"Explaining lifecycle for index '{index}'")
-            response = self.client.client.ilm.explain_lifecycle(index=index)
-            body = response.body if hasattr(response, "body") else dict(response)
+            self._ensure_connected()
+            response = self._client.get_client().ilm.explain_lifecycle(index=index)
+            body = self._handle_response(response)
 
             # Usually returns {'indices': {'index_name': {...}}}
             if "indices" in body and index in body["indices"]:
@@ -154,8 +152,9 @@ class IlmManager:
     def start_ilm(self) -> bool:
         """Start ILM service."""
         try:
-            resp = self.client.client.ilm.start()
-            body = resp.body if hasattr(resp, "body") else dict(resp)
+            self._ensure_connected()
+            resp = self._client.get_client().ilm.start()
+            body = self._handle_response(resp)
             return body.get("acknowledged", False)
         except Exception as e:
             raise OperationError(f"Failed to start ILM: {e}")
@@ -163,8 +162,9 @@ class IlmManager:
     def stop_ilm(self) -> bool:
         """Stop ILM service."""
         try:
-            resp = self.client.client.ilm.stop()
-            body = resp.body if hasattr(resp, "body") else dict(resp)
+            self._ensure_connected()
+            resp = self._client.get_client().ilm.stop()
+            body = self._handle_response(resp)
             return body.get("acknowledged", False)
         except Exception as e:
             raise OperationError(f"Failed to stop ILM: {e}")
