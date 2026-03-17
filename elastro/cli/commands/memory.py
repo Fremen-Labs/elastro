@@ -165,7 +165,12 @@ def prune_memory(
 
 @memory_group.command("wake")
 @click.argument("heuristic_query")
-@click.option("--anchor", "anchor_hash", default="", help="Deterministic tool hash to anchor the activation wave")
+@click.option(
+    "--anchor",
+    "anchor_hash",
+    default="",
+    help="Deterministic tool hash to anchor the activation wave",
+)
 @click.option("--k", default=5, help="Top-K bounded node subset (500-1k tokens max)")
 @click.pass_obj
 def wake_memory(
@@ -176,11 +181,11 @@ def wake_memory(
 ) -> None:
     """
     Primed Activation 'Wake' Query: Bounded Activation Wave.
-    Uses exponential decay (TTL) on timestamps and strictly bounds the subgraph 
+    Uses exponential decay (TTL) on timestamps and strictly bounds the subgraph
     context to slash API latency.
     """
     index_name = "agent_semantic_memory"
-    
+
     from typing import Dict, Any, List
 
     # Core textual RAG retrieval
@@ -202,17 +207,9 @@ def wake_memory(
         "function_score": {
             "query": {"bool": {"must": must_clauses}},
             "functions": [
-                {
-                    "exp": {
-                        "timestamp": {
-                            "scale": "7d",
-                            "offset": "1d",
-                            "decay": 0.5
-                        }
-                    }
-                }
+                {"exp": {"timestamp": {"scale": "7d", "offset": "1d", "decay": 0.5}}}
             ],
-            "boost_mode": "multiply"
+            "boost_mode": "multiply",
         }
     }
 
