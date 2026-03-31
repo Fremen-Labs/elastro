@@ -5,8 +5,12 @@ This module defines the default configuration values used by the Elasticsearch
 module.
 """
 
-# Default connection settings
-DEFAULT_HOSTS = ["http://localhost:9200"]
+import os
+
+_protocol = os.environ.get("ELASTIC_PROTOCOL", "http")
+_host = os.environ.get("ELASTIC_HOST", "localhost")
+_port = os.environ.get("ELASTIC_PORT", "9200")
+DEFAULT_HOSTS = [os.environ.get("ELASTIC_URL", f"{_protocol}://{_host}:{_port}")]
 DEFAULT_TIMEOUT = 30
 DEFAULT_RETRY_ON_TIMEOUT = True
 DEFAULT_MAX_RETRIES = 3
