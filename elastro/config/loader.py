@@ -214,13 +214,15 @@ def _load_from_env(config: Dict[str, Any]) -> Dict[str, Any]:
                 current = current[section]
             # Special case: ELASTIC_URL should set hosts as a list
             if env_var == "ELASTIC_URL":
-                current[sections[-1]] = [typed_value] if isinstance(typed_value, str) else typed_value
+                current[sections[-1]] = (
+                    [typed_value] if isinstance(typed_value, str) else typed_value
+                )
             else:
                 current[sections[-1]] = typed_value
             continue
 
         # ── Generic path parsing with compound-token awareness ───────
-        remainder = env_var[len(prefix):].lower()
+        remainder = env_var[len(prefix) :].lower()
 
         # Replace compound tokens with a placeholder that won't be split
         restored: list[tuple[str, str]] = []

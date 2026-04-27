@@ -172,7 +172,9 @@ def prune_memory(
     help="Deterministic tool hash to anchor the activation wave",
 )
 @click.option("--k", default=5, help="Top-K bounded node subset (500-1k tokens max)")
-@click.option("--index", "-i", default="agent_semantic_memory", help="Target Elasticsearch index")
+@click.option(
+    "--index", "-i", default="agent_semantic_memory", help="Target Elasticsearch index"
+)
 @click.pass_obj
 def wake_memory(
     client: ElasticsearchClient,
@@ -266,24 +268,28 @@ def wake_memory(
                 continue
             source = hit.get("_source", {})
             score = hit.get("_score", 0.0)
-            title = source.get('subject') or source.get('file_path') or 'Untitled'
-            click.echo(
-                f"\n[STIMULATED] {title} (Score: {score:.2f})"
-            )
+            title = source.get("subject") or source.get("file_path") or "Untitled"
+            click.echo(f"\n[STIMULATED] {title} (Score: {score:.2f})")
             # Only print first ~200 chars of content if in codebase rag to simulate 50 token limit
-            content = str(source.get('content', ''))
-            displayed_content = content[:200] + "..." if len(content) > 200 and index_name == "fremen_codebase_rag" else content
+            content = str(source.get("content", ""))
+            displayed_content = (
+                content[:200] + "..."
+                if len(content) > 200 and index_name == "fremen_codebase_rag"
+                else content
+            )
             click.echo(f"  {displayed_content}")
-            
+
             # Extract AST Breadcrumbs natively
             ast_breadcrumbs = []
             if source.get("functions_defined"):
                 ast_breadcrumbs.append(f"Defined: {source['functions_defined']}")
             if source.get("functions_called"):
                 ast_breadcrumbs.append(f"Called: {source['functions_called']}")
-            
+
             if ast_breadcrumbs:
-                click.secho(f"  [AST Breadcrumbs] {' | '.join(ast_breadcrumbs)}", fg="yellow")
+                click.secho(
+                    f"  [AST Breadcrumbs] {' | '.join(ast_breadcrumbs)}", fg="yellow"
+                )
 
             if source.get("anchor_hash"):
                 click.echo(f"  Anchor: {source['anchor_hash']}")
