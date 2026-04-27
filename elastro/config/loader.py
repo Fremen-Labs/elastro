@@ -148,6 +148,14 @@ def _load_from_env(config: Dict[str, Any]) -> Dict[str, Any]:
     Environment variables are expected to be in the format:
     ELASTIC_SECTION_KEY=value
 
+    Compound keys (e.g., ``verify_certs``, ``api_key``, ``retry_on_timeout``)
+    contain underscores that collide with the section separator.  To handle
+    this, a set of well-known compound tokens is collapsed *before* the
+    path is split, and a small set of shorthand aliases is supported:
+
+    * ``ELASTIC_VERIFY_CERTS=false``  →  ``config["elasticsearch"]["verify_certs"]``
+    * ``ELASTIC_URL=https://...``     →  ``config["elasticsearch"]["hosts"]``
+
     Args:
         config: Current configuration
 
@@ -156,30 +164,89 @@ def _load_from_env(config: Dict[str, Any]) -> Dict[str, Any]:
     """
     prefix = "ELASTIC_"
 
-    for env_var, value in os.environ.items():
-        if env_var.startswith(prefix):
-            # Remove prefix and split into sections
-            path = env_var[len(prefix) :].lower().split("_")
+    # ── Shorthand aliases ────────────────────────────────────────────────
+    # These are NOT parsed through the generic section splitter because
+    # they map to specific, well-known config locations.
+    _aliases: Dict[str, Any] = {
+        "ELASTIC_VERIFY_CERTS": ("elasticsearch", "verify_certs"),
+        "ELASTIC_URL": ("elasticsearch", "hosts"),
+        "ELASTIC_HOST": ("elasticsearch", "host"),
+        "ELASTIC_PORT": ("elasticsearch", "port"),
+        "ELASTIC_PROTOCOL": ("elasticsearch", "protocol"),
+    }
 
-            # Navigate to the correct config section
+    # Well-known compound tokens that must NOT be split on underscores.
+    # Order matters: longer tokens must appear before shorter prefixes.
+    _compound_tokens = [
+        "retry_on_timeout",
+        "verify_certs",
+        "ssl_show_warn",
+        "ssl_assert_hostname",
+        "max_retries",
+        "api_key",
+        "cloud_id",
+        "auth_type",
+    ]
+
+    for env_var, value in os.environ.items():
+        if not env_var.startswith(prefix):
+            continue
+
+        # ── Coerce value to native Python type ───────────────────────
+        if value.lower() == "true":
+            typed_value: Any = True
+        elif value.lower() == "false":
+            typed_value = False
+        elif value.isdigit():
+            typed_value = int(value)
+        elif value.replace(".", "", 1).isdigit() and value.count(".") == 1:
+            typed_value = float(value)
+        else:
+            typed_value = value
+
+        # ── Check shorthand aliases first ────────────────────────────
+        if env_var in _aliases:
+            sections = _aliases[env_var]
             current = config
-            for section in path[:-1]:
+            for section in sections[:-1]:
                 if section not in current:
                     current[section] = {}
                 current = current[section]
-
-            # Set the value (convert to appropriate type)
-            key = path[-1]
-            if value.lower() == "true":
-                current[key] = True
-            elif value.lower() == "false":
-                current[key] = False
-            elif value.isdigit():
-                current[key] = int(value)
-            elif value.replace(".", "", 1).isdigit() and value.count(".") == 1:
-                current[key] = float(value)
+            # Special case: ELASTIC_URL should set hosts as a list
+            if env_var == "ELASTIC_URL":
+                current[sections[-1]] = [typed_value] if isinstance(typed_value, str) else typed_value
             else:
-                current[key] = value
+                current[sections[-1]] = typed_value
+            continue
+
+        # ── Generic path parsing with compound-token awareness ───────
+        remainder = env_var[len(prefix):].lower()
+
+        # Replace compound tokens with a placeholder that won't be split
+        restored: list[tuple[str, str]] = []
+        for token in _compound_tokens:
+            placeholder = token.replace("_", "\x00")
+            if token in remainder:
+                remainder = remainder.replace(token, placeholder)
+                restored.append((placeholder, token))
+
+        path = remainder.split("_")
+
+        # Restore compound tokens
+        for i, segment in enumerate(path):
+            for placeholder, original in restored:
+                if placeholder == segment:
+                    path[i] = original
+
+        # Navigate to the correct config section
+        current = config
+        for section in path[:-1]:
+            if section not in current:
+                current[section] = {}
+            current = current[section]
+
+        # Set the value
+        current[path[-1]] = typed_value
 
     return config
 
