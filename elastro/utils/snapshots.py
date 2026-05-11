@@ -206,7 +206,9 @@ class SnapshotManager:
                     OperationError: If snapshot retrieval fails.
         """
         try:
-            return dict(self._es.snapshot.get(repository=repo_name, snapshot=snapshot_name))
+            return dict(
+                self._es.snapshot.get(repository=repo_name, snapshot=snapshot_name)
+            )
         except Exception as e:
             raise OperationError(f"Failed to get snapshot information: {str(e)}")
 
@@ -243,12 +245,14 @@ class SnapshotManager:
                 body["rename_pattern"] = rename_pattern
                 body["rename_replacement"] = rename_replacement
 
-            return dict(self._es.snapshot.restore(
-                repository=repo_name,
-                snapshot=snapshot_name,
-                body=body,
-                wait_for_completion=wait_for_completion,
-            ))
+            return dict(
+                self._es.snapshot.restore(
+                    repository=repo_name,
+                    snapshot=snapshot_name,
+                    body=body,
+                    wait_for_completion=wait_for_completion,
+                )
+            )
         except Exception as e:
             raise OperationError(
                 f"Failed to restore snapshot {snapshot_name}: {str(e)}"
@@ -271,9 +275,11 @@ class SnapshotManager:
         """
         try:
             if repo_name and snapshot_name:
-                return dict(self._es.snapshot.status(
-                    repository=repo_name, snapshot=snapshot_name
-                ))
+                return dict(
+                    self._es.snapshot.status(
+                        repository=repo_name, snapshot=snapshot_name
+                    )
+                )
             elif repo_name:
                 return dict(self._es.snapshot.status(repository=repo_name))
             else:

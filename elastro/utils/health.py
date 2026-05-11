@@ -72,7 +72,9 @@ class HealthManager:
         """
         try:
             if node_id and metrics:
-                return dict(self._es.nodes.stats(node_id=node_id, metric=",".join(metrics)))
+                return dict(
+                    self._es.nodes.stats(node_id=node_id, metric=",".join(metrics))
+                )
             elif node_id:
                 return dict(self._es.nodes.stats(node_id=node_id))
             elif metrics:
@@ -99,7 +101,9 @@ class HealthManager:
         """
         try:
             if node_id and metrics:
-                return dict(self._es.nodes.info(node_id=node_id, metric=",".join(metrics)))
+                return dict(
+                    self._es.nodes.info(node_id=node_id, metric=",".join(metrics))
+                )
             elif node_id:
                 return dict(self._es.nodes.info(node_id=node_id))
             elif metrics:
@@ -185,7 +189,9 @@ class HealthManager:
             OperationError: If settings retrieval fails.
         """
         try:
-            return dict(self._es.cluster.get_settings(include_defaults=include_defaults))
+            return dict(
+                self._es.cluster.get_settings(include_defaults=include_defaults)
+            )
         except Exception as e:
             raise OperationError(f"Failed to get cluster settings: {str(e)}")
 
