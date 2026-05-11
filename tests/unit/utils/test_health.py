@@ -387,7 +387,7 @@ class TestHealthManager(unittest.TestCase):
 
         # Assertions
         self.mock_es.snapshot.verify_repository.assert_called_once_with(
-            repository="test-repo"
+            name="test-repo"
         )
         self.assertTrue(result)
 

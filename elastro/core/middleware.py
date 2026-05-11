@@ -24,7 +24,9 @@ class ASTNodeIDMiddleware:
     def process(self, query: Dict[str, Any]) -> Dict[str, Any]:
         """Inspects query. Adds structural markers or raises if malformed."""
         if self.enforce:
-            # Placeholder for actual AST Node-ID bridging validation
-            # Ensures semantic queries conform to known graph topologies
-            pass
+            # TODO: Implement AST Node-ID bridging validation.
+            # Should ensure semantic queries conform to known graph topologies.
+            raise NotImplementedError(
+                "AST Node-ID bridging validation is not yet implemented"
+            )
         return query

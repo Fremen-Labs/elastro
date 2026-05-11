@@ -109,7 +109,7 @@ class TestSnapshotManager:
         result = snapshot_manager.create_repository(repo_config)
         assert result is True
         mock_elasticsearch.snapshot.create_repository.assert_called_once_with(
-            repository="test-repo",
+            name="test-repo",
             body={"type": "fs", "settings": {"location": "/backup/es_snapshots"}},
         )
 
@@ -124,7 +124,7 @@ class TestSnapshotManager:
         result = snapshot_manager.create_repository(repo_config)
         assert result is True
         mock_elasticsearch.snapshot.create_repository.assert_called_once_with(
-            repository="test-repo",
+            name="test-repo",
             body={"type": "fs", "settings": {"location": "/backup/es_snapshots"}},
         )
 
@@ -152,7 +152,7 @@ class TestSnapshotManager:
         result = snapshot_manager.delete_repository("test-repo")
         assert result is True
         mock_elasticsearch.snapshot.delete_repository.assert_called_once_with(
-            repository="test-repo"
+            name="test-repo"
         )
 
     def test_delete_repository_error(self, snapshot_manager, mock_elasticsearch):
@@ -181,7 +181,7 @@ class TestSnapshotManager:
         result = snapshot_manager.get_repository("test-repo")
         assert result == mock_response
         mock_elasticsearch.snapshot.get_repository.assert_called_once_with(
-            repository="test-repo"
+            name="test-repo"
         )
 
     def test_get_all_repositories(self, snapshot_manager, mock_elasticsearch):

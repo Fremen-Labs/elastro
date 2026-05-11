@@ -3,7 +3,6 @@ import sys
 import io
 import secrets
 import json
-import logging
 import multiprocessing
 import shlex
 import subprocess
@@ -15,6 +14,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from elastro.core.client import ElasticsearchClient
+from elastro.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 # Optional Pydantic based schema since Elastro uses Pydantic
 from pydantic import BaseModel
@@ -259,7 +261,7 @@ class ElastroGUI:
                     )
 
                 except Exception as e:
-                    logging.error(f"Failed to connect to {c['name']}: {str(e)}")
+                    logger.error(f"Failed to connect to {c['name']}: {str(e)}")
                     results.append(
                         {
                             "name": c["name"],
@@ -331,7 +333,7 @@ class ElastroGUI:
                     ilm_policies = es.ilm.get_lifecycle()
                     ilm_count = len(ilm_policies)
                 except Exception as e:
-                    logging.warning(f"Could not fetch ILM for {cluster_name}: {e}")
+                    logger.warning(f"Could not fetch ILM for {cluster_name}: {e}")
                     ilm_count = 0
 
                 # Snapshots / Backups
@@ -343,7 +345,7 @@ class ElastroGUI:
                             {"name": r_name, "type": r_data.get("type", "unknown")}
                         )
                 except Exception as e:
-                    logging.warning(f"Could not fetch Repos for {cluster_name}: {e}")
+                    logger.warning(f"Could not fetch Repos for {cluster_name}: {e}")
 
                 # Indices detailed summary
                 idx_res = es.cat.indices(format="json")
@@ -374,7 +376,7 @@ class ElastroGUI:
                 }
 
             except Exception as e:
-                logging.error(f"Failed to fetch details for {cluster_name}: {str(e)}")
+                logger.error(f"Failed to fetch details for {cluster_name}: {str(e)}")
                 raise HTTPException(
                     status_code=500,
                     detail=f"Failed communicating with Elasticsearch: {str(e)}",
@@ -574,7 +576,7 @@ class ElastroGUI:
                             }
                         )
                     except Exception as e:
-                        logging.error(f"Failed to explain {name}: {e}")
+                        logger.error(f"Failed to explain {name}: {e}")
                         results.append(
                             {
                                 "index": name,

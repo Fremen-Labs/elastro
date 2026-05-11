@@ -7,12 +7,12 @@ Updated with Semantic Chunking and BM25 Support.
 
 import os
 import json
-import logging
 from typing import List, Dict, Any, Generator, Optional
 from elastro.core.client import ElasticsearchClient
 from elastro.core.rag.ast_parser import ASTParser
+from elastro.core.logger import get_logger
 
-logger = logging.getLogger("elastro.rag")
+logger = get_logger(__name__)
 
 
 class GraphRAGManager:

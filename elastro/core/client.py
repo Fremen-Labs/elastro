@@ -1,4 +1,3 @@
-# mypy: ignore-errors
 """
 Elasticsearch client module.
 
@@ -106,7 +105,7 @@ class ElasticsearchClient:
                 self.auth = {"api_key": api_key}
 
         self.client_kwargs = kwargs
-        self._client = None
+        self._client: Optional[Elasticsearch] = None
         self._connected = False
 
         logger.debug(f"Initialized ElasticsearchClient with hosts: {self.hosts}")

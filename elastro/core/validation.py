@@ -1,11 +1,10 @@
-# mypy: ignore-errors
 """
 Validation module.
 
 This module provides functionality for validating Elasticsearch operations.
 """
 
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional, List, Type, Union
 from pydantic import (
     BaseModel,
     ValidationError as PydanticValidationError,
@@ -127,7 +126,7 @@ class Validator:
     documents, queries, and other Elasticsearch operations.
     """
 
-    def validate_index_settings(self, settings: Dict[str, Any]) -> None:
+    def validate_index_settings(self, settings: Dict[str, Any]) -> Dict[str, Any]:
         """
         Validate index settings.
 
@@ -152,7 +151,7 @@ class Validator:
                 f"Invalid index settings: {', '.join(error_messages)}"
             )
 
-    def validate_index_mappings(self, mappings: Dict[str, Any]) -> None:
+    def validate_index_mappings(self, mappings: Dict[str, Any]) -> Dict[str, Any]:
         """
         Validate index mappings.
 
@@ -243,18 +242,22 @@ class Validator:
                 raise
             raise ValidationError(f"Document validation failed: {str(e)}")
 
-    def validate_query(self, query: Dict[str, Any]) -> None:
+    def validate_query(self, query: Dict[str, Any]) -> Dict[str, Any]:
         """
         Validate Elasticsearch query.
 
         Args:
             query: Elasticsearch query
 
+        Returns:
+            Dict containing the validated query fields
+
         Raises:
             ValidationError: If query validation fails
         """
         try:
             # Determine query type
+            model_cls: Type[QueryModel]
             if "match" in query:
                 model_cls = MatchQuery
             elif "term" in query:
@@ -276,7 +279,7 @@ class Validator:
             ]
             raise ValidationError(f"Invalid query: {', '.join(error_messages)}")
 
-    def validate_datastream_settings(self, settings: Dict[str, Any]) -> None:
+    def validate_datastream_settings(self, settings: Dict[str, Any]) -> Dict[str, Any]:
         """
         Validate datastream settings.
 

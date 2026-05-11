@@ -1,4 +1,3 @@
-# mypy: ignore-errors
 """Snapshot and restore utilities for Elasticsearch."""
 
 from typing import Dict, List, Any, Optional, Union
@@ -71,7 +70,7 @@ class SnapshotManager:
                 config = repo_config
 
             response = self._es.snapshot.create_repository(
-                repository=config.name,
+                name=config.name,
                 body={"type": config.type, "settings": config.settings},
             )
             return bool(response.get("acknowledged", False))
@@ -98,7 +97,7 @@ class SnapshotManager:
             OperationError: If repository deletion fails.
         """
         try:
-            response = self._es.snapshot.delete_repository(repository=name)
+            response = self._es.snapshot.delete_repository(name=name)
             return response.get("acknowledged", False)
         except Exception as e:
             raise OperationError(f"Failed to delete repository {name}: {str(e)}")
@@ -118,9 +117,9 @@ class SnapshotManager:
         """
         try:
             if name:
-                return self._es.snapshot.get_repository(repository=name)
+                return dict(self._es.snapshot.get_repository(name=name))
             else:
-                return self._es.snapshot.get_repository()
+                return dict(self._es.snapshot.get_repository())
         except Exception as e:
             raise OperationError(f"Failed to get repository information: {str(e)}")
 
@@ -207,7 +206,7 @@ class SnapshotManager:
                     OperationError: If snapshot retrieval fails.
         """
         try:
-            return self._es.snapshot.get(repository=repo_name, snapshot=snapshot_name)
+            return dict(self._es.snapshot.get(repository=repo_name, snapshot=snapshot_name))
         except Exception as e:
             raise OperationError(f"Failed to get snapshot information: {str(e)}")
 
@@ -244,12 +243,12 @@ class SnapshotManager:
                 body["rename_pattern"] = rename_pattern
                 body["rename_replacement"] = rename_replacement
 
-            return self._es.snapshot.restore(
+            return dict(self._es.snapshot.restore(
                 repository=repo_name,
                 snapshot=snapshot_name,
                 body=body,
                 wait_for_completion=wait_for_completion,
-            )
+            ))
         except Exception as e:
             raise OperationError(
                 f"Failed to restore snapshot {snapshot_name}: {str(e)}"
@@ -272,12 +271,12 @@ class SnapshotManager:
         """
         try:
             if repo_name and snapshot_name:
-                return self._es.snapshot.status(
+                return dict(self._es.snapshot.status(
                     repository=repo_name, snapshot=snapshot_name
-                )
+                ))
             elif repo_name:
-                return self._es.snapshot.status(repository=repo_name)
+                return dict(self._es.snapshot.status(repository=repo_name))
             else:
-                return self._es.snapshot.status()
+                return dict(self._es.snapshot.status())
         except Exception as e:
             raise OperationError(f"Failed to get snapshot status: {str(e)}")

@@ -1,4 +1,3 @@
-# mypy: ignore-errors
 """Health check and diagnostics utilities for Elasticsearch."""
 
 from typing import Dict, List, Any, Optional, Union
@@ -50,9 +49,9 @@ class HealthManager:
                 params["wait_for_status"] = wait_for_status
 
             if index:
-                return self._es.cluster.health(index=index, **params)
+                return dict(self._es.cluster.health(index=index, **params))
             else:
-                return self._es.cluster.health(**params)
+                return dict(self._es.cluster.health(**params))
         except Exception as e:
             raise OperationError(f"Failed to get cluster health: {str(e)}")
 
@@ -73,13 +72,13 @@ class HealthManager:
         """
         try:
             if node_id and metrics:
-                return self._es.nodes.stats(node_id=node_id, metric=",".join(metrics))
+                return dict(self._es.nodes.stats(node_id=node_id, metric=",".join(metrics)))
             elif node_id:
-                return self._es.nodes.stats(node_id=node_id)
+                return dict(self._es.nodes.stats(node_id=node_id))
             elif metrics:
-                return self._es.nodes.stats(metric=",".join(metrics))
+                return dict(self._es.nodes.stats(metric=",".join(metrics)))
             else:
-                return self._es.nodes.stats()
+                return dict(self._es.nodes.stats())
         except Exception as e:
             raise OperationError(f"Failed to get node stats: {str(e)}")
 
@@ -100,13 +99,13 @@ class HealthManager:
         """
         try:
             if node_id and metrics:
-                return self._es.nodes.info(node_id=node_id, metric=",".join(metrics))
+                return dict(self._es.nodes.info(node_id=node_id, metric=",".join(metrics)))
             elif node_id:
-                return self._es.nodes.info(node_id=node_id)
+                return dict(self._es.nodes.info(node_id=node_id))
             elif metrics:
-                return self._es.nodes.info(metric=",".join(metrics))
+                return dict(self._es.nodes.info(metric=",".join(metrics)))
             else:
-                return self._es.nodes.info()
+                return dict(self._es.nodes.info())
         except Exception as e:
             raise OperationError(f"Failed to get node info: {str(e)}")
 
@@ -120,7 +119,7 @@ class HealthManager:
             OperationError: If cluster stats retrieval fails.
         """
         try:
-            return self._es.cluster.stats()
+            return dict(self._es.cluster.stats())
         except Exception as e:
             raise OperationError(f"Failed to get cluster stats: {str(e)}")
 
@@ -167,9 +166,9 @@ class HealthManager:
                 body["primary"] = primary
 
             if body:
-                return self._es.cluster.allocation_explain(body=body)
+                return dict(self._es.cluster.allocation_explain(body=body))
             else:
-                return self._es.cluster.allocation_explain()
+                return dict(self._es.cluster.allocation_explain())
         except Exception as e:
             raise OperationError(f"Failed to explain allocation: {str(e)}")
 
@@ -186,7 +185,7 @@ class HealthManager:
             OperationError: If settings retrieval fails.
         """
         try:
-            return self._es.cluster.get_settings(include_defaults=include_defaults)
+            return dict(self._es.cluster.get_settings(include_defaults=include_defaults))
         except Exception as e:
             raise OperationError(f"Failed to get cluster settings: {str(e)}")
 
@@ -203,7 +202,7 @@ class HealthManager:
             OperationError: If repository verification fails.
         """
         try:
-            response = self._es.snapshot.verify_repository(repository=repository)
+            response = self._es.snapshot.verify_repository(name=repository)
             return "nodes" in response
         except Exception as e:
             raise OperationError(f"Failed to verify repository {repository}: {str(e)}")
@@ -222,9 +221,9 @@ class HealthManager:
         """
         try:
             if index:
-                return self._es.indices.stats(index=index)
+                return dict(self._es.indices.stats(index=index))
             else:
-                return self._es.indices.stats()
+                return dict(self._es.indices.stats())
         except Exception as e:
             raise OperationError(f"Failed to get index stats: {str(e)}")
 
