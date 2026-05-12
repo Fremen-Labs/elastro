@@ -267,7 +267,7 @@ def read_source(
                 "Cannot auto-detect format from an open stream. Use --format."
             )
         resolved = detect_format(source)  # type: ignore[arg-type]
-        
+
     if resolved == "unknown":
         raise ValueError(
             f"Cannot detect format for '{source}'. "
