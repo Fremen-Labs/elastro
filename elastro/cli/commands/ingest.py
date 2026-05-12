@@ -932,3 +932,205 @@ def pipeline_delete(
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
         raise SystemExit(1)
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Grok Builder
+# ---------------------------------------------------------------------------
+
+
+@ingest_group.command(name="grok-builder")
+@click.option(
+    "--sample",
+    "-s",
+    "samples",
+    multiple=True,
+    help="Sample log line(s) to analyze (repeatable)",
+)
+@click.option(
+    "--file",
+    "-f",
+    "sample_file",
+    type=click.File("r"),
+    help="File containing sample log lines (one per line)",
+)
+@click.option(
+    "--preset",
+    type=str,
+    default=None,
+    help="Use a named preset (apache_combined, syslog, nginx_combined, etc.)",
+)
+@click.option(
+    "--list-presets",
+    is_flag=True,
+    help="List available preset log formats",
+)
+@click.option(
+    "--field",
+    "source_field",
+    default="message",
+    help="Source field name for the Grok processor",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    default=None,
+    help="Save generated pipeline JSON to file",
+)
+@click.pass_obj
+def grok_builder_cmd(
+    client: ElasticsearchClient,
+    samples: tuple,  # type: ignore[type-arg]
+    sample_file: Any,
+    preset: Optional[str],
+    list_presets: bool,
+    source_field: str,
+    output: Optional[str],
+) -> None:
+    """Smart Grok pattern builder — generate patterns from sample log lines.
+
+    Analyzes sample text and deterministically generates Grok patterns by
+    matching against a comprehensive library of built-in patterns.  Supports
+    preset log formats and multi-sample cross-validation.
+
+    Examples:
+
+    List available presets:
+    ```bash
+    elastro ingest grok-builder --list-presets
+    ```
+
+    Generate from inline samples:
+    ```bash
+    elastro ingest grok-builder -s '192.168.1.1 - - [10/Oct/2000:13:55:36 -0700] "GET / HTTP/1.0" 200 2326'
+    ```
+
+    Generate from a file of samples:
+    ```bash
+    elastro ingest grok-builder --file ./sample_logs.txt
+    ```
+
+    Use a preset:
+    ```bash
+    elastro ingest grok-builder --preset syslog
+    ```
+    """
+    from elastro.core.ingest.grok_builder import GrokBuilder
+
+    console = Console()
+    builder = GrokBuilder()
+
+    # --- List presets ---
+    if list_presets:
+        presets = builder.list_presets()
+        table = Table(title="Available Grok Presets")
+        table.add_column("Name", style="bold cyan")
+        table.add_column("Description")
+        table.add_column("Example", style="dim", max_width=60)
+
+        for key, info in presets.items():
+            table.add_row(key, info["name"], info.get("example", "")[:60])
+
+        console.print(table)
+        return
+
+    # --- Preset mode ---
+    if preset:
+        result = builder.get_preset(preset)
+        if result is None:
+            console.print(f"[bold red]Unknown preset:[/bold red] {preset}")
+            console.print("[dim]Use --list-presets to see available formats[/dim]")
+            raise SystemExit(1)
+
+        console.print(
+            Panel.fit(
+                f"[bold cyan]Grok Preset: {preset}[/bold cyan]",
+                border_style="cyan",
+            )
+        )
+        _display_grok_result(console, result, source_field, output)
+        return
+
+    # --- Collect samples ---
+    sample_lines: list[str] = list(samples)
+    if sample_file:
+        sample_lines.extend(line.strip() for line in sample_file if line.strip())
+
+    if not sample_lines:
+        # Interactive mode
+        from rich.prompt import Prompt
+
+        console.print(
+            Panel.fit(
+                "[bold cyan]Elastro Grok Pattern Builder[/bold cyan]\n"
+                "Paste sample log lines to generate a Grok pattern.\n"
+                "Enter an empty line when done.",
+                border_style="cyan",
+            )
+        )
+        while True:
+            line = Prompt.ask("   Sample line (empty to finish)", default="")
+            if not line:
+                break
+            sample_lines.append(line)
+
+    if not sample_lines:
+        console.print("[yellow]No samples provided. Aborting.[/yellow]")
+        return
+
+    # --- Build pattern ---
+    console.print(
+        f"\n[bold cyan]Analyzing {len(sample_lines)} sample(s)...[/bold cyan]\n"
+    )
+    result = builder.build_pattern(sample_lines, source_field=source_field)
+    _display_grok_result(console, result, source_field, output)
+
+
+def _display_grok_result(
+    console: Console,
+    result: Any,
+    source_field: str,
+    output: Optional[str],
+) -> None:
+    """Render a GrokResult to the console."""
+    # Pattern
+    console.print("[bold]Generated Grok Pattern:[/bold]")
+    console.print(Syntax(result.pattern, "text", theme="monokai"))
+
+    # Fields
+    if result.fields:
+        console.print(f"\n[bold]Captured Fields:[/bold] {', '.join(result.fields)}")
+
+    # Stats
+    stats = Table(show_header=False, box=None)
+    stats.add_column("Metric", style="dim")
+    stats.add_column("Value", style="bold")
+
+    if result.preset_name:
+        stats.add_row("Preset", result.preset_name)
+    stats.add_row("Confidence", f"{result.confidence:.0%}")
+    if result.total_samples > 0:
+        stats.add_row(
+            "Match Rate",
+            f"{result.matched_samples}/{result.total_samples} "
+            f"({result.match_rate:.0f}%)",
+        )
+    stats.add_row("Fields", str(len(result.fields)))
+
+    console.print(stats)
+
+    # Warnings
+    for w in result.warnings:
+        console.print(f"[yellow]⚠ {w}[/yellow]")
+
+    # Processor JSON
+    proc = result.to_processor_dict(source_field)
+    json_str = json.dumps(proc, indent=2)
+    console.print("\n[bold]ES Grok Processor:[/bold]")
+    console.print(Syntax(json_str, "json", theme="monokai"))
+
+    # Save
+    if output:
+        Path(output).write_text(json_str, encoding="utf-8")
+        console.print(f"\n[green]✓ Saved to {output}[/green]")
