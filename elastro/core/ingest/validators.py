@@ -16,7 +16,7 @@ Provides:
 import re
 from collections import Counter, defaultdict
 from datetime import datetime
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Callable, Dict, Generator, List, Optional, Tuple
 
 from elastro.core.logger import get_logger
 
@@ -320,7 +320,7 @@ def profile_data(
 # ---------------------------------------------------------------------------
 
 
-_TYPE_COERCION = {
+_TYPE_COERCION: Dict[str, Callable[[Any], Any]] = {
     "integer": int,
     "long": int,
     "short": int,

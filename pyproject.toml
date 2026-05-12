@@ -81,7 +81,7 @@ profile = "black"
 line_length = 88
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 warn_return_any = false
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -101,7 +101,6 @@ module = [
     "dotenv.*",
     "pydantic.*",
     "elasticsearch.*",
-    "setuptools.*",
     "urllib3.*",
     "colorlog.*",
     "click.*",

@@ -205,7 +205,7 @@ class JSONArrayReader:
             )
 
     def _read_streaming(self, path: Path) -> Generator[Dict[str, Any], None, None]:
-        import ijson  # type: ignore[import-untyped]
+        import ijson  # type: ignore[import-untyped, import-not-found]
 
         count = 0
         with open(path, "rb") as fh:
@@ -260,7 +260,14 @@ def read_source(
         return
 
     # Resolve format
-    resolved = format if format != "auto" else detect_format(source)
+    resolved = format
+    if resolved == "auto":
+        if hasattr(source, "read"):
+            raise ValueError(
+                "Cannot auto-detect format from an open stream. Use --format."
+            )
+        resolved = detect_format(source)  # type: ignore[arg-type]
+        
     if resolved == "unknown":
         raise ValueError(
             f"Cannot detect format for '{source}'. "
