@@ -17,10 +17,13 @@ from elastro.core.client import ElasticsearchClient
 from elastro.core.index import IndexManager
 from elastro.core.document import DocumentManager
 from elastro.core.datastream import DatastreamManager
+from elastro.core.ingest.engine import IngestEngine, IngestResult
 
 __all__ = [
     "ElasticsearchClient",
     "IndexManager",
     "DocumentManager",
     "DatastreamManager",
+    "IngestEngine",
+    "IngestResult",
 ]

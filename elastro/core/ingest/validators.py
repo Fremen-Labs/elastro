@@ -2,10 +2,15 @@
 Schema validation and type coercion for the Ingest Engine.
 
 Provides:
-- Auto-mapping inference from sample documents
+- Auto-mapping inference from sample documents (with recursive nested support)
 - Schema validation against ES index mappings
 - Type coercion (string → int, string → date, etc.)
 - Data profiling with PII risk assessment
+
+.. note::
+    Inference is sample-based and heuristic; always review generated mappings
+    before production use. Edge cases (mixed-type fields, sparse nested
+    structures) may require manual adjustment.
 """
 
 import re
@@ -81,7 +86,12 @@ def _is_ip(value: str) -> bool:
 
 
 def _infer_field_type(values: List[Any]) -> str:
-    """Infer Elasticsearch field type from a sample of values."""
+    """Infer Elasticsearch field type from a sample of values.
+
+    Handles nested dicts (mapped as 'object') and lists of dicts
+    (mapped as 'nested'). Scalar lists are mapped based on the
+    dominant element type.
+    """
     non_null = [v for v in values if v is not None and str(v).strip() != ""]
     if not non_null:
         return "keyword"
@@ -90,6 +100,17 @@ def _infer_field_type(values: List[Any]) -> str:
     py_types = Counter(type(v).__name__ for v in non_null)
     dominant = py_types.most_common(1)[0][0]
 
+    if dominant == "dict":
+        return "object"
+    if dominant == "list":
+        # Peek inside the list to determine nested vs scalar-array
+        flat_items = [item for v in non_null if isinstance(v, list) for item in v]
+        if flat_items and all(isinstance(item, dict) for item in flat_items[:20]):
+            return "nested"
+        # Scalar arrays — infer from the element type
+        if flat_items:
+            return _infer_field_type(flat_items)
+        return "keyword"
     if dominant == "bool":
         return "boolean"
     if dominant == "int":
@@ -141,6 +162,50 @@ def _infer_field_type(values: List[Any]) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _infer_properties_recursive(
+    field_values: Dict[str, List[Any]],
+) -> Dict[str, Any]:
+    """Build properties dict with recursive descent for nested objects."""
+    properties: Dict[str, Any] = {}
+    for field, values in field_values.items():
+        es_type = _infer_field_type(values)
+        properties[field] = {"type": es_type}
+
+        # Recurse into object fields
+        if es_type == "object":
+            child_values: Dict[str, List[Any]] = defaultdict(list)
+            for v in values:
+                if isinstance(v, dict):
+                    for ck, cv in v.items():
+                        child_values[ck].append(cv)
+            if child_values:
+                properties[field]["properties"] = _infer_properties_recursive(
+                    child_values
+                )
+
+        # Recurse into nested (array-of-objects) fields
+        elif es_type == "nested":
+            child_values = defaultdict(list)
+            for v in values:
+                if isinstance(v, list):
+                    for item in v:
+                        if isinstance(item, dict):
+                            for ck, cv in item.items():
+                                child_values[ck].append(cv)
+            if child_values:
+                properties[field]["properties"] = _infer_properties_recursive(
+                    child_values
+                )
+
+        # Add keyword sub-field for text fields
+        elif es_type == "text":
+            properties[field]["fields"] = {
+                "keyword": {"type": "keyword", "ignore_above": 256}
+            }
+
+    return properties
+
+
 def infer_mapping(
     docs: Generator[Dict[str, Any], None, None],
     *,
@@ -150,7 +215,12 @@ def infer_mapping(
     Infer an Elasticsearch mapping from a sample of documents.
 
     Samples up to ``sample_size`` documents and uses heuristics to determine
-    optimal field types. Returns a ready-to-use ES mappings body.
+    optimal field types. Supports recursive inference for nested objects
+    and arrays of objects.
+
+    .. note::
+        Inference is sample-based and heuristic; always review the generated
+        mapping before production use.
 
     Args:
         docs: Generator of document dicts.
@@ -169,16 +239,7 @@ def infer_mapping(
             field_values[key].append(value)
         count += 1
 
-    properties: Dict[str, Dict[str, str]] = {}
-    for field, values in field_values.items():
-        es_type = _infer_field_type(values)
-        properties[field] = {"type": es_type}
-
-        # Add keyword sub-field for text fields
-        if es_type == "text":
-            properties[field]["fields"] = {
-                "keyword": {"type": "keyword", "ignore_above": 256}
-            }
+    properties = _infer_properties_recursive(field_values)
 
     logger.info(f"Inferred mapping from {count} documents, {len(properties)} fields")
     return {"mappings": {"properties": properties}}

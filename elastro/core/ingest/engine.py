@@ -10,7 +10,7 @@ import json
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Union
+from typing import Any, Callable, Dict, Generator, List, Optional, Union
 
 from elastro.core.base import BaseManager
 from elastro.core.client import ElasticsearchClient
@@ -78,6 +78,7 @@ class IngestEngine(BaseManager):
         strict: bool = False,
         dlq_path: Optional[Union[str, Path]] = None,
         refresh: bool = False,
+        progress_callback: Optional[Callable[[int, int, int], None]] = None,
     ) -> IngestResult:
         """
         Ingest data from a file source into an Elasticsearch index.
@@ -95,8 +96,12 @@ class IngestEngine(BaseManager):
             mapping_properties: ES mapping properties for validation.
             required_fields: Fields that must be present.
             strict: Strict validation (reject on type mismatch).
-            dlq_path: Path to write failed documents.
+            dlq_path: Path to write failed documents (captures both
+                validation errors and ES bulk indexing errors).
             refresh: Refresh the index after each batch.
+            progress_callback: Optional callback invoked after each batch with
+                ``(total_read, total_indexed, total_failed)``. Enables
+                non-CLI consumers to display progress without Rich.
 
         Returns:
             IngestResult with operation statistics.
@@ -175,11 +180,23 @@ class IngestEngine(BaseManager):
                 # Flush batch
                 if len(batch) >= batch_size:
                     indexed, failed = self._flush_batch(
-                        batch, index, pipeline=pipeline, refresh=refresh
+                        batch,
+                        index,
+                        pipeline=pipeline,
+                        refresh=refresh,
+                        dlq_fh=dlq_fh,
+                        result=result,
                     )
                     result.total_indexed += indexed
                     result.total_failed += failed
                     batch = []
+
+                    if progress_callback:
+                        progress_callback(
+                            result.total_read,
+                            result.total_indexed,
+                            result.total_failed,
+                        )
 
                     if result.total_failed >= max_errors:
                         logger.error(
@@ -190,10 +207,22 @@ class IngestEngine(BaseManager):
             # Flush remaining
             if batch:
                 indexed, failed = self._flush_batch(
-                    batch, index, pipeline=pipeline, refresh=refresh
+                    batch,
+                    index,
+                    pipeline=pipeline,
+                    refresh=refresh,
+                    dlq_fh=dlq_fh,
+                    result=result,
                 )
                 result.total_indexed += indexed
                 result.total_failed += failed
+
+                if progress_callback:
+                    progress_callback(
+                        result.total_read,
+                        result.total_indexed,
+                        result.total_failed,
+                    )
 
         finally:
             if dlq_fh:
@@ -213,9 +242,14 @@ class IngestEngine(BaseManager):
         *,
         pipeline: Optional[str] = None,
         refresh: bool = False,
+        dlq_fh: Any = None,
+        result: Optional[IngestResult] = None,
     ) -> tuple[int, int]:
         """
         Send a batch of documents to Elasticsearch via the bulk API.
+
+        Captures per-item bulk errors in the DLQ (if provided) for
+        complete observability alongside validation failures.
 
         Returns (indexed_count, failed_count).
         """
@@ -249,12 +283,26 @@ class IngestEngine(BaseManager):
             if hasattr(response, "body"):
                 response = response.body
 
-            # Count successes and failures
+            # Count successes and failures, capturing error details
             items = response.get("items", [])
-            failed = sum(
-                1 for item in items if item.get("index", {}).get("error") is not None
-            )
-            indexed = len(items) - failed
+            failed = 0
+            indexed = 0
+            for i, item in enumerate(items):
+                item_result = item.get("index", {})
+                if item_result.get("error") is not None:
+                    failed += 1
+                    # Write bulk error to DLQ for full observability
+                    if dlq_fh and i < len(batch):
+                        error_entry = {
+                            "source": "bulk_api",
+                            "error": item_result["error"],
+                            "document": batch[i],
+                        }
+                        dlq_fh.write(json.dumps(error_entry) + "\n")
+                        if result:
+                            result.errors.append(error_entry)
+                else:
+                    indexed += 1
 
             if failed > 0:
                 logger.warning(f"Batch: {indexed} indexed, {failed} failed")
