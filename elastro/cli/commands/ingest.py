@@ -140,118 +140,12 @@ def simulate_pipeline(
 
 
 # ---------------------------------------------------------------------------
-# Phase 1: Import
+# Result display helper
 # ---------------------------------------------------------------------------
 
 
-@ingest_group.command(name="import", no_args_is_help=True)
-@click.argument("source", type=str)
-@click.option("--index", "-i", required=True, help="Target Elasticsearch index")
-@click.option(
-    "--format",
-    "-f",
-    "fmt",
-    type=click.Choice(["auto", "csv", "ndjson", "json"]),
-    default="auto",
-    help="Source file format (auto-detects from extension)",
-)
-@click.option("--delimiter", help="CSV delimiter override (default: ',')")
-@click.option("--encoding", default="utf-8", help="File encoding")
-@click.option("--batch-size", type=int, default=2000, help="Documents per bulk request")
-@click.option("--max-errors", type=int, default=100, help="Abort after N errors")
-@click.option("--pipeline", help="ES ingest pipeline to apply server-side")
-@click.option(
-    "--validate/--no-validate", default=False, help="Enable schema validation"
-)
-@click.option("--strict", is_flag=True, help="Strict mode: reject on type mismatch")
-@click.option("--dlq", type=click.Path(), help="Dead-letter queue output file")
-@click.option("--refresh", is_flag=True, help="Refresh index after each batch")
-@click.pass_obj
-def import_data(
-    client: ElasticsearchClient,
-    source: str,
-    index: str,
-    fmt: str,
-    delimiter: Optional[str],
-    encoding: str,
-    batch_size: int,
-    max_errors: int,
-    pipeline: Optional[str],
-    validate: bool,
-    strict: bool,
-    dlq: Optional[str],
-    refresh: bool,
-) -> None:
-    """
-    Import data from CSV, NDJSON, or JSON into Elasticsearch.
-
-    Supports streaming ingestion with progress reporting, optional schema
-    validation, type coercion, and dead-letter queue for failed documents.
-
-    Examples:
-
-    Import a CSV file:
-    ```bash
-    elastro ingest import customers.csv --index customers
-    ```
-
-    Import NDJSON with validation:
-    ```bash
-    elastro ingest import events.ndjson --index events --validate
-    ```
-
-    Import with DLQ and pipeline:
-    ```bash
-    elastro ingest import data.json --index logs --pipeline my-pipeline --dlq ./failed.ndjson
-    ```
-
-    Import from stdin:
-    ```bash
-    cat data.csv | elastro ingest import - --index logs --format csv
-    ```
-    """
-    from elastro.core.ingest.engine import IngestEngine
-
-    console = Console()
-    engine = IngestEngine(client)
-
-    console.print(
-        Panel.fit(
-            f"[bold cyan]Elastro Ingest Engine[/bold cyan]\n"
-            f"Source: [green]{source}[/green]\n"
-            f"Target: [green]{index}[/green]\n"
-            f"Format: {fmt} | Batch: {batch_size} | Validate: {validate}",
-            border_style="cyan",
-        )
-    )
-
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TextColumn("[bold blue]{task.completed} docs"),
-        console=console,
-    ) as progress:
-        task = progress.add_task("Ingesting...", total=None)
-
-        result = engine.ingest(
-            source,
-            index,
-            format=fmt,
-            delimiter=delimiter,
-            encoding=encoding,
-            batch_size=batch_size,
-            max_errors=max_errors,
-            pipeline=pipeline,
-            validate=validate,
-            strict=strict,
-            dlq_path=dlq,
-            refresh=refresh,
-        )
-
-        progress.update(task, completed=result.total_read)
-
-    # Display results
+def _display_result(console: Console, result: Any) -> None:
+    """Render an IngestResult summary table to the console."""
     status = (
         "[bold green]SUCCESS[/bold green]"
         if result.total_failed == 0
@@ -280,6 +174,171 @@ def import_data(
         results_table.add_row("Dead-Letter Queue", result.dlq_path)
 
     console.print(results_table)
+
+
+# ---------------------------------------------------------------------------
+# Phase 1: Import
+# ---------------------------------------------------------------------------
+
+
+@ingest_group.command(name="import", no_args_is_help=True)
+@click.argument("source", type=str)
+@click.option("--index", "-i", required=True, help="Target Elasticsearch index")
+@click.option(
+    "--format",
+    "-f",
+    "fmt",
+    type=click.Choice(["auto", "csv", "ndjson", "json", "sql"]),
+    default="auto",
+    help="Source file format (auto-detects from extension)",
+)
+@click.option("--delimiter", help="CSV delimiter override (default: ',')")
+@click.option("--encoding", default="utf-8", help="File encoding")
+@click.option("--batch-size", type=int, default=2000, help="Documents per bulk request")
+@click.option("--max-errors", type=int, default=100, help="Abort after N errors")
+@click.option("--pipeline", help="ES ingest pipeline to apply server-side")
+@click.option(
+    "--validate/--no-validate", default=False, help="Enable schema validation"
+)
+@click.option("--strict", is_flag=True, help="Strict mode: reject on type mismatch")
+@click.option("--dlq", type=click.Path(), help="Dead-letter queue output file")
+@click.option("--refresh", is_flag=True, help="Refresh index after each batch")
+@click.option(
+    "--sql",
+    "sql_query",
+    type=str,
+    default=None,
+    help="SQL SELECT query for live database import (requires --dsn)",
+)
+@click.option(
+    "--dsn",
+    type=str,
+    default=None,
+    help="Database connection string (e.g. postgresql://user:pass@host/db)",
+)
+@click.pass_obj
+def import_data(
+    client: ElasticsearchClient,
+    source: str,
+    index: str,
+    fmt: str,
+    delimiter: Optional[str],
+    encoding: str,
+    batch_size: int,
+    max_errors: int,
+    pipeline: Optional[str],
+    validate: bool,
+    strict: bool,
+    dlq: Optional[str],
+    refresh: bool,
+    sql_query: Optional[str],
+    dsn: Optional[str],
+) -> None:
+    """
+    Import data from CSV, NDJSON, JSON, or SQL into Elasticsearch.
+
+    Supports streaming ingestion with progress reporting, optional schema
+    validation, type coercion, and dead-letter queue for failed documents.
+
+    Examples:
+
+    Import a CSV file:
+    ```bash
+    elastro ingest import customers.csv --index customers
+    ```
+
+    Import NDJSON with validation:
+    ```bash
+    elastro ingest import events.ndjson --index events --validate
+    ```
+
+    Import with DLQ and pipeline:
+    ```bash
+    elastro ingest import data.json --index logs --pipeline my-pipeline --dlq ./failed.ndjson
+    ```
+
+    Import from stdin:
+    ```bash
+    cat data.csv | elastro ingest import - --index logs --format csv
+    ```
+
+    Import from a live SQL database:
+    ```bash
+    elastro ingest import --sql "SELECT * FROM users" --dsn postgresql://user:pass@host/db --index users
+    ```
+
+    Import a SQL dump file:
+    ```bash
+    elastro ingest import dump.sql --index users
+    ```
+    """
+    from elastro.core.ingest.engine import IngestEngine
+
+    console = Console()
+    engine = IngestEngine(client)
+    docs_override = None
+
+    # SQL live import mode
+    if sql_query:
+        if not dsn:
+            console.print(
+                "[bold red]Error:[/bold red] --dsn is required when using --sql"
+            )
+            raise SystemExit(1)
+
+        from elastro.core.ingest.readers import SQLReader
+
+        sql_reader = SQLReader(dsn, sql_query)
+        docs_override = sql_reader.read()
+
+        console.print(
+            Panel.fit(
+                f"[bold cyan]Elastro Ingest Engine — SQL Import[/bold cyan]\n"
+                f"DSN: [green]{dsn.split('@')[-1] if '@' in dsn else dsn}[/green]\n"
+                f"Query: [dim]{sql_query[:80]}{'...' if len(sql_query) > 80 else ''}[/dim]\n"
+                f"Target: [green]{index}[/green] | Batch: {batch_size}",
+                border_style="cyan",
+            )
+        )
+    else:
+        console.print(
+            Panel.fit(
+                f"[bold cyan]Elastro Ingest Engine[/bold cyan]\n"
+                f"Source: [green]{source}[/green]\n"
+                f"Target: [green]{index}[/green]\n"
+                f"Format: {fmt} | Batch: {batch_size} | Validate: {validate}",
+                border_style="cyan",
+            )
+        )
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("[bold blue]{task.completed} docs"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Ingesting...", total=None)
+
+        result = engine.ingest(
+            source,
+            index,
+            format=fmt,
+            delimiter=delimiter,
+            encoding=encoding,
+            batch_size=batch_size,
+            max_errors=max_errors,
+            pipeline=pipeline,
+            validate=validate,
+            strict=strict,
+            dlq_path=dlq,
+            refresh=refresh,
+            docs_override=docs_override,
+        )
+
+        progress.update(task, completed=result.total_read)
+
+    _display_result(console, result)
 
     if result.total_failed > 0:
         raise SystemExit(1)
