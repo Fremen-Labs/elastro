@@ -224,6 +224,55 @@ elastro doc bulk-delete INDEX_NAME --file IDS_FILE
 
 The file should contain a JSON array of document IDs.
 
+## Ingest Engine
+
+The `ingest` command group provides client-side data preparation, processing, and multi-format import capabilities.
+
+### Import Data
+
+Stream data directly into Elasticsearch from various file formats (CSV, NDJSON, JSON, SQL):
+
+```bash
+elastro ingest import data.csv --index customers --format csv
+```
+
+**SQL Live Database Import:**
+```bash
+elastro ingest import --sql "SELECT * FROM users" --dsn postgresql://user:pass@localhost/db --index users
+```
+
+### Profile Data Quality
+
+Analyze a dataset before importing it to identify field types, null rates, and PII (Personally Identifiable Information) risk:
+
+```bash
+elastro ingest profile data.csv --sample-size 1000
+```
+
+### Validate Documents
+
+Perform a pre-flight schema validation against an active index's mapping to catch coercion errors before sending bulk requests:
+
+```bash
+elastro ingest validate data.ndjson --index my-index --strict
+```
+
+### Auto-Map Schema Inference
+
+Infer optimal Elasticsearch index mappings automatically by sampling a local file (supports recursive nested object mapping):
+
+```bash
+elastro ingest auto-map data.json --sample-size 500
+```
+
+### Smart Grok Builder
+
+Quickly construct and test Grok patterns interactively. Use `--sample` to supply a target log line:
+
+```bash
+elastro ingest grok-builder --sample "10.0.0.1 - - [12/May/2026:07:03:12] \"GET /api/v1/users HTTP/1.1\" 200 1234"
+```
+
 ## Datastream Management
 
 ### Create Datastream
