@@ -348,3 +348,107 @@ class DocumentManager(BaseManager):
         except Exception as e:
             logger.error(f"Failed to search documents in '{index}': {str(e)}")
             raise DocumentError(f"Failed to search documents: {str(e)}")
+
+    # ------------------------------------------------------------------
+    # Synchronous bulk operations
+    # Absorbed from the former BulkDocumentManager. These use the raw
+    # client.bulk() API for callers that don't need async.
+    # ------------------------------------------------------------------
+
+    def bulk_index_sync(
+        self, index: str, documents: List[Dict[str, Any]], refresh: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Synchronously index multiple documents in bulk.
+
+        Unlike the async ``bulk_index``, this method uses the raw ``client.bulk()``
+        API and is suitable for scripts and CLI commands that don't run an event loop.
+
+        Important: This method does NOT mutate the input documents. If a document
+        contains an ``_id`` key, it is extracted via ``.copy()`` / ``.pop()`` on
+        a shallow copy, leaving the caller's original data intact.
+
+        Args:
+            index: Name of the target index.
+            documents: List of document dicts.
+            refresh: Whether to refresh the index immediately after the operation.
+
+        Returns:
+            Dict containing the raw Elasticsearch bulk response.
+
+        Raises:
+            ValidationError: If input validation fails.
+            DocumentError: If the bulk operation fails.
+        """
+        if not index:
+            raise ValidationError("Index name cannot be empty")
+        if not documents or not isinstance(documents, list):
+            raise ValidationError("Documents must be a non-empty list")
+        if not all(isinstance(doc, dict) for doc in documents):
+            raise ValidationError("All documents must be dictionaries")
+
+        try:
+            operations: List[Dict[str, Any]] = []
+            for doc in documents:
+                # Shallow copy to avoid mutating caller's data
+                doc_copy = doc.copy()
+                doc_id = doc_copy.pop("_id", None)
+
+                action: Dict[str, Any] = {"_index": index}
+                if doc_id:
+                    action["_id"] = doc_id
+
+                operations.append({"index": action})
+                operations.append(doc_copy)
+
+            self._ensure_connected()
+            return self._handle_response(
+                self._client.get_client().bulk(
+                    operations=operations,
+                    refresh="true" if refresh else "false",
+                )
+            )
+        except (ValidationError, DocumentError):
+            raise
+        except Exception as e:
+            raise DocumentError(f"Failed to bulk index documents: {str(e)}")
+
+    def bulk_delete_sync(
+        self, index: str, ids: List[str], refresh: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Synchronously delete multiple documents in bulk.
+
+        Args:
+            index: Name of the target index.
+            ids: List of document IDs to delete.
+            refresh: Whether to refresh the index immediately after the operation.
+
+        Returns:
+            Dict containing the raw Elasticsearch bulk response.
+
+        Raises:
+            ValidationError: If input validation fails.
+            DocumentError: If the bulk operation fails.
+        """
+        if not index:
+            raise ValidationError("Index name cannot be empty")
+        if not ids or not isinstance(ids, list):
+            raise ValidationError("IDs must be a non-empty list")
+
+        try:
+            operations: List[Dict[str, Any]] = []
+            for doc_id in ids:
+                operations.append({"delete": {"_index": index, "_id": doc_id}})
+
+            self._ensure_connected()
+            return self._handle_response(
+                self._client.get_client().bulk(
+                    operations=operations,
+                    refresh="true" if refresh else "false",
+                )
+            )
+        except (ValidationError, DocumentError):
+            raise
+        except Exception as e:
+            raise DocumentError(f"Failed to bulk delete documents: {str(e)}")
