@@ -9,10 +9,12 @@ sources and Elasticsearch:
 - Data profiling and PII risk assessment
 - Client-side sanitization (PII redaction, dedup, field filtering)
 - Fluent ingest pipeline builder
+- Deterministic Grok pattern builder
 - Dead-letter queue for failed documents
 """
 
 from elastro.core.ingest.engine import IngestEngine, IngestResult
+from elastro.core.ingest.grok_builder import GrokBuilder, GrokResult
 from elastro.core.ingest.pipeline_builder import IngestPipelineBuilder
 from elastro.core.ingest.readers import (
     read_source,
@@ -29,6 +31,8 @@ __all__ = [
     "IngestEngine",
     "IngestResult",
     "IngestPipelineBuilder",
+    "GrokBuilder",
+    "GrokResult",
     "SanitizationChain",
     "read_source",
     "CSVReader",
