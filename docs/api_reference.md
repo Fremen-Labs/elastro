@@ -7,6 +7,7 @@ This document provides detailed documentation for Elastro's core components and 
 - [ElasticsearchClient](#elasticsearchclient)
 - [IndexManager](#indexmanager)
 - [DocumentManager](#documentmanager)
+- [IngestEngine](#ingestengine)
 - [DatastreamManager](#datastreammanager)
 - [Advanced Components](#advanced-components)
   - [QueryBuilder](#querybuilder)
@@ -193,6 +194,36 @@ Retrieves a document by ID.
 ```python
 document = doc_manager.get("my-index", "doc-1")
 # Returns: Dict with document
+```
+
+## IngestEngine
+
+The `IngestEngine` class handles client-side data streaming, pre-flight validation, type coercion, and bulk importing.
+
+### Constructor
+
+```python
+from elastro import IngestEngine
+
+ingest_engine = IngestEngine(client)
+```
+
+### Methods
+
+#### `ingest(source, index, ...)`
+
+Ingests data from a file source into an Elasticsearch index.
+
+```python
+result = ingest_engine.ingest(
+    source="data.csv",
+    index="my-index",
+    format="csv",
+    batch_size=2000,
+    dlq_path="failed.ndjson",
+    progress_callback=lambda read, indexed, failed: print(f"{indexed} indexed")
+)
+# Returns: IngestResult with operation statistics (total_read, total_indexed, total_failed)
 ```
 
 ## Advanced Components

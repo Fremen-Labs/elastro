@@ -99,3 +99,17 @@ The Elastro CLI provides a robust feature set for managing your Elasticsearch cl
 - **`health`**: Get a quick snapshot of the cluster's pulse (Green, Yellow, Red) and node availability.
 - **`aliases`**: Inspect index aliases, showing how applications transparently route to underlying indices.
 - **`templates`**: Manage legacy index templates (if supporting older Elasticsearch 7.x clusters).
+
+---
+
+## 10. `ingest`
+**Purpose**: Client-side data preparation, formatting, and AI-driven pipeline operations.
+**Why it's important**: Elasticsearch ingest pipelines are powerful but run server-side. The `ingest` commands let you process, sanitize, validate, and format data (like CSV, SQL, Parquet, or NDJSON) locally *before* it reaches your cluster, and provides smart AI tools to rapidly author complex ingest logic.
+
+- **`import`**: Multi-format streaming data import (CSV, NDJSON, JSON array, SQL). Automatically parses inputs without loading entire files into memory.
+- **`profile`**: Analyze a local data source to generate a pre-ingest data quality report, identifying PII risk, uniqueness, and null rates.
+- **`validate`**: Dry-run document validation against an Elasticsearch index mapping with strict type coercion enforcement.
+- **`auto-map`**: Sample a dataset to infer optimal Elasticsearch field mappings (including nested objects) automatically.
+- **`grok-builder`**: A dual-mode (Deterministic and AI-Assisted) builder to rapidly construct and test Grok patterns against the ES Simulate API.
+- **`pipelines`**: List and inspect currently active server-side Elasticsearch ingest pipelines.
+- **`simulate`**: Test an existing pipeline against a sample document or file to verify its transformations.

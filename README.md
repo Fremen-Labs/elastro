@@ -188,8 +188,14 @@ elastro doc search products --term category=laptop
 elastro cluster health
 elastro cluster allocation
 
-# Manage ingest pipelines
-elastro ingest list
+# Data Ingest & Processing (Client-Side)
+elastro ingest import data.csv --index customers --format csv
+elastro ingest profile data.csv --sample-size 1000
+elastro ingest auto-map data.json --sample-size 500
+elastro ingest grok-builder --sample "10.0.0.1 - - [12/May/2026:07:03:12] \"GET /api/v1/users HTTP/1.1\" 200 1234"
+
+# Manage server-side ingest pipelines
+elastro ingest pipelines
 elastro ingest simulate my-pipeline --docs ./docs.json
 
 # Manage native realm security users and roles
