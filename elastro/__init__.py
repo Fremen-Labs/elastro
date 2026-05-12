@@ -10,7 +10,7 @@ try:
     __version__ = version("elastro-client")
 except PackageNotFoundError:
     # Fallback for editable installs or when metadata is unavailable
-    __version__ = "1.3.54"
+    __version__ = "1.3.55"
 
 # Core component imports
 from elastro.core.client import ElasticsearchClient
