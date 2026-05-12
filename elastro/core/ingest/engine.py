@@ -79,6 +79,7 @@ class IngestEngine(BaseManager):
         dlq_path: Optional[Union[str, Path]] = None,
         refresh: bool = False,
         progress_callback: Optional[Callable[[int, int, int], None]] = None,
+        docs_override: Optional[Generator[Dict[str, Any], None, None]] = None,
     ) -> IngestResult:
         """
         Ingest data from a file source into an Elasticsearch index.
@@ -86,7 +87,7 @@ class IngestEngine(BaseManager):
         Args:
             source: File path or '-' for stdin.
             index: Target Elasticsearch index.
-            format: File format ('csv', 'ndjson', 'json', 'auto').
+            format: File format ('csv', 'ndjson', 'json', 'sql', 'auto').
             delimiter: CSV delimiter override.
             encoding: File encoding.
             pipeline: ES ingest pipeline to apply server-side.
@@ -102,6 +103,10 @@ class IngestEngine(BaseManager):
             progress_callback: Optional callback invoked after each batch with
                 ``(total_read, total_indexed, total_failed)``. Enables
                 non-CLI consumers to display progress without Rich.
+            docs_override: Optional pre-built document generator. When
+                provided, ``source`` and ``format`` are ignored and
+                documents are read directly from this generator. Useful
+                for SQL live database imports via ``SQLReader``.
 
         Returns:
             IngestResult with operation statistics.
@@ -146,9 +151,12 @@ class IngestEngine(BaseManager):
             result.dlq_path = str(dlq_path)
 
         try:
-            docs = read_source(
-                source, format=format, delimiter=delimiter, encoding=encoding
-            )
+            if docs_override is not None:
+                docs = docs_override
+            else:
+                docs = read_source(
+                    source, format=format, delimiter=delimiter, encoding=encoding
+                )
             batch: List[Dict[str, Any]] = []
 
             for doc in docs:

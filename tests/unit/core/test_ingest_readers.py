@@ -169,9 +169,11 @@ class TestReadSource:
         with pytest.raises(ValueError, match="Cannot detect format"):
             list(read_source(str(file)))
 
-    def test_sql_format_raises(self, tmp_path: Path) -> None:
+    def test_sql_format_routes_to_dump_reader(self, tmp_path: Path) -> None:
+        """A .sql file should now route to SQLDumpReader (no longer raises)."""
         file = tmp_path / "dump.sql"
-        file.write_text("SELECT 1")
+        file.write_text("-- just a comment\nSELECT 1;\n")
 
-        with pytest.raises(ValueError, match="SQL import requires"):
-            list(read_source(str(file)))
+        # No INSERT statements → yields zero docs, but doesn't raise
+        docs = list(read_source(str(file)))
+        assert len(docs) == 0

@@ -16,6 +16,8 @@ from elastro.core.ingest.readers import (
     CSVReader,
     NDJSONReader,
     JSONArrayReader,
+    SQLReader,
+    SQLDumpReader,
 )
 from elastro.core.ingest.validators import SchemaValidator, infer_mapping
 
@@ -26,6 +28,8 @@ __all__ = [
     "CSVReader",
     "NDJSONReader",
     "JSONArrayReader",
+    "SQLReader",
+    "SQLDumpReader",
     "SchemaValidator",
     "infer_mapping",
 ]
