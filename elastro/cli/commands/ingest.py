@@ -626,3 +626,309 @@ def validate_data(
     console.print(
         f"\n[dim]Mode: {mode} | {total} docs checked | {valid} valid, {invalid} invalid[/dim]"
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Pipeline subgroup
+# ---------------------------------------------------------------------------
+
+
+@ingest_group.group(name="pipeline")
+def pipeline_group() -> None:
+    """Manage Elasticsearch ingest pipelines.
+
+    Build, deploy, and manage ingest pipelines interactively
+    or from file definitions.
+    """
+    pass
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Pipeline Wizard
+# ---------------------------------------------------------------------------
+
+# Available processor types for the wizard
+_PROCESSOR_TYPES = [
+    ("grok", "Parse unstructured text with Grok patterns"),
+    ("date", "Parse and normalize timestamps"),
+    ("geoip", "Enrich IP addresses with geo data"),
+    ("convert", "Convert field types (string → int, etc.)"),
+    ("rename", "Rename fields"),
+    ("remove", "Remove fields"),
+    ("lowercase", "Convert field values to lowercase"),
+    ("uppercase", "Convert field values to uppercase"),
+    ("gsub", "Regex find-and-replace on field values"),
+    ("set", "Set a field to a static or template value"),
+    ("redact", "Redact PII patterns from fields"),
+    ("dissect", "Delimiter-based field extraction"),
+    ("script", "Custom Painless script"),
+]
+
+
+@pipeline_group.command(name="wizard")
+@click.pass_obj
+def pipeline_wizard(client: ElasticsearchClient) -> None:
+    """Interactively build and deploy an Elasticsearch ingest pipeline.
+
+    Walks through processor selection and configuration, previews
+    the resulting JSON, and optionally deploys to the cluster.
+
+    Example:
+
+    ```bash
+    elastro ingest pipeline wizard
+    ```
+    """
+    from rich.prompt import Confirm, IntPrompt, Prompt
+
+    from elastro.core.ingest.pipeline_builder import IngestPipelineBuilder
+
+    console = Console()
+    console.print(
+        Panel.fit(
+            "[bold cyan]Elastro Ingest Pipeline Builder[/bold cyan]\n"
+            "Build a production-ready ingest pipeline interactively.",
+            border_style="cyan",
+        )
+    )
+
+    # --- Step 1: Pipeline metadata ---
+    pipeline_id = Prompt.ask("\n[bold]1. Pipeline ID[/bold]", default="my-pipeline")
+    desc = Prompt.ask("[bold]2. Description[/bold]", default="")
+
+    builder = IngestPipelineBuilder(pipeline_id)
+    if desc:
+        builder.description(desc)
+
+    # --- Step 2: Select processors ---
+    console.print("\n[bold]3. Select processors to add:[/bold]")
+    for i, (name, description) in enumerate(_PROCESSOR_TYPES, 1):
+        console.print(f"   {i:2d}. [cyan]{name:<12}[/cyan] — {description}")
+
+    selected_input = Prompt.ask(
+        "\n   Enter processor numbers (comma-separated)",
+        default="1",
+    )
+    selected_indices: list[int] = []
+    for part in selected_input.split(","):
+        part = part.strip()
+        if part.isdigit():
+            idx = int(part) - 1
+            if 0 <= idx < len(_PROCESSOR_TYPES):
+                selected_indices.append(idx)
+
+    if not selected_indices:
+        console.print("[yellow]No processors selected. Aborting.[/yellow]")
+        return
+
+    selected_processors = [_PROCESSOR_TYPES[i] for i in selected_indices]
+    console.print(
+        f"\n   [green]✓ Selected:[/green] "
+        + ", ".join(p[0] for p in selected_processors)
+    )
+
+    # --- Step 3: Configure each processor ---
+    for proc_name, proc_desc in selected_processors:
+        console.print(f"\n[bold]Configure [cyan]{proc_name}[/cyan]:[/bold]")
+        _configure_processor(builder, proc_name, console)
+
+    # --- Step 4: On-failure handler ---
+    if Confirm.ask(
+        "\n[bold]4. Add on_failure handler?[/bold] (route errors to a DLQ index)",
+        default=False,
+    ):
+        dlq_index = Prompt.ask(
+            "   Dead-letter index name", default=f"failed-{pipeline_id}"
+        )
+        builder.on_failure(dlq_index)
+        console.print(f"   [green]✓ On-failure → {dlq_index}[/green]")
+
+    # --- Step 5: Preview ---
+    pipeline_json = builder.build()
+    json_str = json.dumps(pipeline_json, indent=2)
+    console.print("\n[bold]5. Pipeline Preview:[/bold]")
+    console.print(Syntax(json_str, "json", theme="monokai"))
+    console.print(f"\n[dim]{builder.processor_count} processor(s) configured[/dim]")
+
+    # --- Step 6: Deploy ---
+    if Confirm.ask(
+        f"\n[bold]Deploy pipeline '{pipeline_id}' to cluster?[/bold]",
+        default=False,
+    ):
+        try:
+            builder.deploy(client, pipeline_id=pipeline_id)
+            console.print(
+                f"\n[bold green]✓ Pipeline '{pipeline_id}' deployed "
+                f"successfully![/bold green]"
+            )
+        except Exception as e:
+            console.print(f"\n[bold red]Deploy failed:[/bold red] {e}")
+    else:
+        # Offer to save to file
+        if Confirm.ask("Save pipeline JSON to file?", default=True):
+            output_path = Prompt.ask("   Output file", default=f"{pipeline_id}.json")
+            Path(output_path).write_text(json_str, encoding="utf-8")
+            console.print(f"   [green]✓ Saved to {output_path}[/green]")
+
+
+def _configure_processor(
+    builder: Any,
+    proc_name: str,
+    console: Console,
+) -> None:
+    """Prompt the user for processor-specific configuration."""
+    from rich.prompt import Prompt
+
+    if proc_name == "grok":
+        field = Prompt.ask("   Field to parse", default="message")
+        pattern = Prompt.ask("   Grok pattern", default="%{COMBINEDAPACHELOG}")
+        builder.grok(field, [pattern])
+
+    elif proc_name == "date":
+        field = Prompt.ask("   Source field", default="timestamp")
+        fmt = Prompt.ask("   Date format", default="dd/MMM/yyyy:HH:mm:ss Z")
+        target = Prompt.ask("   Target field", default="@timestamp")
+        builder.date(field, [fmt], target_field=target)
+
+    elif proc_name == "geoip":
+        field = Prompt.ask("   IP address field", default="clientip")
+        builder.geoip(field)
+
+    elif proc_name == "convert":
+        field = Prompt.ask("   Field to convert", default="status_code")
+        target_type = Prompt.ask(
+            "   Target type",
+            default="integer",
+        )
+        builder.convert(field, target_type)
+
+    elif proc_name == "rename":
+        field = Prompt.ask("   Source field")
+        target = Prompt.ask("   Target field name")
+        builder.rename(field, target)
+
+    elif proc_name == "remove":
+        field = Prompt.ask("   Field to remove")
+        builder.remove(field, ignore_missing=True)
+
+    elif proc_name == "lowercase":
+        field = Prompt.ask("   Field to lowercase")
+        builder.lowercase(field)
+
+    elif proc_name == "uppercase":
+        field = Prompt.ask("   Field to uppercase")
+        builder.uppercase(field)
+
+    elif proc_name == "gsub":
+        field = Prompt.ask("   Field")
+        pattern = Prompt.ask("   Regex pattern")
+        replacement = Prompt.ask("   Replacement string")
+        builder.gsub(field, pattern, replacement)
+
+    elif proc_name == "set":
+        field = Prompt.ask("   Field name")
+        value = Prompt.ask("   Value (static or {{template}})")
+        builder.set_field(field, value)
+
+    elif proc_name == "redact":
+        field = Prompt.ask("   Field to redact", default="message")
+        pattern = Prompt.ask(
+            "   Grok redaction pattern", default="%{EMAILADDRESS:REDACTED}"
+        )
+        builder.redact(field, [pattern])
+
+    elif proc_name == "dissect":
+        field = Prompt.ask("   Field to parse", default="message")
+        pattern = Prompt.ask("   Dissect pattern")
+        builder.dissect(field, pattern)
+
+    elif proc_name == "script":
+        source = Prompt.ask("   Painless script source")
+        builder.script(source)
+
+    console.print(f"   [green]✓ {proc_name} configured[/green]")
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Pipeline create / delete
+# ---------------------------------------------------------------------------
+
+
+@pipeline_group.command(name="create", no_args_is_help=True)
+@click.argument("pipeline_id", type=str)
+@click.option(
+    "--file",
+    "-f",
+    "pipeline_file",
+    type=click.File("r"),
+    required=True,
+    help="Path to pipeline definition JSON file",
+)
+@click.pass_obj
+def pipeline_create(
+    client: ElasticsearchClient,
+    pipeline_id: str,
+    pipeline_file: Any,
+) -> None:
+    """Deploy an ingest pipeline from a JSON file.
+
+    Example:
+
+    ```bash
+    elastro ingest pipeline create web-logs --file ./pipeline.json
+    ```
+    """
+    console = Console()
+    try:
+        body = json.load(pipeline_file)
+        es = client.client
+        es.ingest.put_pipeline(id=pipeline_id, body=body)
+        proc_count = len(body.get("processors", []))
+        console.print(
+            f"[bold green]✓ Pipeline '{pipeline_id}' deployed "
+            f"({proc_count} processors)[/bold green]"
+        )
+    except json.JSONDecodeError:
+        console.print("[bold red]Error:[/bold red] File is not valid JSON.")
+        raise SystemExit(1)
+    except Exception as e:
+        console.print(f"[bold red]Error deploying pipeline:[/bold red] {e}")
+        raise SystemExit(1)
+
+
+@pipeline_group.command(name="delete", no_args_is_help=True)
+@click.argument("pipeline_id", type=str)
+@click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompt")
+@click.pass_obj
+def pipeline_delete(
+    client: ElasticsearchClient,
+    pipeline_id: str,
+    yes: bool,
+) -> None:
+    """Delete an ingest pipeline.
+
+    Example:
+
+    ```bash
+    elastro ingest pipeline delete web-logs
+    ```
+    """
+    from rich.prompt import Confirm
+
+    console = Console()
+
+    if not yes:
+        if not Confirm.ask(
+            f"Delete pipeline [bold red]{pipeline_id}[/bold red]?",
+            default=False,
+        ):
+            console.print("[dim]Aborted.[/dim]")
+            return
+
+    try:
+        es = client.client
+        es.ingest.delete_pipeline(id=pipeline_id)
+        console.print(f"[bold green]✓ Pipeline '{pipeline_id}' deleted[/bold green]")
+    except Exception as e:
+        console.print(f"[bold red]Error:[/bold red] {e}")
+        raise SystemExit(1)
