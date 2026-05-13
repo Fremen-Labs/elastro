@@ -111,6 +111,7 @@ from elastro.cli.commands.painless_commands import painless_group
 from elastro.cli.commands.telemetry import telemetry_group
 from elastro.cli.commands.memory import memory_group
 from elastro.cli.commands.tools import tools_group
+from elastro.cli.commands.esql import esql_group
 
 # Register Top-Level Groups
 
@@ -294,6 +295,7 @@ cli.add_command(tools_group)
 cli.add_command(gui)
 cli.add_command(rag_group)
 cli.add_command(daemon_group)
+cli.add_command(esql_group)
 
 
 def main() -> None:
