@@ -110,6 +110,20 @@ To run both unit and integration tests:
 ./run_tests.sh --all
 ```
 
+### Ingest Stress Tests
+
+The `tests/integration/ingest_stress/` directory contains standalone python scripts used to profile, evaluate, and stress-test the `elastro ingest` CLI capabilities using various edge-case datasets (clean/dirty CSV, JSON, NDJSON, and SQL files).
+
+To run the ingest evaluation script (which also regenerates the test data):
+```bash
+python3 tests/integration/ingest_stress/ingest_evaluator.py
+```
+
+To run the full ingest stress tester pipeline:
+```bash
+python3 tests/integration/ingest_stress/stress_tester.py
+```
+
 ### Running Specific Tests
 
 To run specific test files or directories manually:

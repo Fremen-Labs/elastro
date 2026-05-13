@@ -1,0 +1,4 @@
+{"id": 1, "name": "Alice", "tags": ["a", "b"]}
+{"id": 2}
+{"id": 3, "name": "Charlie", "tags": "not_an_array_anymore"}
+{"id": 4, "broken_json": unquoted_value}
