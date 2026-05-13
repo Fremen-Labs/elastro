@@ -1,0 +1,1 @@
+[{"id": 1, "name": "Alice", "settings": {"theme": "dark", "notifications": true}, "roles": ["admin", "user"]}, {"id": 2, "name": "Bob", "settings": null, "roles": []}, {"id": "3_str", "name": 12345}, {"id": 4, "deep": {"nested": {"array": [1, 2, {"three": 3}]}}}]

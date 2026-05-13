@@ -7,8 +7,8 @@ import time
 from pathlib import Path
 
 # Paths
-WORKSPACE = Path("/Users/jonathandoughty/clients/fremenlabs/elastic/elastro")
-SCRATCH = WORKSPACE / "scratch"
+WORKSPACE = Path(__file__).parent.parent.parent.parent
+DATA_DIR = WORKSPACE / "tests" / "integration" / "ingest_stress" / "data"
 ELASTRO_BIN = WORKSPACE / ".venv" / "bin" / "elastro"
 
 
@@ -17,7 +17,7 @@ def generate_data():
     print("Generating stress test data...")
 
     # 1. large.csv
-    csv_path = SCRATCH / "large.csv"
+    csv_path = DATA_DIR / "large.csv"
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["id", "name", "value", "timestamp", "active"])
@@ -33,7 +33,7 @@ def generate_data():
             )
 
     # 2. large.ndjson
-    ndjson_path = SCRATCH / "large.ndjson"
+    ndjson_path = DATA_DIR / "large.ndjson"
     with open(ndjson_path, "w") as f:
         for i in range(50000):
             f.write(
@@ -44,7 +44,7 @@ def generate_data():
             )
 
     # 3. large.json (JSON Array)
-    json_path = SCRATCH / "large.json"
+    json_path = DATA_DIR / "large.json"
     with open(json_path, "w") as f:
         f.write("[\n")
         for i in range(20000):
@@ -56,7 +56,7 @@ def generate_data():
         f.write("]\n")
 
     # 4. anomalous.csv
-    anom_path = SCRATCH / "anomalous.csv"
+    anom_path = DATA_DIR / "anomalous.csv"
     with open(anom_path, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["id", "email", "ssn", "age"])
@@ -76,7 +76,7 @@ def generate_data():
                 )
 
     # 5. sample_logs.txt
-    logs_path = SCRATCH / "sample_logs.txt"
+    logs_path = DATA_DIR / "sample_logs.txt"
     with open(logs_path, "w") as f:
         f.write(
             '192.168.1.100 - user1 [12/May/2026:10:00:00 +0000] "GET /api/v1/status HTTP/1.1" 200 1234\n'
@@ -86,7 +86,7 @@ def generate_data():
         )
 
     # 6. pipeline_def.json
-    pipe_path = SCRATCH / "pipeline_def.json"
+    pipe_path = DATA_DIR / "pipeline_def.json"
     with open(pipe_path, "w") as f:
         json.dump(
             {
@@ -127,7 +127,7 @@ def stress_test():
                 str(ELASTRO_BIN),
                 "ingest",
                 "import",
-                str(SCRATCH / "large.csv"),
+                str(DATA_DIR / "large.csv"),
                 "--index",
                 f"{idx}-csv",
             ],
@@ -138,7 +138,7 @@ def stress_test():
                 str(ELASTRO_BIN),
                 "ingest",
                 "import",
-                str(SCRATCH / "large.ndjson"),
+                str(DATA_DIR / "large.ndjson"),
                 "--index",
                 f"{idx}-ndjson",
             ],
@@ -149,35 +149,36 @@ def stress_test():
                 str(ELASTRO_BIN),
                 "ingest",
                 "import",
-                str(SCRATCH / "large.json"),
+                str(DATA_DIR / "large.json"),
                 "--index",
                 f"{idx}-json",
             ],
         ),
         (
             "Auto-map anomalous",
-            [str(ELASTRO_BIN), "ingest", "auto-map", str(SCRATCH / "anomalous.csv")],
+            [str(ELASTRO_BIN), "ingest", "auto-map", str(DATA_DIR / "anomalous.csv")],
         ),
         (
             "Profile anomalous",
-            [str(ELASTRO_BIN), "ingest", "profile", str(SCRATCH / "anomalous.csv")],
+            [str(ELASTRO_BIN), "ingest", "profile", str(DATA_DIR / "anomalous.csv")],
         ),
         (
-            "Validate anomalous",
-            [str(ELASTRO_BIN), "ingest", "validate", str(SCRATCH / "anomalous.csv")],
+            "Validate anomalous (no index)",
+            [str(ELASTRO_BIN), "ingest", "validate", str(DATA_DIR / "anomalous.csv")],
         ),
         (
-            "Import with DLQ",
+            "Import with DLQ and PII redaction",
             [
                 str(ELASTRO_BIN),
                 "ingest",
                 "import",
-                str(SCRATCH / "anomalous.csv"),
+                str(DATA_DIR / "anomalous.csv"),
                 "--index",
                 f"{idx}-dlq",
                 "--validate",
                 "--dlq",
-                str(SCRATCH / "dlq.json"),
+                str(DATA_DIR / "dlq.json"),
+                "--redact-pii",
             ],
         ),
         (
@@ -187,7 +188,7 @@ def stress_test():
                 "ingest",
                 "grok-builder",
                 "--file",
-                str(SCRATCH / "sample_logs.txt"),
+                str(DATA_DIR / "sample_logs.txt"),
             ],
         ),
         (
@@ -199,7 +200,7 @@ def stress_test():
                 "create",
                 f"{idx}-pipe",
                 "--file",
-                str(SCRATCH / "pipeline_def.json"),
+                str(DATA_DIR / "pipeline_def.json"),
             ],
         ),
         (
@@ -214,6 +215,13 @@ def stress_test():
 
         ret, out, err, elapsed = run_cmd(cmd, input_data)
         print(f"[{name}] Code: {ret}, Time: {elapsed:.2f}s")
+        
+        # Expected failure for wizard due to TTY guard
+        if "wizard" in name:
+            if ret != 1 or "interactive terminal" not in out + err:
+                issues.append(f"{name} did not abort correctly as a non-TTY process. Exit code: {ret}")
+            continue
+
         if ret != 0:
             print(f"ERROR OUTPUT:\n{err}\n{out}\n")
             issues.append(
@@ -226,11 +234,11 @@ def stress_test():
                 )
 
         # Check specific things
-        if name == "Import with DLQ":
-            if not (SCRATCH / "dlq.json").exists():
+        if name == "Import with DLQ and PII redaction":
+            if not (DATA_DIR / "dlq.json").exists():
                 issues.append("DLQ file was not created during 'Import with DLQ'.")
             else:
-                sz = os.path.getsize(SCRATCH / "dlq.json")
+                sz = os.path.getsize(DATA_DIR / "dlq.json")
                 if sz == 0:
                     issues.append("DLQ file was created but is empty.")
 

@@ -1,0 +1,5 @@
+id,name,tags,metadata,score,active
+1,Alice,"admin,user","{""login"": ""2023""}",99.5,true
+2,Bob,,,"invalid_score",false
+3,"Charlie, Jr.",, ,,
+4,Dave,"guest",,0,
