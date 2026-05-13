@@ -23,16 +23,14 @@ from elastro.core.logger import get_logger
 logger = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
-# PII detection patterns (deterministic — no AI required)
+# PII detection patterns — imported from the canonical sanitizers registry
+# to keep profiling and redaction in sync across HIPAA + Financial patterns.
 # ---------------------------------------------------------------------------
 
-PII_PATTERNS = {
-    "email": re.compile(r"\b[\w.+-]+@[\w.-]+\.\w{2,}\b"),
-    "ssn": re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),
-    "phone_us": re.compile(r"\b(?:\+1[-.]?)?\(?\d{3}\)?[-.]?\d{3}[-.]?\d{4}\b"),
-    "credit_card": re.compile(r"\b(?:\d[ -]*?){13,19}\b"),
-    "ipv4": re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b"),
-}
+from elastro.core.ingest.sanitizers import (
+    PII_PATTERNS,
+    SENSITIVE_FIELD_NAMES,
+)
 
 # ---------------------------------------------------------------------------
 # Type inference heuristics
@@ -281,15 +279,32 @@ def profile_data(
 
         es_type = _infer_field_type(values)
 
-        # PII risk check
+        # PII risk check — value-based regex detection
         pii_risk = "NONE"
-        if non_null:
+        _HIGH_CONFIDENCE_PII = frozenset(
+            {
+                "email",
+                "ssn",
+                "credit_card",
+                "dob",
+                "npi",
+                "dea_number",
+                "iban",
+                "tax_id_ein",
+            }
+        )
+
+        # 1. Field-name heuristic (HIPAA/Financial identifiers with no
+        #    standard format — MRN, beneficiary, device serial, etc.)
+        if field.lower() in SENSITIVE_FIELD_NAMES:
+            pii_risk = "PHI"
+            pii_risk_count += 1
+        elif non_null:
+            # 2. Regex-based value scanning
             sample_str = " ".join(str(v) for v in non_null[:100])
             for pii_name, pattern in PII_PATTERNS.items():
                 if pattern.search(sample_str):
-                    pii_risk = (
-                        "PII" if pii_name in ("email", "ssn", "credit_card") else "HIGH"
-                    )
+                    pii_risk = "PII" if pii_name in _HIGH_CONFIDENCE_PII else "HIGH"
                     pii_risk_count += 1
                     break
 

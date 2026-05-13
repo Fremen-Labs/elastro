@@ -219,7 +219,13 @@ def _display_result(console: Console, result: Any) -> None:
 @click.option(
     "--redact-pii",
     is_flag=True,
-    help="Enable client-side PII redaction (email, SSN, phone, CC, IP)",
+    help="Enable client-side PII redaction (HIPAA + Financial patterns)",
+)
+@click.option(
+    "--compliance",
+    type=click.Choice(["hipaa", "pci", "financial", "all"], case_sensitive=False),
+    default=None,
+    help="Compliance profile selecting a curated subset of redaction patterns",
 )
 @click.option(
     "--dedup",
@@ -237,6 +243,11 @@ def _display_result(console: Console, result: Any) -> None:
     type=str,
     default=None,
     help="Comma-separated field names to mask with '******' (e.g. 'password,token')",
+)
+@click.option(
+    "--mask-sensitive-fields",
+    is_flag=True,
+    help="Auto-mask fields matching HIPAA/Financial name heuristics (MRN, beneficiary, bank_account, etc.)",
 )
 @click.pass_obj
 def import_data(
@@ -256,9 +267,11 @@ def import_data(
     sql_query: Optional[str],
     dsn: Optional[str],
     redact_pii: bool,
+    compliance: Optional[str],
     dedup: bool,
     filter_fields: Optional[str],
     mask_fields: Optional[str],
+    mask_sensitive_fields: bool,
 ) -> None:
     """
     Import data from CSV, NDJSON, JSON, or SQL into Elasticsearch.
@@ -306,11 +319,19 @@ def import_data(
 
     # Build sanitization chain if any sanitization flags are set
     sanitizer = None
-    if redact_pii or dedup or filter_fields or mask_fields:
+    if (
+        redact_pii
+        or compliance
+        or dedup
+        or filter_fields
+        or mask_fields
+        or mask_sensitive_fields
+    ):
         from elastro.core.ingest.sanitizers import SanitizationChain
 
         sanitizer = SanitizationChain(
             redact_pii=redact_pii,
+            compliance=compliance,
             dedup=dedup,
             allow_fields=(
                 [f.strip() for f in filter_fields.split(",")] if filter_fields else None
@@ -318,6 +339,7 @@ def import_data(
             mask_fields=(
                 [f.strip() for f in mask_fields.split(",")] if mask_fields else None
             ),
+            mask_sensitive_fields=mask_sensitive_fields,
         )
 
     # SQL live import mode
@@ -346,7 +368,9 @@ def import_data(
         sanitize_info = ""
         if sanitizer:
             flags = []
-            if redact_pii:
+            if compliance:
+                flags.append(f"{compliance.upper()} compliance")
+            elif redact_pii:
                 flags.append("PII redaction")
             if dedup:
                 flags.append("dedup")
@@ -354,6 +378,8 @@ def import_data(
                 flags.append(f"filter({filter_fields})")
             if mask_fields:
                 flags.append(f"mask({mask_fields})")
+            if mask_sensitive_fields:
+                flags.append("auto-mask sensitive fields")
             sanitize_info = f"\nSanitize: [yellow]{', '.join(flags)}[/yellow]"
 
         console.print(
