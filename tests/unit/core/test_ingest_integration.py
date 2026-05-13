@@ -180,10 +180,8 @@ class TestMalformedJSON:
 
 class TestLargeJSON:
     def test_large_json_falls_back_without_ijson(self, tmp_path: Path) -> None:
-        """Without ijson installed, large files should still load via stdlib fallback."""
+        """Without ijson, large files should raise RuntimeError to prevent OOM."""
         json_file = tmp_path / "big.json"
-        # Create a file that would normally trigger streaming
-        # (won't actually be 50MB, but we can test the threshold logic)
         data = [{"id": i, "value": f"item_{i}"} for i in range(100)]
         json_file.write_text(json.dumps(data))
 
@@ -191,9 +189,10 @@ class TestLargeJSON:
         # Force the threshold to 0 to trigger streaming path
         reader.MAX_SIMPLE_BYTES = 0
 
-        docs = list(reader.read())
-        # Should succeed via fallback or ijson
-        assert len(docs) == 100
+        import pytest
+
+        with pytest.raises(RuntimeError, match="ijson"):
+            list(reader.read())
 
 
 # ---------------------------------------------------------------------------

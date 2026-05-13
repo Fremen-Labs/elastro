@@ -80,6 +80,7 @@ class IngestEngine(BaseManager):
         refresh: bool = False,
         progress_callback: Optional[Callable[[int, int, int], None]] = None,
         docs_override: Optional[Generator[Dict[str, Any], None, None]] = None,
+        sanitizer: Optional[Any] = None,
     ) -> IngestResult:
         """
         Ingest data from a file source into an Elasticsearch index.
@@ -107,6 +108,10 @@ class IngestEngine(BaseManager):
                 provided, ``source`` and ``format`` are ignored and
                 documents are read directly from this generator. Useful
                 for SQL live database imports via ``SQLReader``.
+            sanitizer: Optional :class:`SanitizationChain` instance.
+                When provided, each document is passed through the
+                sanitization pipeline before validation and indexing.
+                Documents flagged as duplicates are skipped.
 
         Returns:
             IngestResult with operation statistics.
@@ -161,6 +166,13 @@ class IngestEngine(BaseManager):
 
             for doc in docs:
                 result.total_read += 1
+
+                # Sanitize (PII, dedup, field filtering, masking)
+                if sanitizer:
+                    keep, doc = sanitizer.sanitize(doc)
+                    if not keep:
+                        result.total_skipped += 1
+                        continue
 
                 # Validate + coerce
                 if validator:

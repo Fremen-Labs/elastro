@@ -216,6 +216,28 @@ def _display_result(console: Console, result: Any) -> None:
     default=None,
     help="Database connection string (e.g. postgresql://user:pass@host/db)",
 )
+@click.option(
+    "--redact-pii",
+    is_flag=True,
+    help="Enable client-side PII redaction (email, SSN, phone, CC, IP)",
+)
+@click.option(
+    "--dedup",
+    is_flag=True,
+    help="Enable client-side content deduplication via SHA-256 hashing",
+)
+@click.option(
+    "--filter-fields",
+    type=str,
+    default=None,
+    help="Comma-separated allowlist of fields to keep (e.g. 'name,email,age')",
+)
+@click.option(
+    "--mask-fields",
+    type=str,
+    default=None,
+    help="Comma-separated field names to mask with '******' (e.g. 'password,token')",
+)
 @click.pass_obj
 def import_data(
     client: ElasticsearchClient,
@@ -233,6 +255,10 @@ def import_data(
     refresh: bool,
     sql_query: Optional[str],
     dsn: Optional[str],
+    redact_pii: bool,
+    dedup: bool,
+    filter_fields: Optional[str],
+    mask_fields: Optional[str],
 ) -> None:
     """
     Import data from CSV, NDJSON, JSON, or SQL into Elasticsearch.
@@ -278,6 +304,22 @@ def import_data(
     engine = IngestEngine(client)
     docs_override = None
 
+    # Build sanitization chain if any sanitization flags are set
+    sanitizer = None
+    if redact_pii or dedup or filter_fields or mask_fields:
+        from elastro.core.ingest.sanitizers import SanitizationChain
+
+        sanitizer = SanitizationChain(
+            redact_pii=redact_pii,
+            dedup=dedup,
+            allow_fields=(
+                [f.strip() for f in filter_fields.split(",")] if filter_fields else None
+            ),
+            mask_fields=(
+                [f.strip() for f in mask_fields.split(",")] if mask_fields else None
+            ),
+        )
+
     # SQL live import mode
     if sql_query:
         if not dsn:
@@ -301,12 +343,26 @@ def import_data(
             )
         )
     else:
+        sanitize_info = ""
+        if sanitizer:
+            flags = []
+            if redact_pii:
+                flags.append("PII redaction")
+            if dedup:
+                flags.append("dedup")
+            if filter_fields:
+                flags.append(f"filter({filter_fields})")
+            if mask_fields:
+                flags.append(f"mask({mask_fields})")
+            sanitize_info = f"\nSanitize: [yellow]{', '.join(flags)}[/yellow]"
+
         console.print(
             Panel.fit(
                 f"[bold cyan]Elastro Ingest Engine[/bold cyan]\n"
                 f"Source: [green]{source}[/green]\n"
                 f"Target: [green]{index}[/green]\n"
-                f"Format: {fmt} | Batch: {batch_size} | Validate: {validate}",
+                f"Format: {fmt} | Batch: {batch_size} | Validate: {validate}"
+                + sanitize_info,
                 border_style="cyan",
             )
         )
@@ -319,6 +375,14 @@ def import_data(
         console=console,
     ) as progress:
         task = progress.add_task("Ingesting...", total=None)
+
+        # Wrap the document stream with sanitization if configured
+        def _apply_sanitization(docs: Any, chain: Any) -> Any:
+            """Yield sanitized documents, skipping duplicates."""
+            for doc in docs:
+                keep, cleaned = chain.sanitize(doc)
+                if keep:
+                    yield cleaned
 
         result = engine.ingest(
             source,
@@ -333,7 +397,12 @@ def import_data(
             strict=strict,
             dlq_path=dlq,
             refresh=refresh,
-            docs_override=docs_override,
+            docs_override=(
+                _apply_sanitization(docs_override, sanitizer)
+                if docs_override and sanitizer
+                else docs_override
+            ),
+            sanitizer=sanitizer,
         )
 
         progress.update(task, completed=result.total_read)
@@ -515,7 +584,13 @@ def auto_map(
 
 @ingest_group.command(name="validate", no_args_is_help=True)
 @click.argument("source", type=str)
-@click.option("--index", "-i", required=True, help="Target index to validate against")
+@click.option(
+    "--index",
+    "-i",
+    required=False,
+    default=None,
+    help="Target index to validate against (omit for auto-inferred schema)",
+)
 @click.option(
     "--format",
     "-f",
@@ -530,7 +605,7 @@ def auto_map(
 def validate_data(
     client: ElasticsearchClient,
     source: str,
-    index: str,
+    index: Optional[str],
     fmt: str,
     sample_size: int,
     strict: bool,
@@ -542,11 +617,19 @@ def validate_data(
     Fetches the mapping from the target index, validates sample documents,
     and reports any type mismatches or missing fields — without indexing.
 
+    If --index is omitted, automatically infers the schema from the first
+    batch of documents and validates the rest against that inferred mapping.
+
     Examples:
 
     Validate CSV against existing index:
     ```bash
     elastro ingest validate customers.csv --index customers
+    ```
+
+    Validate locally (no index needed):
+    ```bash
+    elastro ingest validate data.csv
     ```
 
     Strict validation (no coercion):
@@ -555,32 +638,55 @@ def validate_data(
     ```
     """
     from elastro.core.ingest.readers import read_source
-    from elastro.core.ingest.validators import SchemaValidator
+    from elastro.core.ingest.validators import SchemaValidator, infer_mapping
 
     console = Console()
+    props: dict[str, Any] = {}
 
-    # Fetch mapping from index
-    try:
-        es = client.client
-        idx_info = es.indices.get(index=index)
-        if hasattr(idx_info, "body"):
-            idx_info = idx_info.body
-        idx_data = idx_info.get(index, {})
-        props = idx_data.get("mappings", {}).get("properties", {})
+    if index:
+        # Fetch mapping from the live index
+        try:
+            es = client.client
+            idx_info = es.indices.get(index=index)
+            if hasattr(idx_info, "body"):
+                idx_info = idx_info.body
+            idx_data = idx_info.get(index, {})
+            props = idx_data.get("mappings", {}).get("properties", {})
+
+            if not props:
+                console.print(
+                    f"[yellow]No mapping found for index '{index}'. Skipping validation.[/yellow]"
+                )
+                return
+
+            console.print(
+                f"[bold cyan]Validating[/bold cyan] {source} against "
+                f"[green]{index}[/green] ({len(props)} mapped fields)\n"
+            )
+
+        except Exception as e:
+            console.print(f"[bold red]Error fetching mapping:[/bold red] {e}")
+            raise SystemExit(1)
+    else:
+        # No index provided — infer schema locally from the first N docs
+        console.print(
+            "[bold cyan]No --index provided.[/bold cyan] "
+            "Inferring schema from file...\n"
+        )
+        infer_docs = read_source(source, format=fmt, delimiter=delimiter)
+        mapping = infer_mapping(infer_docs, sample_size=min(sample_size, 200))
+        props = mapping.get("mappings", {}).get("properties", {})
 
         if not props:
             console.print(
-                f"[yellow]No mapping found for index '{index}'. Skipping validation.[/yellow]"
+                "[yellow]Could not infer any fields. File may be empty.[/yellow]"
             )
             return
 
         console.print(
-            f"[bold cyan]Validating[/bold cyan] {source} against [green]{index}[/green] ({len(props)} mapped fields)\n"
+            f"[bold cyan]Validating[/bold cyan] {source} against "
+            f"[green]auto-inferred schema[/green] ({len(props)} fields)\n"
         )
-
-    except Exception as e:
-        console.print(f"[bold red]Error fetching mapping:[/bold red] {e}")
-        raise SystemExit(1)
 
     validator = SchemaValidator(props, strict=strict)
     docs = read_source(source, format=fmt, delimiter=delimiter)
@@ -673,17 +779,33 @@ def pipeline_wizard(client: ElasticsearchClient) -> None:
     Walks through processor selection and configuration, previews
     the resulting JSON, and optionally deploys to the cluster.
 
+    Requires an interactive terminal (TTY). For automation, use
+    ``elastro ingest pipeline create --file pipeline.json`` instead.
+
     Example:
 
     ```bash
     elastro ingest pipeline wizard
     ```
     """
+    import sys
+
     from rich.prompt import Confirm, IntPrompt, Prompt
 
     from elastro.core.ingest.pipeline_builder import IngestPipelineBuilder
 
     console = Console()
+
+    # Guard: require interactive TTY
+    if not sys.stdin.isatty():
+        console.print(
+            "[bold red]Error:[/bold red] The pipeline wizard requires an "
+            "interactive terminal (TTY).\n"
+            "[dim]For CI/CD automation, use:[/dim] "
+            "[green]elastro ingest pipeline create --file pipeline.json[/green]"
+        )
+        raise SystemExit(1)
+
     console.print(
         Panel.fit(
             "[bold cyan]Elastro Ingest Pipeline Builder[/bold cyan]\n"

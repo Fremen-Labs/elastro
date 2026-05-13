@@ -182,10 +182,13 @@ class JSONArrayReader:
                 yield from self._read_streaming(path)
                 return
             except ImportError:
-                logger.warning(
-                    "Large JSON file detected but 'ijson' not installed. "
-                    "Loading entire file into memory. Install ijson for streaming: "
-                    "pip install ijson"
+                size_mb = size / (1024 * 1024)
+                raise RuntimeError(
+                    f"JSON file is {size_mb:.0f} MB which exceeds the "
+                    f"{self.MAX_SIMPLE_BYTES // (1024 * 1024)} MB streaming "
+                    f"threshold, but the 'ijson' package is not installed. "
+                    f"Loading this file into memory may cause an OOM crash. "
+                    f"Install ijson for safe streaming: pip install ijson"
                 )
 
         with open(path, "r", encoding=self.encoding) as fh:
