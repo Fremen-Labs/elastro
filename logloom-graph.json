@@ -1,0 +1,2768 @@
+{
+  "schema_version": "1",
+  "project": "logloom-project",
+  "built_at": "2026-05-14T19:43:43.113040+00:00",
+  "commit_sha": "3d079ebc9338c9e650de57595048c7754217197f",
+  "branch": "feature/logloom-integrate",
+  "nodes": {
+    "ll:6a15a823e56d": {
+      "node_id": "ll:6a15a823e56d",
+      "file": "elastro/advanced/scroll.py",
+      "module": "elastro.advanced.scroll",
+      "function": "scroll",
+      "level": "warning",
+      "message_template": "Failed to clear scroll context: {}",
+      "line": 81,
+      "semantic_tags": [
+        "error",
+        "warning"
+      ],
+      "lexical_parents": [
+        "scroll"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:a4c0d9ec92f2",
+        "ll:b6fa9f5437ea",
+        "ll:d552aae6abc4"
+      ]
+    },
+    "ll:b07d50f1ddd5": {
+      "node_id": "ll:b07d50f1ddd5",
+      "file": "elastro/core/datastream.py",
+      "module": "elastro.core.datastream",
+      "function": "delete",
+      "level": "warning",
+      "message_template": "Failed to delete associated template '{}': {}",
+      "line": 272,
+      "semantic_tags": [
+        "error",
+        "http",
+        "warning"
+      ],
+      "lexical_parents": [
+        "delete"
+      ],
+      "call_parents": [
+        "ll:5b3957bf3c54",
+        "ll:cb2f9c9c8b16"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:6c55b43c8209",
+        "ll:b6fa9f5437ea",
+        "ll:f0866f843076"
+      ]
+    },
+    "ll:a350860b8e97": {
+      "node_id": "ll:a350860b8e97",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "create",
+      "level": "error",
+      "message_template": "Invalid index settings for {}: {}",
+      "line": 58,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "create"
+      ],
+      "call_parents": [
+        "ll:58ba2f2df2f6",
+        "ll:623860d9a0ae",
+        "ll:6e92640d01d4",
+        "ll:7f67903fca20",
+        "ll:ddd6bd176a5c"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:fb72f24a5858": {
+      "node_id": "ll:fb72f24a5858",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "create",
+      "level": "error",
+      "message_template": "Invalid index mappings for {}: {}",
+      "line": 67,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "create"
+      ],
+      "call_parents": [
+        "ll:58ba2f2df2f6",
+        "ll:623860d9a0ae",
+        "ll:6e92640d01d4",
+        "ll:7f67903fca20",
+        "ll:ddd6bd176a5c"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:f82218810b47": {
+      "node_id": "ll:f82218810b47",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "create",
+      "level": "info",
+      "message_template": "Creating index '{}'...",
+      "line": 71,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "create"
+      ],
+      "call_parents": [
+        "ll:58ba2f2df2f6",
+        "ll:623860d9a0ae",
+        "ll:6e92640d01d4",
+        "ll:7f67903fca20",
+        "ll:ddd6bd176a5c"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:347b9c66e298": {
+      "node_id": "ll:347b9c66e298",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "create",
+      "level": "info",
+      "message_template": "Index '{}' created successfully",
+      "line": 74,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "create"
+      ],
+      "call_parents": [
+        "ll:58ba2f2df2f6",
+        "ll:623860d9a0ae",
+        "ll:6e92640d01d4",
+        "ll:7f67903fca20",
+        "ll:ddd6bd176a5c"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:6c3526258523": {
+      "node_id": "ll:6c3526258523",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "create",
+      "level": "error",
+      "message_template": "Failed to create index '{}': {}",
+      "line": 77,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "create"
+      ],
+      "call_parents": [
+        "ll:58ba2f2df2f6",
+        "ll:623860d9a0ae",
+        "ll:6e92640d01d4",
+        "ll:7f67903fca20",
+        "ll:ddd6bd176a5c"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:f0866f843076": {
+      "node_id": "ll:f0866f843076",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "exists",
+      "level": "debug",
+      "message_template": "Index '{}' exists: {}",
+      "line": 97,
+      "semantic_tags": [
+        "debug"
+      ],
+      "lexical_parents": [
+        "exists"
+      ],
+      "call_parents": [
+        "ll:02e8b3ef5665",
+        "ll:04fcdf4dbfe8",
+        "ll:106dcd8c7906",
+        "ll:2709b64cc7ee",
+        "ll:486063fe9810",
+        "ll:532dd98042e4",
+        "ll:54ee74d47ee2",
+        "ll:58ba2f2df2f6",
+        "ll:6102718f1847",
+        "ll:623860d9a0ae",
+        "ll:6976b1653f71",
+        "ll:7beb2ba59448",
+        "ll:7f67903fca20",
+        "ll:936e7f8b93c6",
+        "ll:96cfef2415d2",
+        "ll:a504067c4e4e",
+        "ll:b07d50f1ddd5",
+        "ll:b6fa9f5437ea",
+        "ll:d2f5d85484cb",
+        "ll:d5c03de10752",
+        "ll:e93288a908a4"
+      ],
+      "call_children": []
+    },
+    "ll:6c55b43c8209": {
+      "node_id": "ll:6c55b43c8209",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "exists",
+      "level": "error",
+      "message_template": "Failed to check if index '{}' exists: {}",
+      "line": 103,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "exists"
+      ],
+      "call_parents": [
+        "ll:02e8b3ef5665",
+        "ll:04fcdf4dbfe8",
+        "ll:106dcd8c7906",
+        "ll:2709b64cc7ee",
+        "ll:486063fe9810",
+        "ll:532dd98042e4",
+        "ll:54ee74d47ee2",
+        "ll:58ba2f2df2f6",
+        "ll:6102718f1847",
+        "ll:623860d9a0ae",
+        "ll:6976b1653f71",
+        "ll:7beb2ba59448",
+        "ll:7f67903fca20",
+        "ll:936e7f8b93c6",
+        "ll:96cfef2415d2",
+        "ll:a504067c4e4e",
+        "ll:b07d50f1ddd5",
+        "ll:b6fa9f5437ea",
+        "ll:d2f5d85484cb",
+        "ll:d5c03de10752",
+        "ll:e93288a908a4"
+      ],
+      "call_children": []
+    },
+    "ll:b6fa9f5437ea": {
+      "node_id": "ll:b6fa9f5437ea",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "get",
+      "level": "error",
+      "message_template": "Failed to get index '{}': {}",
+      "line": 131,
+      "semantic_tags": [
+        "error",
+        "http"
+      ],
+      "lexical_parents": [
+        "get"
+      ],
+      "call_parents": [
+        "ll:02e8b3ef5665",
+        "ll:04bd9ca1a046",
+        "ll:04fcdf4dbfe8",
+        "ll:106dcd8c7906",
+        "ll:116d2fc542fb",
+        "ll:186cc5279bc8",
+        "ll:18ca8ecdf715",
+        "ll:1e5e5c1a1b77",
+        "ll:1f4a92aaf349",
+        "ll:269eac1ddae3",
+        "ll:2a50f281d446",
+        "ll:2d11189e8b3e",
+        "ll:2f32df49a6f1",
+        "ll:311f4ee0a42a",
+        "ll:347b9c66e298",
+        "ll:35f6d2ac57dc",
+        "ll:369e6a8d503e",
+        "ll:3c3f2f4dc6a1",
+        "ll:40accf9d9745",
+        "ll:416a6171f8c5",
+        "ll:46aa1af9a697",
+        "ll:46d1fc6ba5ba",
+        "ll:486063fe9810",
+        "ll:4a4472ef78b4",
+        "ll:4aa4882295bb",
+        "ll:4b6899dd50d3",
+        "ll:532dd98042e4",
+        "ll:5b3957bf3c54",
+        "ll:64ba40ddf536",
+        "ll:6a15a823e56d",
+        "ll:6c3526258523",
+        "ll:6e92640d01d4",
+        "ll:748d806d2c96",
+        "ll:771ea31c4bb4",
+        "ll:7cd927a31dbd",
+        "ll:7e97dae45af1",
+        "ll:7ea0514f816f",
+        "ll:7fca919ec8da",
+        "ll:827c4ea39bdb",
+        "ll:89b9a61ebf74",
+        "ll:89b9a61ebf74:08dd",
+        "ll:8ad05c1de787",
+        "ll:90bba50d296a",
+        "ll:96cfef2415d2",
+        "ll:a350860b8e97",
+        "ll:a504067c4e4e",
+        "ll:ac3ee5cb0a5a",
+        "ll:ad55e51afd04",
+        "ll:b07d50f1ddd5",
+        "ll:b4f897862c9b",
+        "ll:b6b6a0eec29d",
+        "ll:bad42099322e",
+        "ll:bd1ddc28dee9",
+        "ll:c4134da37e54",
+        "ll:ca94fb71f250",
+        "ll:cb2f9c9c8b16",
+        "ll:d2f5d85484cb",
+        "ll:d5c03de10752",
+        "ll:d85a61073a34",
+        "ll:ddd6bd176a5c",
+        "ll:de8e187feefb",
+        "ll:e075c1163938",
+        "ll:e3a8b0266796",
+        "ll:e5948d0cb703",
+        "ll:e96e3a94826f",
+        "ll:ebae77522bde",
+        "ll:f82218810b47",
+        "ll:f9559659efe2",
+        "ll:fb72f24a5858",
+        "ll:fc1ac9cf4a7f"
+      ],
+      "call_children": [
+        "ll:6c55b43c8209",
+        "ll:f0866f843076"
+      ]
+    },
+    "ll:106dcd8c7906": {
+      "node_id": "ll:106dcd8c7906",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "update",
+      "level": "error",
+      "message_template": "Invalid index settings for {}: {}",
+      "line": 154,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "update"
+      ],
+      "call_parents": [
+        "ll:35f6d2ac57dc",
+        "ll:8ad05c1de787",
+        "ll:bd1ddc28dee9"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:28df878bad57",
+        "ll:6c55b43c8209",
+        "ll:9c912b4a2995",
+        "ll:b6fa9f5437ea",
+        "ll:f0866f843076"
+      ]
+    },
+    "ll:532dd98042e4": {
+      "node_id": "ll:532dd98042e4",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "update",
+      "level": "info",
+      "message_template": "Updating settings for index '{}'",
+      "line": 161,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "update"
+      ],
+      "call_parents": [
+        "ll:35f6d2ac57dc",
+        "ll:8ad05c1de787",
+        "ll:bd1ddc28dee9"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:28df878bad57",
+        "ll:6c55b43c8209",
+        "ll:9c912b4a2995",
+        "ll:b6fa9f5437ea",
+        "ll:f0866f843076"
+      ]
+    },
+    "ll:02e8b3ef5665": {
+      "node_id": "ll:02e8b3ef5665",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "update",
+      "level": "error",
+      "message_template": "Failed to update index '{}': {}",
+      "line": 171,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "update"
+      ],
+      "call_parents": [
+        "ll:35f6d2ac57dc",
+        "ll:8ad05c1de787",
+        "ll:bd1ddc28dee9"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:28df878bad57",
+        "ll:6c55b43c8209",
+        "ll:9c912b4a2995",
+        "ll:b6fa9f5437ea",
+        "ll:f0866f843076"
+      ]
+    },
+    "ll:d5c03de10752": {
+      "node_id": "ll:d5c03de10752",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "delete",
+      "level": "info",
+      "message_template": "Deleting index '{}'",
+      "line": 191,
+      "semantic_tags": [
+        "http"
+      ],
+      "lexical_parents": [
+        "delete"
+      ],
+      "call_parents": [
+        "ll:5b3957bf3c54",
+        "ll:cb2f9c9c8b16"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:6c55b43c8209",
+        "ll:b6fa9f5437ea",
+        "ll:f0866f843076"
+      ]
+    },
+    "ll:a504067c4e4e": {
+      "node_id": "ll:a504067c4e4e",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "delete",
+      "level": "error",
+      "message_template": "Failed to delete index '{}': {}",
+      "line": 198,
+      "semantic_tags": [
+        "error",
+        "http"
+      ],
+      "lexical_parents": [
+        "delete"
+      ],
+      "call_parents": [
+        "ll:5b3957bf3c54",
+        "ll:cb2f9c9c8b16"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:6c55b43c8209",
+        "ll:b6fa9f5437ea",
+        "ll:f0866f843076"
+      ]
+    },
+    "ll:936e7f8b93c6": {
+      "node_id": "ll:936e7f8b93c6",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "open",
+      "level": "info",
+      "message_template": "Opening index '{}'",
+      "line": 218,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "open"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:6c55b43c8209",
+        "ll:f0866f843076"
+      ]
+    },
+    "ll:e93288a908a4": {
+      "node_id": "ll:e93288a908a4",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "open",
+      "level": "error",
+      "message_template": "Failed to open index '{}': {}",
+      "line": 225,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "open"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:6c55b43c8209",
+        "ll:f0866f843076"
+      ]
+    },
+    "ll:7beb2ba59448": {
+      "node_id": "ll:7beb2ba59448",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "close",
+      "level": "info",
+      "message_template": "Closing index '{}'",
+      "line": 245,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "close"
+      ],
+      "call_parents": [
+        "ll:3e7354f48e6c",
+        "ll:771ea31c4bb4",
+        "ll:89b9a61ebf74",
+        "ll:89b9a61ebf74:08dd",
+        "ll:91f567df2db6",
+        "ll:a7acc97656ec",
+        "ll:bad42099322e",
+        "ll:ca94fb71f250",
+        "ll:e8f8ced0661d",
+        "ll:f3300f180c48",
+        "ll:f9782c881858"
+      ],
+      "call_children": [
+        "ll:6c55b43c8209",
+        "ll:f0866f843076"
+      ]
+    },
+    "ll:6102718f1847": {
+      "node_id": "ll:6102718f1847",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "close",
+      "level": "error",
+      "message_template": "Failed to close index '{}': {}",
+      "line": 252,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "close"
+      ],
+      "call_parents": [
+        "ll:3e7354f48e6c",
+        "ll:771ea31c4bb4",
+        "ll:89b9a61ebf74",
+        "ll:89b9a61ebf74:08dd",
+        "ll:91f567df2db6",
+        "ll:a7acc97656ec",
+        "ll:bad42099322e",
+        "ll:ca94fb71f250",
+        "ll:e8f8ced0661d",
+        "ll:f3300f180c48",
+        "ll:f9782c881858"
+      ],
+      "call_children": [
+        "ll:6c55b43c8209",
+        "ll:f0866f843076"
+      ]
+    },
+    "ll:35f6d2ac57dc": {
+      "node_id": "ll:35f6d2ac57dc",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "list",
+      "level": "debug",
+      "message_template": "Listed {} indices with pattern '{}'",
+      "line": 284,
+      "semantic_tags": [
+        "debug"
+      ],
+      "lexical_parents": [
+        "list"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:02e8b3ef5665",
+        "ll:04fcdf4dbfe8",
+        "ll:106dcd8c7906",
+        "ll:2709b64cc7ee",
+        "ll:532dd98042e4",
+        "ll:b6fa9f5437ea",
+        "ll:d2f5d85484cb"
+      ]
+    },
+    "ll:8ad05c1de787": {
+      "node_id": "ll:8ad05c1de787",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "list",
+      "level": "error",
+      "message_template": "Failed to list indices with pattern '{}': {}",
+      "line": 288,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "list"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:02e8b3ef5665",
+        "ll:04fcdf4dbfe8",
+        "ll:106dcd8c7906",
+        "ll:2709b64cc7ee",
+        "ll:532dd98042e4",
+        "ll:b6fa9f5437ea",
+        "ll:d2f5d85484cb"
+      ]
+    },
+    "ll:116d2fc542fb": {
+      "node_id": "ll:116d2fc542fb",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "allocation_explain",
+      "level": "error",
+      "message_template": "Failed to explain allocation for index '{}': {}",
+      "line": 336,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "allocation_explain"
+      ],
+      "call_parents": [
+        "ll:04bd9ca1a046"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:760343cc47f5": {
+      "node_id": "ll:760343cc47f5",
+      "file": "elastro/core/index.py",
+      "module": "elastro.core.index",
+      "function": "reroute",
+      "level": "error",
+      "message_template": "Failed to reroute cluster: {}",
+      "line": 356,
+      "semantic_tags": [
+        "error",
+        "http"
+      ],
+      "lexical_parents": [
+        "reroute"
+      ],
+      "call_parents": [],
+      "call_children": []
+    },
+    "ll:186cc5279bc8": {
+      "node_id": "ll:186cc5279bc8",
+      "file": "elastro/core/client.py",
+      "module": "elastro.core.client",
+      "function": "__init__",
+      "level": "debug",
+      "message_template": "Initialized ElasticsearchClient with hosts: {}",
+      "line": 111,
+      "semantic_tags": [
+        "debug",
+        "lifecycle"
+      ],
+      "lexical_parents": [
+        "__init__"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:bd1ddc28dee9": {
+      "node_id": "ll:bd1ddc28dee9",
+      "file": "elastro/core/client.py",
+      "module": "elastro.core.client",
+      "function": "_get_client_params",
+      "level": "warning",
+      "message_template": "SSL certificate verification is disabled. This is not secure for production.",
+      "line": 146,
+      "semantic_tags": [
+        "http",
+        "security",
+        "warning"
+      ],
+      "lexical_parents": [
+        "_get_client_params"
+      ],
+      "call_parents": [
+        "ll:1e5e5c1a1b77",
+        "ll:2f32df49a6f1",
+        "ll:3c3f2f4dc6a1",
+        "ll:4a4472ef78b4",
+        "ll:4aa4882295bb",
+        "ll:64ba40ddf536",
+        "ll:ad55e51afd04"
+      ],
+      "call_children": [
+        "ll:02e8b3ef5665",
+        "ll:04fcdf4dbfe8",
+        "ll:106dcd8c7906",
+        "ll:2709b64cc7ee",
+        "ll:532dd98042e4",
+        "ll:b6fa9f5437ea",
+        "ll:d2f5d85484cb"
+      ]
+    },
+    "ll:64ba40ddf536": {
+      "node_id": "ll:64ba40ddf536",
+      "file": "elastro/core/client.py",
+      "module": "elastro.core.client",
+      "function": "connect",
+      "level": "info",
+      "message_template": "Connecting to Elasticsearch at {}...",
+      "line": 189,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "connect"
+      ],
+      "call_parents": [
+        "ll:54ee74d47ee2",
+        "ll:6976b1653f71"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea",
+        "ll:bd1ddc28dee9"
+      ]
+    },
+    "ll:1e5e5c1a1b77": {
+      "node_id": "ll:1e5e5c1a1b77",
+      "file": "elastro/core/client.py",
+      "module": "elastro.core.client",
+      "function": "connect",
+      "level": "info",
+      "message_template": "Connecting with params: hosts={}, auth={}, basic_auth={}",
+      "line": 205,
+      "semantic_tags": [
+        "auth"
+      ],
+      "lexical_parents": [
+        "connect"
+      ],
+      "call_parents": [
+        "ll:54ee74d47ee2",
+        "ll:6976b1653f71"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea",
+        "ll:bd1ddc28dee9"
+      ]
+    },
+    "ll:ad55e51afd04": {
+      "node_id": "ll:ad55e51afd04",
+      "file": "elastro/core/client.py",
+      "module": "elastro.core.client",
+      "function": "connect",
+      "level": "error",
+      "message_template": "Ping failed during connection attempt",
+      "line": 215,
+      "semantic_tags": [
+        "error",
+        "retry"
+      ],
+      "lexical_parents": [
+        "connect"
+      ],
+      "call_parents": [
+        "ll:54ee74d47ee2",
+        "ll:6976b1653f71"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea",
+        "ll:bd1ddc28dee9"
+      ]
+    },
+    "ll:2f32df49a6f1": {
+      "node_id": "ll:2f32df49a6f1",
+      "file": "elastro/core/client.py",
+      "module": "elastro.core.client",
+      "function": "connect",
+      "level": "info",
+      "message_template": "Successfully connected to Elasticsearch",
+      "line": 218,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "connect"
+      ],
+      "call_parents": [
+        "ll:54ee74d47ee2",
+        "ll:6976b1653f71"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea",
+        "ll:bd1ddc28dee9"
+      ]
+    },
+    "ll:4aa4882295bb": {
+      "node_id": "ll:4aa4882295bb",
+      "file": "elastro/core/client.py",
+      "module": "elastro.core.client",
+      "function": "connect",
+      "level": "error",
+      "message_template": "Connection failed: {}",
+      "line": 222,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "connect"
+      ],
+      "call_parents": [
+        "ll:54ee74d47ee2",
+        "ll:6976b1653f71"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea",
+        "ll:bd1ddc28dee9"
+      ]
+    },
+    "ll:4a4472ef78b4": {
+      "node_id": "ll:4a4472ef78b4",
+      "file": "elastro/core/client.py",
+      "module": "elastro.core.client",
+      "function": "connect",
+      "level": "error",
+      "message_template": "Authentication failed: {}",
+      "line": 227,
+      "semantic_tags": [
+        "auth",
+        "error"
+      ],
+      "lexical_parents": [
+        "connect"
+      ],
+      "call_parents": [
+        "ll:54ee74d47ee2",
+        "ll:6976b1653f71"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea",
+        "ll:bd1ddc28dee9"
+      ]
+    },
+    "ll:3c3f2f4dc6a1": {
+      "node_id": "ll:3c3f2f4dc6a1",
+      "file": "elastro/core/client.py",
+      "module": "elastro.core.client",
+      "function": "connect",
+      "level": "exception",
+      "message_template": "Unexpected connection error: {}",
+      "line": 232,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "connect"
+      ],
+      "call_parents": [
+        "ll:54ee74d47ee2",
+        "ll:6976b1653f71"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea",
+        "ll:bd1ddc28dee9"
+      ]
+    },
+    "ll:f9782c881858": {
+      "node_id": "ll:f9782c881858",
+      "file": "elastro/core/client.py",
+      "module": "elastro.core.client",
+      "function": "disconnect",
+      "level": "info",
+      "message_template": "Disconnected from Elasticsearch",
+      "line": 241,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "disconnect"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:6102718f1847",
+        "ll:7beb2ba59448"
+      ]
+    },
+    "ll:e5948d0cb703": {
+      "node_id": "ll:e5948d0cb703",
+      "file": "elastro/core/client.py",
+      "module": "elastro.core.client",
+      "function": "health_check",
+      "level": "debug",
+      "message_template": "Cluster health check: {}",
+      "line": 323,
+      "semantic_tags": [
+        "debug",
+        "validation"
+      ],
+      "lexical_parents": [
+        "health_check"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:e075c1163938": {
+      "node_id": "ll:e075c1163938",
+      "file": "elastro/core/client.py",
+      "module": "elastro.core.client",
+      "function": "health_check",
+      "level": "error",
+      "message_template": "Lost connection during health check",
+      "line": 326,
+      "semantic_tags": [
+        "error",
+        "validation"
+      ],
+      "lexical_parents": [
+        "health_check"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:40accf9d9745": {
+      "node_id": "ll:40accf9d9745",
+      "file": "elastro/core/client.py",
+      "module": "elastro.core.client",
+      "function": "health_check",
+      "level": "error",
+      "message_template": "Transport error during health check: {}",
+      "line": 331,
+      "semantic_tags": [
+        "error",
+        "validation"
+      ],
+      "lexical_parents": [
+        "health_check"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:7fca919ec8da": {
+      "node_id": "ll:7fca919ec8da",
+      "file": "elastro/core/client.py",
+      "module": "elastro.core.client",
+      "function": "health_check",
+      "level": "exception",
+      "message_template": "Unexpected error during health check",
+      "line": 334,
+      "semantic_tags": [
+        "error",
+        "validation"
+      ],
+      "lexical_parents": [
+        "health_check"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:9c912b4a2995": {
+      "node_id": "ll:9c912b4a2995",
+      "file": "elastro/core/document.py",
+      "module": "elastro.core.document",
+      "function": "index",
+      "level": "debug",
+      "message_template": "Indexing document into '{}' with ID '{}'",
+      "line": 63,
+      "semantic_tags": [
+        "debug"
+      ],
+      "lexical_parents": [
+        "index"
+      ],
+      "call_parents": [
+        "ll:02e8b3ef5665",
+        "ll:04fcdf4dbfe8",
+        "ll:106dcd8c7906",
+        "ll:532dd98042e4",
+        "ll:d2f5d85484cb"
+      ],
+      "call_children": []
+    },
+    "ll:28df878bad57": {
+      "node_id": "ll:28df878bad57",
+      "file": "elastro/core/document.py",
+      "module": "elastro.core.document",
+      "function": "index",
+      "level": "error",
+      "message_template": "Failed to index document info '{}': {}",
+      "line": 68,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "index"
+      ],
+      "call_parents": [
+        "ll:02e8b3ef5665",
+        "ll:04fcdf4dbfe8",
+        "ll:106dcd8c7906",
+        "ll:532dd98042e4",
+        "ll:d2f5d85484cb"
+      ],
+      "call_children": []
+    },
+    "ll:91f567df2db6": {
+      "node_id": "ll:91f567df2db6",
+      "file": "elastro/core/document.py",
+      "module": "elastro.core.document",
+      "function": "bulk_index",
+      "level": "info",
+      "message_template": "Bulk indexing {} documents into '{}'...",
+      "line": 113,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "bulk_index"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:6102718f1847",
+        "ll:7beb2ba59448"
+      ]
+    },
+    "ll:e8f8ced0661d": {
+      "node_id": "ll:e8f8ced0661d",
+      "file": "elastro/core/document.py",
+      "module": "elastro.core.document",
+      "function": "bulk_index",
+      "level": "info",
+      "message_template": "Bulk index complete: {} successful",
+      "line": 128,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "bulk_index"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:6102718f1847",
+        "ll:7beb2ba59448"
+      ]
+    },
+    "ll:a7acc97656ec": {
+      "node_id": "ll:a7acc97656ec",
+      "file": "elastro/core/document.py",
+      "module": "elastro.core.document",
+      "function": "bulk_index",
+      "level": "error",
+      "message_template": "Failed to bulk index documents: {}",
+      "line": 136,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "bulk_index"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:6102718f1847",
+        "ll:7beb2ba59448"
+      ]
+    },
+    "ll:3e7354f48e6c": {
+      "node_id": "ll:3e7354f48e6c",
+      "file": "elastro/core/document.py",
+      "module": "elastro.core.document",
+      "function": "bulk_delete",
+      "level": "info",
+      "message_template": "Bulk deleting {} documents from '{}'...",
+      "line": 164,
+      "semantic_tags": [
+        "http"
+      ],
+      "lexical_parents": [
+        "bulk_delete"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:6102718f1847",
+        "ll:7beb2ba59448"
+      ]
+    },
+    "ll:f3300f180c48": {
+      "node_id": "ll:f3300f180c48",
+      "file": "elastro/core/document.py",
+      "module": "elastro.core.document",
+      "function": "bulk_delete",
+      "level": "error",
+      "message_template": "Failed to bulk delete documents: {}",
+      "line": 184,
+      "semantic_tags": [
+        "error",
+        "http"
+      ],
+      "lexical_parents": [
+        "bulk_delete"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:6102718f1847",
+        "ll:7beb2ba59448"
+      ]
+    },
+    "ll:2709b64cc7ee": {
+      "node_id": "ll:2709b64cc7ee",
+      "file": "elastro/core/document.py",
+      "module": "elastro.core.document",
+      "function": "get",
+      "level": "error",
+      "message_template": "Failed to get document '{}' from '{}': {}",
+      "line": 211,
+      "semantic_tags": [
+        "error",
+        "http"
+      ],
+      "lexical_parents": [
+        "get"
+      ],
+      "call_parents": [
+        "ll:02e8b3ef5665",
+        "ll:04bd9ca1a046",
+        "ll:04fcdf4dbfe8",
+        "ll:106dcd8c7906",
+        "ll:116d2fc542fb",
+        "ll:186cc5279bc8",
+        "ll:18ca8ecdf715",
+        "ll:1e5e5c1a1b77",
+        "ll:1f4a92aaf349",
+        "ll:269eac1ddae3",
+        "ll:2a50f281d446",
+        "ll:2d11189e8b3e",
+        "ll:2f32df49a6f1",
+        "ll:311f4ee0a42a",
+        "ll:347b9c66e298",
+        "ll:35f6d2ac57dc",
+        "ll:369e6a8d503e",
+        "ll:3c3f2f4dc6a1",
+        "ll:40accf9d9745",
+        "ll:416a6171f8c5",
+        "ll:46aa1af9a697",
+        "ll:46d1fc6ba5ba",
+        "ll:486063fe9810",
+        "ll:4a4472ef78b4",
+        "ll:4aa4882295bb",
+        "ll:4b6899dd50d3",
+        "ll:532dd98042e4",
+        "ll:5b3957bf3c54",
+        "ll:64ba40ddf536",
+        "ll:6a15a823e56d",
+        "ll:6c3526258523",
+        "ll:6e92640d01d4",
+        "ll:748d806d2c96",
+        "ll:771ea31c4bb4",
+        "ll:7cd927a31dbd",
+        "ll:7e97dae45af1",
+        "ll:7ea0514f816f",
+        "ll:7fca919ec8da",
+        "ll:827c4ea39bdb",
+        "ll:89b9a61ebf74",
+        "ll:89b9a61ebf74:08dd",
+        "ll:8ad05c1de787",
+        "ll:90bba50d296a",
+        "ll:96cfef2415d2",
+        "ll:a350860b8e97",
+        "ll:a504067c4e4e",
+        "ll:ac3ee5cb0a5a",
+        "ll:ad55e51afd04",
+        "ll:b07d50f1ddd5",
+        "ll:b4f897862c9b",
+        "ll:b6b6a0eec29d",
+        "ll:bad42099322e",
+        "ll:bd1ddc28dee9",
+        "ll:c4134da37e54",
+        "ll:ca94fb71f250",
+        "ll:cb2f9c9c8b16",
+        "ll:d2f5d85484cb",
+        "ll:d5c03de10752",
+        "ll:d85a61073a34",
+        "ll:ddd6bd176a5c",
+        "ll:de8e187feefb",
+        "ll:e075c1163938",
+        "ll:e3a8b0266796",
+        "ll:e5948d0cb703",
+        "ll:e96e3a94826f",
+        "ll:ebae77522bde",
+        "ll:f82218810b47",
+        "ll:f9559659efe2",
+        "ll:fb72f24a5858",
+        "ll:fc1ac9cf4a7f"
+      ],
+      "call_children": [
+        "ll:6c55b43c8209",
+        "ll:f0866f843076"
+      ]
+    },
+    "ll:d2f5d85484cb": {
+      "node_id": "ll:d2f5d85484cb",
+      "file": "elastro/core/document.py",
+      "module": "elastro.core.document",
+      "function": "update",
+      "level": "debug",
+      "message_template": "Updating document '{}' in '{}' (partial={})",
+      "line": 246,
+      "semantic_tags": [
+        "debug"
+      ],
+      "lexical_parents": [
+        "update"
+      ],
+      "call_parents": [
+        "ll:35f6d2ac57dc",
+        "ll:8ad05c1de787",
+        "ll:bd1ddc28dee9"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:28df878bad57",
+        "ll:6c55b43c8209",
+        "ll:9c912b4a2995",
+        "ll:b6fa9f5437ea",
+        "ll:f0866f843076"
+      ]
+    },
+    "ll:04fcdf4dbfe8": {
+      "node_id": "ll:04fcdf4dbfe8",
+      "file": "elastro/core/document.py",
+      "module": "elastro.core.document",
+      "function": "update",
+      "level": "error",
+      "message_template": "Failed to update document '{}': {}",
+      "line": 265,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "update"
+      ],
+      "call_parents": [
+        "ll:35f6d2ac57dc",
+        "ll:8ad05c1de787",
+        "ll:bd1ddc28dee9"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:28df878bad57",
+        "ll:6c55b43c8209",
+        "ll:9c912b4a2995",
+        "ll:b6fa9f5437ea",
+        "ll:f0866f843076"
+      ]
+    },
+    "ll:96cfef2415d2": {
+      "node_id": "ll:96cfef2415d2",
+      "file": "elastro/core/document.py",
+      "module": "elastro.core.document",
+      "function": "delete",
+      "level": "info",
+      "message_template": "Deleting document '{}' from '{}'",
+      "line": 288,
+      "semantic_tags": [
+        "http"
+      ],
+      "lexical_parents": [
+        "delete"
+      ],
+      "call_parents": [
+        "ll:5b3957bf3c54",
+        "ll:cb2f9c9c8b16"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:6c55b43c8209",
+        "ll:b6fa9f5437ea",
+        "ll:f0866f843076"
+      ]
+    },
+    "ll:486063fe9810": {
+      "node_id": "ll:486063fe9810",
+      "file": "elastro/core/document.py",
+      "module": "elastro.core.document",
+      "function": "delete",
+      "level": "error",
+      "message_template": "Failed to delete document '{}': {}",
+      "line": 295,
+      "semantic_tags": [
+        "error",
+        "http"
+      ],
+      "lexical_parents": [
+        "delete"
+      ],
+      "call_parents": [
+        "ll:5b3957bf3c54",
+        "ll:cb2f9c9c8b16"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:6c55b43c8209",
+        "ll:b6fa9f5437ea",
+        "ll:f0866f843076"
+      ]
+    },
+    "ll:a4c0d9ec92f2": {
+      "node_id": "ll:a4c0d9ec92f2",
+      "file": "elastro/core/document.py",
+      "module": "elastro.core.document",
+      "function": "search",
+      "level": "debug",
+      "message_template": "Searching index '{}'...",
+      "line": 343,
+      "semantic_tags": [
+        "debug"
+      ],
+      "lexical_parents": [
+        "search"
+      ],
+      "call_parents": [
+        "ll:54ee74d47ee2",
+        "ll:6976b1653f71",
+        "ll:6a15a823e56d",
+        "ll:7e97dae45af1",
+        "ll:827c4ea39bdb"
+      ],
+      "call_children": []
+    },
+    "ll:d552aae6abc4": {
+      "node_id": "ll:d552aae6abc4",
+      "file": "elastro/core/document.py",
+      "module": "elastro.core.document",
+      "function": "search",
+      "level": "error",
+      "message_template": "Failed to search documents in '{}': {}",
+      "line": 349,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "search"
+      ],
+      "call_parents": [
+        "ll:54ee74d47ee2",
+        "ll:6976b1653f71",
+        "ll:6a15a823e56d",
+        "ll:7e97dae45af1",
+        "ll:827c4ea39bdb"
+      ],
+      "call_children": []
+    },
+    "ll:369e6a8d503e": {
+      "node_id": "ll:369e6a8d503e",
+      "file": "elastro/core/ilm.py",
+      "module": "elastro.core.ilm",
+      "function": "list_policies",
+      "level": "debug",
+      "message_template": "Listing ILM policies",
+      "line": 29,
+      "semantic_tags": [
+        "debug"
+      ],
+      "lexical_parents": [
+        "list_policies"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:ebae77522bde": {
+      "node_id": "ll:ebae77522bde",
+      "file": "elastro/core/ilm.py",
+      "module": "elastro.core.ilm",
+      "function": "list_policies",
+      "level": "error",
+      "message_template": "Failed to list ILM policies: {}",
+      "line": 41,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "list_policies"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:7d5e3ab52dd3": {
+      "node_id": "ll:7d5e3ab52dd3",
+      "file": "elastro/core/ilm.py",
+      "module": "elastro.core.ilm",
+      "function": "get_policy",
+      "level": "debug",
+      "message_template": "Getting ILM policy '{}'",
+      "line": 58,
+      "semantic_tags": [
+        "debug",
+        "http"
+      ],
+      "lexical_parents": [
+        "get_policy"
+      ],
+      "call_parents": [],
+      "call_children": []
+    },
+    "ll:592c10259597": {
+      "node_id": "ll:592c10259597",
+      "file": "elastro/core/ilm.py",
+      "module": "elastro.core.ilm",
+      "function": "get_policy",
+      "level": "error",
+      "message_template": "Failed to get ILM policy '{}': {}",
+      "line": 67,
+      "semantic_tags": [
+        "error",
+        "http"
+      ],
+      "lexical_parents": [
+        "get_policy"
+      ],
+      "call_parents": [],
+      "call_children": []
+    },
+    "ll:d85a61073a34": {
+      "node_id": "ll:d85a61073a34",
+      "file": "elastro/core/ilm.py",
+      "module": "elastro.core.ilm",
+      "function": "create_policy",
+      "level": "info",
+      "message_template": "Creating/Updating ILM policy '{}'",
+      "line": 87,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "create_policy"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:748d806d2c96": {
+      "node_id": "ll:748d806d2c96",
+      "file": "elastro/core/ilm.py",
+      "module": "elastro.core.ilm",
+      "function": "create_policy",
+      "level": "error",
+      "message_template": "Failed to create ILM policy '{}': {}",
+      "line": 99,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "create_policy"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:90bba50d296a": {
+      "node_id": "ll:90bba50d296a",
+      "file": "elastro/core/ilm.py",
+      "module": "elastro.core.ilm",
+      "function": "delete_policy",
+      "level": "info",
+      "message_template": "Deleting ILM policy '{}'",
+      "line": 116,
+      "semantic_tags": [
+        "http"
+      ],
+      "lexical_parents": [
+        "delete_policy"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:de8e187feefb": {
+      "node_id": "ll:de8e187feefb",
+      "file": "elastro/core/ilm.py",
+      "module": "elastro.core.ilm",
+      "function": "delete_policy",
+      "level": "error",
+      "message_template": "Failed to delete ILM policy '{}': {}",
+      "line": 122,
+      "semantic_tags": [
+        "error",
+        "http"
+      ],
+      "lexical_parents": [
+        "delete_policy"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:4e530cae476d": {
+      "node_id": "ll:4e530cae476d",
+      "file": "elastro/core/ilm.py",
+      "module": "elastro.core.ilm",
+      "function": "explain_lifecycle",
+      "level": "debug",
+      "message_template": "Explaining lifecycle for index '{}'",
+      "line": 139,
+      "semantic_tags": [
+        "debug"
+      ],
+      "lexical_parents": [
+        "explain_lifecycle"
+      ],
+      "call_parents": [],
+      "call_children": []
+    },
+    "ll:1d9487c5a961": {
+      "node_id": "ll:1d9487c5a961",
+      "file": "elastro/core/ilm.py",
+      "module": "elastro.core.ilm",
+      "function": "explain_lifecycle",
+      "level": "error",
+      "message_template": "Failed to explain lifecycle for '{}': {}",
+      "line": 149,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "explain_lifecycle"
+      ],
+      "call_parents": [],
+      "call_children": []
+    },
+    "ll:2a50f281d446": {
+      "node_id": "ll:2a50f281d446",
+      "file": "elastro/core/snapshot.py",
+      "module": "elastro.core.snapshot",
+      "function": "list_repositories",
+      "level": "debug",
+      "message_template": "Listing snapshot repositories",
+      "line": 31,
+      "semantic_tags": [
+        "debug"
+      ],
+      "lexical_parents": [
+        "list_repositories"
+      ],
+      "call_parents": [
+        "ll:311f4ee0a42a",
+        "ll:e96e3a94826f"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:4007175a3150",
+        "ll:b6fa9f5437ea",
+        "ll:dfbbb2d31a89"
+      ]
+    },
+    "ll:46aa1af9a697": {
+      "node_id": "ll:46aa1af9a697",
+      "file": "elastro/core/snapshot.py",
+      "module": "elastro.core.snapshot",
+      "function": "list_repositories",
+      "level": "error",
+      "message_template": "Failed to list repositories: {}",
+      "line": 37,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "list_repositories"
+      ],
+      "call_parents": [
+        "ll:311f4ee0a42a",
+        "ll:e96e3a94826f"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:4007175a3150",
+        "ll:b6fa9f5437ea",
+        "ll:dfbbb2d31a89"
+      ]
+    },
+    "ll:4007175a3150": {
+      "node_id": "ll:4007175a3150",
+      "file": "elastro/core/snapshot.py",
+      "module": "elastro.core.snapshot",
+      "function": "get_repository",
+      "level": "debug",
+      "message_template": "Getting repository '{}'",
+      "line": 54,
+      "semantic_tags": [
+        "debug",
+        "http"
+      ],
+      "lexical_parents": [
+        "get_repository"
+      ],
+      "call_parents": [
+        "ll:2a50f281d446",
+        "ll:46aa1af9a697",
+        "ll:7cd927a31dbd",
+        "ll:e3a8b0266796",
+        "ll:fc1ac9cf4a7f"
+      ],
+      "call_children": []
+    },
+    "ll:dfbbb2d31a89": {
+      "node_id": "ll:dfbbb2d31a89",
+      "file": "elastro/core/snapshot.py",
+      "module": "elastro.core.snapshot",
+      "function": "get_repository",
+      "level": "error",
+      "message_template": "Failed to get repository '{}': {}",
+      "line": 59,
+      "semantic_tags": [
+        "error",
+        "http"
+      ],
+      "lexical_parents": [
+        "get_repository"
+      ],
+      "call_parents": [
+        "ll:2a50f281d446",
+        "ll:46aa1af9a697",
+        "ll:7cd927a31dbd",
+        "ll:e3a8b0266796",
+        "ll:fc1ac9cf4a7f"
+      ],
+      "call_children": []
+    },
+    "ll:4b6899dd50d3": {
+      "node_id": "ll:4b6899dd50d3",
+      "file": "elastro/core/snapshot.py",
+      "module": "elastro.core.snapshot",
+      "function": "create_repository",
+      "level": "info",
+      "message_template": "Creating repository '{}' (type={})",
+      "line": 80,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "create_repository"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:c4134da37e54": {
+      "node_id": "ll:c4134da37e54",
+      "file": "elastro/core/snapshot.py",
+      "module": "elastro.core.snapshot",
+      "function": "create_repository",
+      "level": "error",
+      "message_template": "Failed to create repository '{}': {}",
+      "line": 89,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "create_repository"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:f9559659efe2": {
+      "node_id": "ll:f9559659efe2",
+      "file": "elastro/core/snapshot.py",
+      "module": "elastro.core.snapshot",
+      "function": "delete_repository",
+      "level": "info",
+      "message_template": "Deleting repository '{}'",
+      "line": 106,
+      "semantic_tags": [
+        "http"
+      ],
+      "lexical_parents": [
+        "delete_repository"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:ac3ee5cb0a5a": {
+      "node_id": "ll:ac3ee5cb0a5a",
+      "file": "elastro/core/snapshot.py",
+      "module": "elastro.core.snapshot",
+      "function": "delete_repository",
+      "level": "error",
+      "message_template": "Failed to delete repository '{}': {}",
+      "line": 112,
+      "semantic_tags": [
+        "error",
+        "http"
+      ],
+      "lexical_parents": [
+        "delete_repository"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:269eac1ddae3": {
+      "node_id": "ll:269eac1ddae3",
+      "file": "elastro/core/snapshot.py",
+      "module": "elastro.core.snapshot",
+      "function": "list_snapshots",
+      "level": "debug",
+      "message_template": "Listing snapshots in '{}'",
+      "line": 131,
+      "semantic_tags": [
+        "debug"
+      ],
+      "lexical_parents": [
+        "list_snapshots"
+      ],
+      "call_parents": [
+        "ll:311f4ee0a42a",
+        "ll:e96e3a94826f"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:46d1fc6ba5ba": {
+      "node_id": "ll:46d1fc6ba5ba",
+      "file": "elastro/core/snapshot.py",
+      "module": "elastro.core.snapshot",
+      "function": "list_snapshots",
+      "level": "error",
+      "message_template": "Failed to list snapshots in '{}': {}",
+      "line": 139,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "list_snapshots"
+      ],
+      "call_parents": [
+        "ll:311f4ee0a42a",
+        "ll:e96e3a94826f"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:2d11189e8b3e": {
+      "node_id": "ll:2d11189e8b3e",
+      "file": "elastro/core/snapshot.py",
+      "module": "elastro.core.snapshot",
+      "function": "get_snapshot",
+      "level": "debug",
+      "message_template": "Getting snapshot '{}' from '{}'",
+      "line": 159,
+      "semantic_tags": [
+        "debug",
+        "http"
+      ],
+      "lexical_parents": [
+        "get_snapshot"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:b6b6a0eec29d": {
+      "node_id": "ll:b6b6a0eec29d",
+      "file": "elastro/core/snapshot.py",
+      "module": "elastro.core.snapshot",
+      "function": "get_snapshot",
+      "level": "error",
+      "message_template": "Failed to get snapshot '{}': {}",
+      "line": 170,
+      "semantic_tags": [
+        "error",
+        "http"
+      ],
+      "lexical_parents": [
+        "get_snapshot"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:ddd6bd176a5c": {
+      "node_id": "ll:ddd6bd176a5c",
+      "file": "elastro/core/snapshot.py",
+      "module": "elastro.core.snapshot",
+      "function": "create_snapshot",
+      "level": "info",
+      "message_template": "Creating snapshot '{}' in '{}'",
+      "line": 202,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "create_snapshot"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:347b9c66e298",
+        "ll:6c3526258523",
+        "ll:a350860b8e97",
+        "ll:b6fa9f5437ea",
+        "ll:f82218810b47",
+        "ll:fb72f24a5858"
+      ]
+    },
+    "ll:6e92640d01d4": {
+      "node_id": "ll:6e92640d01d4",
+      "file": "elastro/core/snapshot.py",
+      "module": "elastro.core.snapshot",
+      "function": "create_snapshot",
+      "level": "error",
+      "message_template": "Failed to create snapshot '{}': {}",
+      "line": 220,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "create_snapshot"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:347b9c66e298",
+        "ll:6c3526258523",
+        "ll:a350860b8e97",
+        "ll:b6fa9f5437ea",
+        "ll:f82218810b47",
+        "ll:fb72f24a5858"
+      ]
+    },
+    "ll:cb2f9c9c8b16": {
+      "node_id": "ll:cb2f9c9c8b16",
+      "file": "elastro/core/snapshot.py",
+      "module": "elastro.core.snapshot",
+      "function": "delete_snapshot",
+      "level": "info",
+      "message_template": "Deleting snapshot '{}' from '{}'",
+      "line": 238,
+      "semantic_tags": [
+        "http"
+      ],
+      "lexical_parents": [
+        "delete_snapshot"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:486063fe9810",
+        "ll:96cfef2415d2",
+        "ll:a504067c4e4e",
+        "ll:b07d50f1ddd5",
+        "ll:b6fa9f5437ea",
+        "ll:d5c03de10752"
+      ]
+    },
+    "ll:5b3957bf3c54": {
+      "node_id": "ll:5b3957bf3c54",
+      "file": "elastro/core/snapshot.py",
+      "module": "elastro.core.snapshot",
+      "function": "delete_snapshot",
+      "level": "error",
+      "message_template": "Failed to delete snapshot '{}': {}",
+      "line": 246,
+      "semantic_tags": [
+        "error",
+        "http"
+      ],
+      "lexical_parents": [
+        "delete_snapshot"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:486063fe9810",
+        "ll:96cfef2415d2",
+        "ll:a504067c4e4e",
+        "ll:b07d50f1ddd5",
+        "ll:b6fa9f5437ea",
+        "ll:d5c03de10752"
+      ]
+    },
+    "ll:311f4ee0a42a": {
+      "node_id": "ll:311f4ee0a42a",
+      "file": "elastro/core/snapshot.py",
+      "module": "elastro.core.snapshot",
+      "function": "restore_snapshot",
+      "level": "info",
+      "message_template": "Restoring snapshot '{}' from '{}'",
+      "line": 276,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "restore_snapshot"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:269eac1ddae3",
+        "ll:2709b64cc7ee",
+        "ll:2a50f281d446",
+        "ll:46aa1af9a697",
+        "ll:46d1fc6ba5ba",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:e96e3a94826f": {
+      "node_id": "ll:e96e3a94826f",
+      "file": "elastro/core/snapshot.py",
+      "module": "elastro.core.snapshot",
+      "function": "restore_snapshot",
+      "level": "error",
+      "message_template": "Failed to restore snapshot '{}': {}",
+      "line": 293,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "restore_snapshot"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:269eac1ddae3",
+        "ll:2709b64cc7ee",
+        "ll:2a50f281d446",
+        "ll:46aa1af9a697",
+        "ll:46d1fc6ba5ba",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:35c1b3379789": {
+      "node_id": "ll:35c1b3379789",
+      "file": "elastro/utils/health.py",
+      "module": "elastro.utils.health",
+      "function": "node_info",
+      "level": "info",
+      "message_template": "{}",
+      "line": 105,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "node_info"
+      ],
+      "call_parents": [],
+      "call_children": []
+    },
+    "ll:35c1b3379789:0e49": {
+      "node_id": "ll:35c1b3379789:0e49",
+      "file": "elastro/utils/health.py",
+      "module": "elastro.utils.health",
+      "function": "node_info",
+      "level": "info",
+      "message_template": "{}",
+      "line": 110,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "node_info"
+      ],
+      "call_parents": [],
+      "call_children": []
+    },
+    "ll:f332cb36c83a": {
+      "node_id": "ll:f332cb36c83a",
+      "file": "elastro/cli/cli.py",
+      "module": "elastro.cli.cli",
+      "function": "<module>",
+      "level": "debug",
+      "message_template": "Fast-path daemon bypass: {}",
+      "line": 31,
+      "semantic_tags": [
+        "debug"
+      ],
+      "lexical_parents": [],
+      "call_parents": [],
+      "call_children": []
+    },
+    "ll:895893ab30a5": {
+      "node_id": "ll:895893ab30a5",
+      "file": "elastro/core/ingest/readers.py",
+      "module": "core.ingest.readers",
+      "function": "_read_stream",
+      "level": "debug",
+      "message_template": "CSVReader: read {} rows",
+      "line": 96,
+      "semantic_tags": [
+        "database",
+        "debug"
+      ],
+      "lexical_parents": [
+        "_read_stream"
+      ],
+      "call_parents": [
+        "ll:54ee74d47ee2",
+        "ll:6976b1653f71"
+      ],
+      "call_children": []
+    },
+    "ll:fe2159341ac6": {
+      "node_id": "ll:fe2159341ac6",
+      "file": "elastro/core/ingest/readers.py",
+      "module": "core.ingest.readers",
+      "function": "_read_stream",
+      "level": "warning",
+      "message_template": "NDJSON line {}: expected object, got {}",
+      "line": 138,
+      "semantic_tags": [
+        "warning"
+      ],
+      "lexical_parents": [
+        "_read_stream"
+      ],
+      "call_parents": [
+        "ll:54ee74d47ee2",
+        "ll:6976b1653f71"
+      ],
+      "call_children": []
+    },
+    "ll:75e73436604b": {
+      "node_id": "ll:75e73436604b",
+      "file": "elastro/core/ingest/readers.py",
+      "module": "core.ingest.readers",
+      "function": "_read_stream",
+      "level": "warning",
+      "message_template": "NDJSON line {}: parse error — {}",
+      "line": 142,
+      "semantic_tags": [
+        "error",
+        "warning"
+      ],
+      "lexical_parents": [
+        "_read_stream"
+      ],
+      "call_parents": [
+        "ll:54ee74d47ee2",
+        "ll:6976b1653f71"
+      ],
+      "call_children": []
+    },
+    "ll:ff2b9831c533": {
+      "node_id": "ll:ff2b9831c533",
+      "file": "elastro/core/ingest/readers.py",
+      "module": "core.ingest.readers",
+      "function": "_read_stream",
+      "level": "debug",
+      "message_template": "NDJSONReader: read {} lines",
+      "line": 143,
+      "semantic_tags": [
+        "debug"
+      ],
+      "lexical_parents": [
+        "_read_stream"
+      ],
+      "call_parents": [
+        "ll:54ee74d47ee2",
+        "ll:6976b1653f71"
+      ],
+      "call_children": []
+    },
+    "ll:cfc62512a3c7": {
+      "node_id": "ll:cfc62512a3c7",
+      "file": "elastro/core/ingest/readers.py",
+      "module": "core.ingest.readers",
+      "function": "_read_simple",
+      "level": "debug",
+      "message_template": "JSONArrayReader: read {} documents from array",
+      "line": 205,
+      "semantic_tags": [
+        "debug"
+      ],
+      "lexical_parents": [
+        "_read_simple"
+      ],
+      "call_parents": [
+        "ll:54ee74d47ee2",
+        "ll:6976b1653f71"
+      ],
+      "call_children": []
+    },
+    "ll:084b355a8eb9": {
+      "node_id": "ll:084b355a8eb9",
+      "file": "elastro/core/ingest/readers.py",
+      "module": "core.ingest.readers",
+      "function": "_read_simple",
+      "level": "debug",
+      "message_template": "JSONArrayReader: read 1 document (single object)",
+      "line": 208,
+      "semantic_tags": [
+        "debug"
+      ],
+      "lexical_parents": [
+        "_read_simple"
+      ],
+      "call_parents": [
+        "ll:54ee74d47ee2",
+        "ll:6976b1653f71"
+      ],
+      "call_children": []
+    },
+    "ll:5f1ea1208852": {
+      "node_id": "ll:5f1ea1208852",
+      "file": "elastro/core/ingest/readers.py",
+      "module": "core.ingest.readers",
+      "function": "_read_streaming",
+      "level": "debug",
+      "message_template": "JSONArrayReader (streaming): read {} documents",
+      "line": 223,
+      "semantic_tags": [
+        "debug"
+      ],
+      "lexical_parents": [
+        "_read_streaming"
+      ],
+      "call_parents": [
+        "ll:54ee74d47ee2",
+        "ll:6976b1653f71"
+      ],
+      "call_children": []
+    },
+    "ll:6976b1653f71": {
+      "node_id": "ll:6976b1653f71",
+      "file": "elastro/core/ingest/readers.py",
+      "module": "core.ingest.readers",
+      "function": "read",
+      "level": "debug",
+      "message_template": "SQLReader: read {} rows",
+      "line": 273,
+      "semantic_tags": [
+        "database",
+        "debug"
+      ],
+      "lexical_parents": [
+        "read"
+      ],
+      "call_parents": [
+        "ll:1f4a92aaf349",
+        "ll:7e97dae45af1",
+        "ll:b4f897862c9b"
+      ],
+      "call_children": [
+        "ll:084b355a8eb9",
+        "ll:1e5e5c1a1b77",
+        "ll:2f32df49a6f1",
+        "ll:3c3f2f4dc6a1",
+        "ll:4a4472ef78b4",
+        "ll:4aa4882295bb",
+        "ll:5f1ea1208852",
+        "ll:64ba40ddf536",
+        "ll:6c55b43c8209",
+        "ll:75e73436604b",
+        "ll:895893ab30a5",
+        "ll:a4c0d9ec92f2",
+        "ll:ad55e51afd04",
+        "ll:cfc62512a3c7",
+        "ll:d552aae6abc4",
+        "ll:f0866f843076",
+        "ll:fe2159341ac6",
+        "ll:ff2b9831c533"
+      ]
+    },
+    "ll:54ee74d47ee2": {
+      "node_id": "ll:54ee74d47ee2",
+      "file": "elastro/core/ingest/readers.py",
+      "module": "core.ingest.readers",
+      "function": "read",
+      "level": "debug",
+      "message_template": "SQLDumpReader: read {} rows",
+      "line": 342,
+      "semantic_tags": [
+        "database",
+        "debug"
+      ],
+      "lexical_parents": [
+        "read"
+      ],
+      "call_parents": [
+        "ll:1f4a92aaf349",
+        "ll:7e97dae45af1",
+        "ll:b4f897862c9b"
+      ],
+      "call_children": [
+        "ll:084b355a8eb9",
+        "ll:1e5e5c1a1b77",
+        "ll:2f32df49a6f1",
+        "ll:3c3f2f4dc6a1",
+        "ll:4a4472ef78b4",
+        "ll:4aa4882295bb",
+        "ll:5f1ea1208852",
+        "ll:64ba40ddf536",
+        "ll:6c55b43c8209",
+        "ll:75e73436604b",
+        "ll:895893ab30a5",
+        "ll:a4c0d9ec92f2",
+        "ll:ad55e51afd04",
+        "ll:cfc62512a3c7",
+        "ll:d552aae6abc4",
+        "ll:f0866f843076",
+        "ll:fe2159341ac6",
+        "ll:ff2b9831c533"
+      ]
+    },
+    "ll:bc0a5f1bf735": {
+      "node_id": "ll:bc0a5f1bf735",
+      "file": "elastro/core/ingest/grok_builder.py",
+      "module": "core.ingest.grok_builder",
+      "function": "_get_compiled_patterns",
+      "level": "warning",
+      "message_template": "Failed to compile Grok pattern: {}",
+      "line": 142,
+      "semantic_tags": [
+        "error",
+        "http",
+        "warning"
+      ],
+      "lexical_parents": [
+        "_get_compiled_patterns"
+      ],
+      "call_parents": [],
+      "call_children": []
+    },
+    "ll:e15037d2a87b": {
+      "node_id": "ll:e15037d2a87b",
+      "file": "elastro/core/ingest/validators.py",
+      "module": "core.ingest.validators",
+      "function": "infer_mapping",
+      "level": "info",
+      "message_template": "Inferred mapping from {} documents, {} fields",
+      "line": 242,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "infer_mapping"
+      ],
+      "call_parents": [],
+      "call_children": []
+    },
+    "ll:f5b51213a531": {
+      "node_id": "ll:f5b51213a531",
+      "file": "elastro/core/ingest/pipeline_builder.py",
+      "module": "core.ingest.pipeline_builder",
+      "function": "deploy",
+      "level": "info",
+      "message_template": "Pipeline '{}' deployed ({} processors)",
+      "line": 354,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "deploy"
+      ],
+      "call_parents": [],
+      "call_children": []
+    },
+    "ll:771ea31c4bb4": {
+      "node_id": "ll:771ea31c4bb4",
+      "file": "elastro/core/ingest/engine.py",
+      "module": "core.ingest.engine",
+      "function": "ingest",
+      "level": "info",
+      "message_template": "Loaded mapping from index '{}' ({} fields)",
+      "line": 146,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "ingest"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:18ca8ecdf715",
+        "ll:2709b64cc7ee",
+        "ll:6102718f1847",
+        "ll:7beb2ba59448",
+        "ll:7ea0514f816f",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:bad42099322e": {
+      "node_id": "ll:bad42099322e",
+      "file": "elastro/core/ingest/engine.py",
+      "module": "core.ingest.engine",
+      "function": "ingest",
+      "level": "warning",
+      "message_template": "Could not fetch mapping for validation: {}",
+      "line": 150,
+      "semantic_tags": [
+        "warning"
+      ],
+      "lexical_parents": [
+        "ingest"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:18ca8ecdf715",
+        "ll:2709b64cc7ee",
+        "ll:6102718f1847",
+        "ll:7beb2ba59448",
+        "ll:7ea0514f816f",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:89b9a61ebf74": {
+      "node_id": "ll:89b9a61ebf74",
+      "file": "elastro/core/ingest/engine.py",
+      "module": "core.ingest.engine",
+      "function": "ingest",
+      "level": "error",
+      "message_template": "Aborting: max error threshold ({}) reached",
+      "line": 191,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "ingest"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:18ca8ecdf715",
+        "ll:2709b64cc7ee",
+        "ll:6102718f1847",
+        "ll:7beb2ba59448",
+        "ll:7ea0514f816f",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:89b9a61ebf74:08dd": {
+      "node_id": "ll:89b9a61ebf74:08dd",
+      "file": "elastro/core/ingest/engine.py",
+      "module": "core.ingest.engine",
+      "function": "ingest",
+      "level": "error",
+      "message_template": "Aborting: max error threshold ({}) reached",
+      "line": 222,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "ingest"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:18ca8ecdf715",
+        "ll:2709b64cc7ee",
+        "ll:6102718f1847",
+        "ll:7beb2ba59448",
+        "ll:7ea0514f816f",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:ca94fb71f250": {
+      "node_id": "ll:ca94fb71f250",
+      "file": "elastro/core/ingest/engine.py",
+      "module": "core.ingest.engine",
+      "function": "ingest",
+      "level": "info",
+      "message_template": "{}",
+      "line": 252,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "ingest"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:18ca8ecdf715",
+        "ll:2709b64cc7ee",
+        "ll:6102718f1847",
+        "ll:7beb2ba59448",
+        "ll:7ea0514f816f",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:7ea0514f816f": {
+      "node_id": "ll:7ea0514f816f",
+      "file": "elastro/core/ingest/engine.py",
+      "module": "core.ingest.engine",
+      "function": "_flush_batch",
+      "level": "warning",
+      "message_template": "Batch: {} indexed, {} failed",
+      "line": 328,
+      "semantic_tags": [
+        "error",
+        "warning"
+      ],
+      "lexical_parents": [
+        "_flush_batch"
+      ],
+      "call_parents": [
+        "ll:771ea31c4bb4",
+        "ll:89b9a61ebf74",
+        "ll:89b9a61ebf74:08dd",
+        "ll:bad42099322e",
+        "ll:ca94fb71f250"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:18ca8ecdf715": {
+      "node_id": "ll:18ca8ecdf715",
+      "file": "elastro/core/ingest/engine.py",
+      "module": "core.ingest.engine",
+      "function": "_flush_batch",
+      "level": "error",
+      "message_template": "Batch failed entirely: {}",
+      "line": 333,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "_flush_batch"
+      ],
+      "call_parents": [
+        "ll:771ea31c4bb4",
+        "ll:89b9a61ebf74",
+        "ll:89b9a61ebf74:08dd",
+        "ll:bad42099322e",
+        "ll:ca94fb71f250"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:7f67903fca20": {
+      "node_id": "ll:7f67903fca20",
+      "file": "elastro/core/rag/ingestor.py",
+      "module": "core.rag.ingestor",
+      "function": "scaffold_index",
+      "level": "info",
+      "message_template": "Successfully deployed ELSER inference pipeline framework (Enterprise Mode).",
+      "line": 85,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "scaffold_index"
+      ],
+      "call_parents": [
+        "ll:7e97dae45af1"
+      ],
+      "call_children": [
+        "ll:347b9c66e298",
+        "ll:6c3526258523",
+        "ll:6c55b43c8209",
+        "ll:a350860b8e97",
+        "ll:f0866f843076",
+        "ll:f82218810b47",
+        "ll:fb72f24a5858"
+      ]
+    },
+    "ll:58ba2f2df2f6": {
+      "node_id": "ll:58ba2f2df2f6",
+      "file": "elastro/core/rag/ingestor.py",
+      "module": "core.rag.ingestor",
+      "function": "scaffold_index",
+      "level": "warning",
+      "message_template": "Could not scaffold ELSER pipeline (requires ML nodes or Platinum/Enterprise license). Falling back to Open Source BM25 Mode. Error: {}",
+      "line": 90,
+      "semantic_tags": [
+        "error",
+        "warning"
+      ],
+      "lexical_parents": [
+        "scaffold_index"
+      ],
+      "call_parents": [
+        "ll:7e97dae45af1"
+      ],
+      "call_children": [
+        "ll:347b9c66e298",
+        "ll:6c3526258523",
+        "ll:6c55b43c8209",
+        "ll:a350860b8e97",
+        "ll:f0866f843076",
+        "ll:f82218810b47",
+        "ll:fb72f24a5858"
+      ]
+    },
+    "ll:623860d9a0ae": {
+      "node_id": "ll:623860d9a0ae",
+      "file": "elastro/core/rag/ingestor.py",
+      "module": "core.rag.ingestor",
+      "function": "scaffold_index",
+      "level": "info",
+      "message_template": "Creating Graph RAG index '{}'",
+      "line": 96,
+      "semantic_tags": [],
+      "lexical_parents": [
+        "scaffold_index"
+      ],
+      "call_parents": [
+        "ll:7e97dae45af1"
+      ],
+      "call_children": [
+        "ll:347b9c66e298",
+        "ll:6c3526258523",
+        "ll:6c55b43c8209",
+        "ll:a350860b8e97",
+        "ll:f0866f843076",
+        "ll:f82218810b47",
+        "ll:fb72f24a5858"
+      ]
+    },
+    "ll:1f4a92aaf349": {
+      "node_id": "ll:1f4a92aaf349",
+      "file": "elastro/core/rag/ingestor.py",
+      "module": "core.rag.ingestor",
+      "function": "scan_and_yield",
+      "level": "error",
+      "message_template": "Error parsing Graph RAG for {}: {}",
+      "line": 178,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "scan_and_yield"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:54ee74d47ee2",
+        "ll:6976b1653f71",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:827c4ea39bdb": {
+      "node_id": "ll:827c4ea39bdb",
+      "file": "elastro/core/rag/ingestor.py",
+      "module": "core.rag.ingestor",
+      "function": "generate_deletes",
+      "level": "warning",
+      "message_template": "Could not fetch existing chunks for deletion: {}",
+      "line": 239,
+      "semantic_tags": [
+        "http",
+        "warning"
+      ],
+      "lexical_parents": [
+        "generate_deletes"
+      ],
+      "call_parents": [
+        "ll:7e97dae45af1"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:a4c0d9ec92f2",
+        "ll:b6fa9f5437ea",
+        "ll:d552aae6abc4"
+      ]
+    },
+    "ll:7e97dae45af1": {
+      "node_id": "ll:7e97dae45af1",
+      "file": "elastro/core/rag/ingestor.py",
+      "module": "core.rag.ingestor",
+      "function": "update_file",
+      "level": "warning",
+      "message_template": "Failed to bulk delete stale AST chunks: {}",
+      "line": 245,
+      "semantic_tags": [
+        "error",
+        "warning"
+      ],
+      "lexical_parents": [
+        "update_file"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:54ee74d47ee2",
+        "ll:58ba2f2df2f6",
+        "ll:623860d9a0ae",
+        "ll:6976b1653f71",
+        "ll:7f67903fca20",
+        "ll:827c4ea39bdb",
+        "ll:a4c0d9ec92f2",
+        "ll:b4f897862c9b",
+        "ll:b6fa9f5437ea",
+        "ll:d552aae6abc4"
+      ]
+    },
+    "ll:b4f897862c9b": {
+      "node_id": "ll:b4f897862c9b",
+      "file": "elastro/core/rag/ingestor.py",
+      "module": "core.rag.ingestor",
+      "function": "scan_single_file",
+      "level": "error",
+      "message_template": "Error parsing Graph RAG for {}: {}",
+      "line": 276,
+      "semantic_tags": [
+        "error"
+      ],
+      "lexical_parents": [
+        "scan_single_file"
+      ],
+      "call_parents": [
+        "ll:7e97dae45af1"
+      ],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:54ee74d47ee2",
+        "ll:6976b1653f71",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:416a6171f8c5": {
+      "node_id": "ll:416a6171f8c5",
+      "file": "elastro/server/routes/clusters.py",
+      "module": "server.routes.clusters",
+      "function": "get_clusters_health",
+      "level": "error",
+      "message_template": "Failed to connect to {}: {}",
+      "line": 74,
+      "semantic_tags": [
+        "error",
+        "http"
+      ],
+      "lexical_parents": [
+        "get_clusters_health"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    },
+    "ll:fc1ac9cf4a7f": {
+      "node_id": "ll:fc1ac9cf4a7f",
+      "file": "elastro/server/routes/clusters.py",
+      "module": "server.routes.clusters",
+      "function": "get_cluster_details",
+      "level": "warning",
+      "message_template": "Could not fetch ILM for {}: {}",
+      "line": 128,
+      "semantic_tags": [
+        "http",
+        "warning"
+      ],
+      "lexical_parents": [
+        "get_cluster_details"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:4007175a3150",
+        "ll:b6fa9f5437ea",
+        "ll:dfbbb2d31a89"
+      ]
+    },
+    "ll:e3a8b0266796": {
+      "node_id": "ll:e3a8b0266796",
+      "file": "elastro/server/routes/clusters.py",
+      "module": "server.routes.clusters",
+      "function": "get_cluster_details",
+      "level": "warning",
+      "message_template": "Could not fetch Repos for {}: {}",
+      "line": 140,
+      "semantic_tags": [
+        "http",
+        "warning"
+      ],
+      "lexical_parents": [
+        "get_cluster_details"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:4007175a3150",
+        "ll:b6fa9f5437ea",
+        "ll:dfbbb2d31a89"
+      ]
+    },
+    "ll:7cd927a31dbd": {
+      "node_id": "ll:7cd927a31dbd",
+      "file": "elastro/server/routes/clusters.py",
+      "module": "server.routes.clusters",
+      "function": "get_cluster_details",
+      "level": "error",
+      "message_template": "Failed to fetch details for {}: {}",
+      "line": 171,
+      "semantic_tags": [
+        "error",
+        "http"
+      ],
+      "lexical_parents": [
+        "get_cluster_details"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:2709b64cc7ee",
+        "ll:4007175a3150",
+        "ll:b6fa9f5437ea",
+        "ll:dfbbb2d31a89"
+      ]
+    },
+    "ll:04bd9ca1a046": {
+      "node_id": "ll:04bd9ca1a046",
+      "file": "elastro/server/routes/indices.py",
+      "module": "server.routes.indices",
+      "function": "get_unhealthy_indices",
+      "level": "error",
+      "message_template": "Failed to explain {}: {}",
+      "line": 99,
+      "semantic_tags": [
+        "error",
+        "http"
+      ],
+      "lexical_parents": [
+        "get_unhealthy_indices"
+      ],
+      "call_parents": [],
+      "call_children": [
+        "ll:116d2fc542fb",
+        "ll:2709b64cc7ee",
+        "ll:b6fa9f5437ea"
+      ]
+    }
+  },
+  "redacted_patterns": []
+}
