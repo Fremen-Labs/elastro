@@ -250,6 +250,95 @@ def health_score(
         raise SystemExit(1) from e
 
 
+@health_group.command("nodes")
+@click.option(
+    "--node-id",
+    type=str,
+    default=None,
+    help="Limit stats to a specific node id",
+)
+@click.option(
+    "--metric",
+    "metrics",
+    default="jvm,fs,os,breaker",
+    show_default=True,
+    help="Comma-separated node stats metrics (jvm, fs, os, breaker)",
+)
+@click.pass_context
+def health_nodes(
+    ctx: click.Context,
+    node_id: Optional[str],
+    metrics: str,
+) -> None:
+    """
+    Show per-node JVM, disk, OS, and circuit-breaker stats.
+
+    Examples:
+
+    JVM and disk table:
+    ```bash
+    elastro -o table health nodes --metric jvm,fs
+    ```
+
+    JSON output for a single node:
+    ```bash
+    elastro -o json health nodes --node-id node-1 --metric jvm,fs
+    ```
+    """
+    from elastro.health.collectors.base import CollectContext
+    from elastro.health.collectors.nodes import NodesCollector
+    from elastro.health.formatters.nodes_table import format_nodes_table
+
+    client: ElasticsearchClient = ctx.obj
+    logger.info(
+        "health nodes invoked node_id=%s metrics=%s",
+        node_id,
+        metrics,
+    )
+    collector = NodesCollector()
+    result = collector.collect(
+        CollectContext(
+            client=client,
+            options={"node_id": node_id, "metrics": metrics},
+        )
+    )
+    if result.status != "ok":
+        click.echo(
+            f"Error collecting node stats: {result.error or 'unknown error'}",
+            err=True,
+        )
+        raise SystemExit(1)
+
+    output_fmt = _output_format(ctx)
+    nodes = result.data.get("nodes", {})
+    metric_list = [part.strip() for part in metrics.split(",") if part.strip()]
+
+    if output_fmt == "table":
+        click.echo(format_nodes_table(nodes, metric_list), nl=False)
+    elif output_fmt == "yaml":
+        click.echo(
+            format_output(
+                {
+                    "node_count": result.data.get("node_count", 0),
+                    "metrics": metric_list,
+                    "nodes": nodes,
+                },
+                output_format="yaml",
+            )
+        )
+    else:
+        click.echo(
+            format_output(
+                {
+                    "node_count": result.data.get("node_count", 0),
+                    "metrics": metric_list,
+                    "nodes": nodes,
+                },
+                output_format="json",
+            )
+        )
+
+
 @health_group.command("status")
 @click.option(
     "--level",

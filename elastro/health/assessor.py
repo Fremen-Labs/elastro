@@ -12,10 +12,14 @@ from elastro.health.collectors.cluster import (
     ClusterHealthCollector,
     PendingTasksCollector,
 )
+from elastro.health.collectors.disk import DiskCollector
 from elastro.health.collectors.health_report import (
     HealthReportCollector,
     non_passing_findings,
 )
+from elastro.health.collectors.nodes import NodesCollector
+from elastro.health.collectors.snapshots import SnapshotsCollector
+from elastro.health.rules.jvm import jvm_pressure_findings
 from elastro.health.models import (
     AssessmentReport,
     Finding,
@@ -31,6 +35,9 @@ _DEFAULT_COLLECTORS = [
     HealthReportCollector(),
     ClusterHealthCollector(),
     PendingTasksCollector(),
+    NodesCollector(),
+    DiskCollector(),
+    SnapshotsCollector(),
 ]
 
 
@@ -157,6 +164,31 @@ class HealthAssessor:
                         )
                     )
                     overall_score = max(0, overall_score - min(count * 2, 10))
+
+            elif result.name == "nodes":
+                rule_findings = jvm_pressure_findings(result.data)
+                if rule_findings:
+                    findings.extend(rule_findings)
+                    deduction = sum(item.score_impact for item in rule_findings)
+                    overall_score = max(0, overall_score - deduction)
+
+            elif result.name == "disk":
+                disk_findings = result.data.get("findings", [])
+                if disk_findings:
+                    findings.extend(disk_findings)
+                    deduction = sum(
+                        getattr(item, "score_impact", 0) for item in disk_findings
+                    )
+                    overall_score = max(0, overall_score - deduction)
+
+            elif result.name == "snapshots":
+                snapshot_findings = result.data.get("findings", [])
+                if snapshot_findings:
+                    findings.extend(snapshot_findings)
+                    deduction = sum(
+                        getattr(item, "score_impact", 0) for item in snapshot_findings
+                    )
+                    overall_score = max(0, overall_score - deduction)
 
         duration_ms = int((time.monotonic() - start) * 1000)
         report = AssessmentReport(
