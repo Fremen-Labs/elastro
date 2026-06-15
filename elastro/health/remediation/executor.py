@@ -6,6 +6,7 @@ from typing import Callable, List, Optional
 
 from elastro.core.client import ElasticsearchClient
 from elastro.core.index import IndexManager
+from elastro.core.logger import get_logger
 from elastro.health.remediation.catalog import RemediationCatalog
 from elastro.health.remediation.diagnosis import diagnose_unhealthy_indices
 from elastro.health.remediation.models import IndexDiagnosis, RemediationResult
@@ -13,6 +14,8 @@ from elastro.health.remediation.models import IndexDiagnosis, RemediationResult
 
 ConfirmFn = Callable[[str, bool], bool]
 PromptFn = Callable[[str], str]
+
+logger = get_logger(__name__)
 
 
 class RemediationExecutor:
@@ -57,6 +60,7 @@ class RemediationExecutor:
         """Execute or preview a single catalog action."""
         entry = RemediationCatalog.get(action_id)
         if entry is None:
+            logger.warning("Unknown remediation action requested: %s", action_id)
             return RemediationResult(
                 action_id=action_id,
                 index_name=index_name,
@@ -73,6 +77,12 @@ class RemediationExecutor:
         )
 
         if self.dry_run:
+            logger.info(
+                "Dry-run remediation %s for index=%s: %s",
+                action_id,
+                index_name,
+                planned,
+            )
             return RemediationResult(
                 action_id=action_id,
                 index_name=index_name,
@@ -85,6 +95,11 @@ class RemediationExecutor:
 
         confirm_prompt = prompt or f"Apply {entry.label}?"
         if not self._should_execute(confirm_prompt, default=default_confirm):
+            logger.info(
+                "Remediation skipped: action=%s index=%s",
+                action_id,
+                index_name,
+            )
             return RemediationResult(
                 action_id=action_id,
                 index_name=index_name,
@@ -96,6 +111,11 @@ class RemediationExecutor:
             )
 
         try:
+            logger.info(
+                "Executing remediation %s for index=%s",
+                action_id,
+                index_name,
+            )
             message = RemediationCatalog.execute(
                 action_id,
                 self._index_manager,
@@ -112,6 +132,13 @@ class RemediationExecutor:
                 planned_api_call=planned,
             )
         except Exception as exc:
+            logger.error(
+                "Remediation failed: action=%s index=%s error=%s",
+                action_id,
+                index_name,
+                exc,
+                exc_info=True,
+            )
             return RemediationResult(
                 action_id=action_id,
                 index_name=index_name,
@@ -166,6 +193,11 @@ class RemediationExecutor:
         prompt_builder: Optional[Callable[[IndexDiagnosis, str], str]] = None,
     ) -> List[RemediationResult]:
         """Scan yellow/red indices and apply or preview suggested fixes."""
+        logger.info(
+            "Starting unhealthy index remediation (dry_run=%s interactive=%s)",
+            self.dry_run,
+            self.interactive,
+        )
         results: List[RemediationResult] = []
         for diagnosis in diagnose_unhealthy_indices(self._index_manager):
             result = self.remediate_diagnosis(
@@ -174,4 +206,8 @@ class RemediationExecutor:
             )
             if result is not None:
                 results.append(result)
+        logger.info(
+            "Remediation pass complete: planned_or_executed=%s",
+            len(results),
+        )
         return results

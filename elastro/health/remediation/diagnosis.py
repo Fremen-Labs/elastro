@@ -5,7 +5,10 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from elastro.core.index import IndexManager
+from elastro.core.logger import get_logger
 from elastro.health.remediation.models import IndexDiagnosis
+
+logger = get_logger(__name__)
 
 
 def detect_routing_filter_fault(explain_result: Dict[str, Any]) -> bool:
@@ -80,6 +83,13 @@ def diagnose_index(
         allocate_explanation=str(allocate_explanation),
         routing_filter_fault=routing_filter_fault,
     )
+    logger.debug(
+        "Diagnosed index %s: health=%s reason=%s action=%s",
+        index_name,
+        health,
+        reason,
+        action_id or "none",
+    )
 
     return IndexDiagnosis(
         index_name=index_name,
@@ -97,11 +107,13 @@ def diagnose_index(
 def list_unhealthy_indices(index_manager: IndexManager) -> List[Dict[str, Any]]:
     """Return cat indices entries that are yellow or red."""
     indices = index_manager.list()
-    return [
+    unhealthy = [
         idx
         for idx in indices
         if idx.get("health", "green") in {"yellow", "red"}
     ]
+    logger.info("Found %s unhealthy index(es)", len(unhealthy))
+    return unhealthy
 
 
 def diagnose_unhealthy_indices(index_manager: IndexManager) -> List[IndexDiagnosis]:
@@ -123,6 +135,12 @@ def diagnose_unhealthy_indices(index_manager: IndexManager) -> List[IndexDiagnos
                 )
             )
         except Exception as exc:
+            logger.warning(
+                "Failed to diagnose index %s: %s",
+                name,
+                exc,
+                exc_info=True,
+            )
             diagnoses.append(
                 IndexDiagnosis(
                     index_name=name,
@@ -133,4 +151,9 @@ def diagnose_unhealthy_indices(index_manager: IndexManager) -> List[IndexDiagnos
                     metadata={"error": str(exc)},
                 )
             )
+    logger.info(
+        "Diagnosis complete: %s index(es), %s actionable",
+        len(diagnoses),
+        sum(1 for d in diagnoses if d.suggested_action_id),
+    )
     return diagnoses

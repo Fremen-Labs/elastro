@@ -5,6 +5,9 @@ from __future__ import annotations
 from typing import Any, Dict
 
 from elastro.core.index import IndexManager
+from elastro.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def planned_reduce_replicas(index_name: str, *, api_mode: bool = False) -> str:
@@ -30,6 +33,7 @@ def reduce_replicas(
 ) -> str:
     """Set number_of_replicas to 0 for the target index."""
     payload = _payload(api_mode=api_mode)
+    logger.info("Reducing replicas for index %s (api_mode=%s)", index_name, api_mode)
     try:
         index_manager.update(index_name, payload)
     except Exception:

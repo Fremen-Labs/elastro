@@ -94,6 +94,12 @@ class CollectorRegistry:
             else:
                 if result.duration_ms == 0:
                     result.duration_ms = int((time.monotonic() - start) * 1000)
+                logger.debug(
+                    "Collector %s finished: status=%s duration_ms=%s",
+                    name,
+                    result.status,
+                    result.duration_ms,
+                )
             results.append(result)
 
         return results

@@ -6,6 +6,7 @@ import rich_click as click
 
 from elastro.core.client import ElasticsearchClient
 from elastro.core.errors import OperationError
+from elastro.core.logger import get_logger
 from elastro.health.assessor import HealthAssessor
 from elastro.health.formatters.render import render_assessment
 from elastro.health.manager import HealthManager
@@ -13,6 +14,7 @@ from elastro.health.models import AssessmentReport
 from elastro.cli.output import format_output
 
 _VALID_WAIT_STATUSES = ("green", "yellow", "red")
+logger = get_logger(__name__)
 
 
 def _output_format(ctx: click.Context) -> str:
@@ -133,6 +135,12 @@ def health_assess(
         raise SystemExit(2)
 
     client: ElasticsearchClient = ctx.obj
+    logger.info(
+        "health assess invoked fix=%s dry_run=%s verbose_report=%s",
+        fix,
+        dry_run,
+        verbose_report,
+    )
     try:
         report = _run_assessment(
             client,
@@ -148,6 +156,10 @@ def health_assess(
         click.echo(output, nl=not output.endswith("\n"))
 
         if fix or dry_run:
+            logger.info(
+                "Starting post-assessment remediation dry_run=%s",
+                dry_run,
+            )
             from rich.prompt import Confirm
 
             from elastro.health.remediation.diagnosis import diagnose_unhealthy_indices

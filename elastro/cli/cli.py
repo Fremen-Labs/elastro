@@ -301,6 +301,9 @@ cli.add_command(health_group)
 
 
 def main() -> None:
+    from elastro.core.logger import configure_logging
+
+    configure_logging()
     """Entry point for CLI."""
     cli()
 

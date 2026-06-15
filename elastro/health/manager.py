@@ -4,6 +4,9 @@ from typing import Any, Dict, List, Optional
 
 from elastro.core.client import ElasticsearchClient
 from elastro.core.errors import OperationError
+from elastro.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class HealthManager:
@@ -19,12 +22,18 @@ class HealthManager:
         verbose: bool = True,
         feature: Optional[str] = None,
     ) -> Dict[str, Any]:
+        logger.debug(
+            "Fetching _health_report verbose=%s feature=%s",
+            verbose,
+            feature,
+        )
         try:
             kwargs: Dict[str, Any] = {"verbose": verbose}
             if feature:
                 return dict(self._es.health_report(feature=feature, **kwargs))
             return dict(self._es.health_report(**kwargs))
         except Exception as e:
+            logger.error("Health report request failed: %s", e, exc_info=True)
             raise OperationError(f"Failed to get health report: {str(e)}")
 
     def cluster_health(
@@ -34,6 +43,13 @@ class HealthManager:
         timeout: str = "30s",
         wait_for_status: Optional[str] = None,
     ) -> Dict[str, Any]:
+        logger.debug(
+            "Fetching cluster health level=%s wait=%s timeout=%s index=%s",
+            level,
+            wait_for_status,
+            timeout,
+            index,
+        )
         try:
             params: Dict[str, Any] = {"level": level, "timeout": timeout}
 
@@ -44,11 +60,13 @@ class HealthManager:
                 return dict(self._es.cluster.health(index=index, **params))
             return dict(self._es.cluster.health(**params))
         except Exception as e:
+            logger.error("Cluster health request failed: %s", e, exc_info=True)
             raise OperationError(f"Failed to get cluster health: {str(e)}")
 
     def node_stats(
         self, node_id: Optional[str] = None, metrics: Optional[List[str]] = None
     ) -> Dict[str, Any]:
+        logger.debug("Fetching node stats node_id=%s metrics=%s", node_id, metrics)
         try:
             if node_id and metrics:
                 return dict(
@@ -60,11 +78,13 @@ class HealthManager:
                 return dict(self._es.nodes.stats(metric=",".join(metrics)))
             return dict(self._es.nodes.stats())
         except Exception as e:
+            logger.error("Node stats request failed: %s", e, exc_info=True)
             raise OperationError(f"Failed to get node stats: {str(e)}")
 
     def node_info(
         self, node_id: Optional[str] = None, metrics: Optional[List[str]] = None
     ) -> Dict[str, Any]:
+        logger.debug("Fetching node info node_id=%s metrics=%s", node_id, metrics)
         try:
             if node_id and metrics:
                 return dict(
@@ -76,18 +96,23 @@ class HealthManager:
                 return dict(self._es.nodes.info(metric=",".join(metrics)))
             return dict(self._es.nodes.info())
         except Exception as e:
+            logger.error("Node info request failed: %s", e, exc_info=True)
             raise OperationError(f"Failed to get node info: {str(e)}")
 
     def cluster_stats(self) -> Dict[str, Any]:
+        logger.debug("Fetching cluster stats")
         try:
             return dict(self._es.cluster.stats())
         except Exception as e:
+            logger.error("Cluster stats request failed: %s", e, exc_info=True)
             raise OperationError(f"Failed to get cluster stats: {str(e)}")
 
     def pending_tasks(self) -> List[Dict[str, Any]]:
+        logger.debug("Fetching pending cluster tasks")
         try:
             return self._es.cluster.pending_tasks().get("tasks", [])
         except Exception as e:
+            logger.error("Pending tasks request failed: %s", e, exc_info=True)
             raise OperationError(f"Failed to get pending tasks: {str(e)}")
 
     def allocation_explain(
@@ -96,6 +121,12 @@ class HealthManager:
         shard: Optional[int] = None,
         primary: bool = False,
     ) -> Dict[str, Any]:
+        logger.debug(
+            "Explaining allocation index=%s shard=%s primary=%s",
+            index,
+            shard,
+            primary,
+        )
         try:
             body: Dict[str, Any] = {}
             if index:
@@ -109,34 +140,47 @@ class HealthManager:
                 return dict(self._es.cluster.allocation_explain(body=body))
             return dict(self._es.cluster.allocation_explain())
         except Exception as e:
+            logger.error("Allocation explain request failed: %s", e, exc_info=True)
             raise OperationError(f"Failed to explain allocation: {str(e)}")
 
     def cluster_settings(self, include_defaults: bool = False) -> Dict[str, Any]:
+        logger.debug("Fetching cluster settings include_defaults=%s", include_defaults)
         try:
             return dict(
                 self._es.cluster.get_settings(include_defaults=include_defaults)
             )
         except Exception as e:
+            logger.error("Cluster settings request failed: %s", e, exc_info=True)
             raise OperationError(f"Failed to get cluster settings: {str(e)}")
 
     def verify_repository(self, repository: str) -> bool:
+        logger.debug("Verifying snapshot repository %s", repository)
         try:
             response = self._es.snapshot.verify_repository(name=repository)
             return "nodes" in response
         except Exception as e:
+            logger.error(
+                "Repository verification failed for %s: %s",
+                repository,
+                e,
+                exc_info=True,
+            )
             raise OperationError(
                 f"Failed to verify repository {repository}: {str(e)}"
             )
 
     def index_stats(self, index: Optional[str] = None) -> Dict[str, Any]:
+        logger.debug("Fetching index stats index=%s", index)
         try:
             if index:
                 return dict(self._es.indices.stats(index=index))
             return dict(self._es.indices.stats())
         except Exception as e:
+            logger.error("Index stats request failed: %s", e, exc_info=True)
             raise OperationError(f"Failed to get index stats: {str(e)}")
 
     def diagnose(self) -> Dict[str, Any]:
+        logger.info("Running cluster diagnostics summary")
         try:
             diagnostic: Dict[str, Any] = {
                 "cluster_health": self.cluster_health(),
@@ -152,6 +196,14 @@ class HealthManager:
                 "has_pending_tasks": diagnostic["pending_tasks"] > 0,
             }
 
+            logger.info(
+                "Diagnostics complete: status=%s nodes=%s indices=%s pending=%s",
+                health_status,
+                diagnostic["nodes_count"],
+                diagnostic["indices_count"],
+                diagnostic["pending_tasks"],
+            )
             return diagnostic
         except Exception as e:
+            logger.error("Diagnostics summary failed: %s", e, exc_info=True)
             raise OperationError(f"Failed to perform diagnostics: {str(e)}")
