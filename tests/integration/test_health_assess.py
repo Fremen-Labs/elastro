@@ -151,6 +151,74 @@ class TestHealthAssessCLI:
 
     @patch("elastro.cli.cli.ElasticsearchClient.connect")
     @patch("elastro.cli.commands.health.HealthAssessor")
+    @patch("elastro.health.remediation.diagnosis.diagnose_unhealthy_indices")
+    def test_assess_fix_dry_run_prints_planned_calls(
+        self,
+        mock_diagnose,
+        mock_assessor_cls,
+        mock_connect,
+        runner,
+    ):
+        from elastro.health.remediation.models import IndexDiagnosis
+
+        mock_connect.return_value = None
+        mock_assessor_cls.return_value.run.return_value = _mock_report()
+        mock_diagnose.return_value = [
+            IndexDiagnosis(
+                index_name="logs-2024",
+                health="yellow",
+                suggested_action_id="reduce_replicas",
+                suggestion_text="Reduce replicas",
+            )
+        ]
+
+        with patch(
+            "elastro.health.remediation.executor.RemediationExecutor.remediate_diagnosis",
+            return_value=MagicMock(
+                action_id="reduce_replicas",
+                index_name="logs-2024",
+                success=True,
+                executed=False,
+                dry_run=True,
+                planned_api_call="PUT /logs-2024/_settings body={'index': {'number_of_replicas': 0}}",
+                message="Reduce replicas to 0",
+            ),
+        ):
+            result = runner.invoke(
+                cli,
+                [
+                    "-h",
+                    "http://localhost:9205",
+                    "-o",
+                    "table",
+                    "health",
+                    "assess",
+                    "--fix",
+                    "--dry-run",
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert "Planned remediations (dry-run)" in result.output
+        assert "logs-2024" in result.output
+        assert "PUT /logs-2024/_settings" in result.output
+
+    @patch("elastro.cli.cli.ElasticsearchClient.connect")
+    @patch("elastro.cli.commands.health.HealthAssessor")
+    def test_dry_run_requires_fix(self, mock_assessor_cls, mock_connect, runner):
+        mock_connect.return_value = None
+        mock_assessor_cls.return_value.run.return_value = _mock_report()
+
+        result = runner.invoke(
+            cli,
+            ["-h", "http://localhost:9205", "health", "assess", "--dry-run"],
+        )
+
+        assert result.exit_code == 2
+        assert "--dry-run requires --fix" in result.output
+
+    @patch("elastro.cli.cli.ElasticsearchClient.connect")
+    @patch("elastro.cli.commands.health.HealthAssessor")
     def test_score_command(self, mock_assessor_cls, mock_connect, runner):
         mock_connect.return_value = None
         mock_assessor_cls.return_value.run.return_value = _mock_report()

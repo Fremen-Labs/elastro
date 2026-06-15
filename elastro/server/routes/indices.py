@@ -123,55 +123,30 @@ def index_routes(read_config: Any, verify_token: Any) -> APIRouter:
         try:
             client = build_es_client(target_c)
 
-            from elastro.core.index import IndexManager
+            from elastro.health.remediation.executor import RemediationExecutor
 
-            idx_mgr = IndexManager(client)
+            action = req.action
+            if action == "reroute":
+                action = "reroute_failed"
 
-            if req.action == "reduce_replicas":
-                payload = {
-                    "index": {
-                        "number_of_replicas": 0,
-                        "auto_expand_replicas": "false",
-                    }
-                }
-                try:
-                    idx_mgr.update(index_name, payload)
-                except Exception:
-                    client.client.indices.put_settings(
-                        index=index_name,
-                        body=payload,
-                        allow_no_indices=False,
-                        expand_wildcards="all",
-                        ignore_unavailable=True,
-                    )
-
+            executor = RemediationExecutor(
+                client,
+                dry_run=req.dry_run,
+                interactive=False,
+                api_mode=True,
+            )
+            result = executor.execute_action(action, index_name)
+            if result.dry_run:
                 return {
-                    "status": "success",
-                    "message": f"Replicas reduced to 0 and auto-expand disabled for {index_name}",
+                    "status": "dry_run",
+                    "planned_api_call": result.planned_api_call,
                 }
-            elif req.action == "reroute":
-                idx_mgr.reroute(retry_failed=True)
-                return {
-                    "status": "success",
-                    "message": "Cluster rerouted successfully",
-                }
-            elif req.action == "clear_routing_filters":
-                settings_payload = {
-                    "routing.allocation.require._name": None,
-                    "routing.allocation.include._name": None,
-                    "routing.allocation.exclude._name": None,
-                    "routing.allocation.require.*": None,
-                    "routing.allocation.include.*": None,
-                    "routing.allocation.exclude.*": None,
-                }
-                idx_mgr.update(index_name, {"index": settings_payload})
-                return {
-                    "status": "success",
-                    "message": f"Custom routing allocation filters cleared for {index_name}",
-                }
-            else:
-                raise HTTPException(status_code=400, detail="Unknown action")
+            if not result.success:
+                raise HTTPException(status_code=500, detail=result.message)
+            return {"status": "success", "message": result.message}
 
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 

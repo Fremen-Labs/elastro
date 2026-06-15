@@ -78,6 +78,18 @@ def health_group() -> None:
     default=False,
     help="Include raw _health_report in JSON/YAML output",
 )
+@click.option(
+    "--fix",
+    is_flag=True,
+    default=False,
+    help="Offer the same interactive index remediations as 'elastro index fix'",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="With --fix, show planned API calls without executing",
+)
 @click.pass_context
 def health_assess(
     ctx: click.Context,
@@ -85,6 +97,8 @@ def health_assess(
     features: Tuple[str, ...],
     verbose_report: bool,
     include_raw: bool,
+    fix: bool,
+    dry_run: bool,
 ) -> None:
     """
     Run a full cluster health assessment with score and findings.
@@ -108,7 +122,16 @@ def health_assess(
     ```bash
     elastro health assess --feature disk -o table
     ```
+
+    Preview index fixes after assessment:
+    ```bash
+    elastro health assess --fix --dry-run -o table
+    ```
     """
+    if dry_run and not fix:
+        click.echo("Error: --dry-run requires --fix", err=True)
+        raise SystemExit(2)
+
     client: ElasticsearchClient = ctx.obj
     try:
         report = _run_assessment(
@@ -123,6 +146,28 @@ def health_assess(
             include_raw=include_raw,
         )
         click.echo(output, nl=not output.endswith("\n"))
+
+        if fix or dry_run:
+            from rich.prompt import Confirm
+
+            from elastro.health.remediation.diagnosis import diagnose_unhealthy_indices
+            from elastro.health.remediation.display import render_remediation_summary
+            from elastro.health.remediation.executor import RemediationExecutor
+
+            executor = RemediationExecutor(
+                client,
+                dry_run=dry_run,
+                interactive=fix and not dry_run,
+                confirm=lambda prompt, default: Confirm.ask(prompt, default=default),
+            )
+            diagnoses = diagnose_unhealthy_indices(executor.index_manager)
+            results = []
+            for diagnosis in diagnoses:
+                result = executor.remediate_diagnosis(diagnosis)
+                if result is not None:
+                    results.append(result)
+            render_remediation_summary(diagnoses, results, dry_run=dry_run)
+
         if report.overall_status.value == "fail":
             raise SystemExit(2)
     except OperationError as e:
