@@ -13,6 +13,20 @@ class HealthManager:
         self._client = client
         self._es = client.client
 
+    def health_report(
+        self,
+        *,
+        verbose: bool = True,
+        feature: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        try:
+            kwargs: Dict[str, Any] = {"verbose": verbose}
+            if feature:
+                return dict(self._es.health_report(feature=feature, **kwargs))
+            return dict(self._es.health_report(**kwargs))
+        except Exception as e:
+            raise OperationError(f"Failed to get health report: {str(e)}")
+
     def cluster_health(
         self,
         index: Optional[str] = None,

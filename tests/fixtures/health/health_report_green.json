@@ -1,0 +1,42 @@
+{
+  "status": "green",
+  "cluster_name": "test-cluster",
+  "indicators": {
+    "master_is_stable": {
+      "status": "green",
+      "symptom": "The cluster has a stable master node"
+    },
+    "repository_integrity": {
+      "status": "green",
+      "symptom": "No snapshot repositories configured."
+    },
+    "disk": {
+      "status": "green",
+      "symptom": "The cluster has enough available disk space."
+    },
+    "shards_capacity": {
+      "status": "green",
+      "symptom": "The cluster has enough room to add new shards."
+    },
+    "shards_availability": {
+      "status": "green",
+      "symptom": "All primary and replica shards are available."
+    },
+    "data_stream_lifecycle": {
+      "status": "green",
+      "symptom": "Data streams are executing their lifecycles without issues"
+    },
+    "slm": {
+      "status": "green",
+      "symptom": "No Snapshot Lifecycle Management policies configured"
+    },
+    "ilm": {
+      "status": "green",
+      "symptom": "Index Lifecycle Management is running"
+    },
+    "file_settings": {
+      "status": "green",
+      "symptom": "File-based settings are not configured"
+    }
+  }
+}

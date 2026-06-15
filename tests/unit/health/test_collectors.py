@@ -33,7 +33,7 @@ class TestCollectorRegistry(unittest.TestCase):
         self.registry.register(PendingTasksCollector())
         self.assertEqual(
             self.registry.list(), ["cluster_health", "pending_tasks"]
-        )
+        )  # registration order, not alphabetical
 
     def test_duplicate_registration_raises(self):
         self.registry.register(ClusterHealthCollector())

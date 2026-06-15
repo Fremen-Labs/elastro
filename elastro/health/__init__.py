@@ -9,6 +9,7 @@ from elastro.health.models import (
     Severity,
 )
 from elastro.health.assessor import HealthAssessor
+from elastro.health.collectors.health_report import HealthReportCollector, map_indicators
 from elastro.health.manager import HealthManager
 
 __all__ = [
@@ -17,6 +18,8 @@ __all__ = [
     "FindingStatus",
     "HealthAssessor",
     "HealthManager",
+    "HealthReportCollector",
+    "map_indicators",
     "RemediationAction",
     "RemediationSafety",
     "Severity",

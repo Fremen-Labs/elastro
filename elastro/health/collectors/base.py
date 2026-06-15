@@ -44,18 +44,20 @@ class CollectorRegistry:
 
     def __init__(self) -> None:
         self._collectors: Dict[str, Collector] = {}
+        self._order: List[str] = []
 
     def register(self, collector: Collector) -> None:
         if collector.name in self._collectors:
             raise ValueError(f"Collector already registered: {collector.name}")
         self._collectors[collector.name] = collector
+        self._order.append(collector.name)
         logger.debug("Registered health collector: %s", collector.name)
 
     def get(self, name: str) -> Optional[Collector]:
         return self._collectors.get(name)
 
     def list(self) -> List[str]:
-        return sorted(self._collectors.keys())
+        return list(self._order)
 
     def run(
         self,

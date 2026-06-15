@@ -83,3 +83,46 @@ def health_status(
     except OperationError as e:
         click.echo(f"Error checking health: {str(e)}", err=True)
         raise SystemExit(1) from e
+
+
+@health_group.command("report")
+@click.option(
+    "--feature",
+    type=str,
+    default=None,
+    help="Limit to a specific health report feature/indicator",
+)
+@click.option(
+    "--verbose/--no-verbose",
+    default=True,
+    help="Request verbose root-cause analysis from _health_report",
+)
+@click.pass_obj
+def health_report(
+    client: ElasticsearchClient,
+    feature: Optional[str],
+    verbose: bool,
+) -> None:
+    """
+    Get the Elasticsearch _health_report with indicator diagnoses.
+
+    Examples:
+
+    Full health report:
+    ```bash
+    elastro health report
+    ```
+
+    Disk indicator only:
+    ```bash
+    elastro health report --feature disk
+    ```
+    """
+    health_manager = HealthManager(client)
+
+    try:
+        result = health_manager.health_report(verbose=verbose, feature=feature)
+        click.echo(format_output(result, output_format="json"))
+    except OperationError as e:
+        click.echo(f"Error fetching health report: {str(e)}", err=True)
+        raise SystemExit(1) from e

@@ -6,26 +6,29 @@ import time
 from typing import List, Optional
 
 from elastro.core.client import ElasticsearchClient
-from elastro.core.errors import OperationError
 from elastro.core.logger import get_logger
 from elastro.health.collectors.base import CollectContext, CollectorRegistry
 from elastro.health.collectors.cluster import (
     ClusterHealthCollector,
     PendingTasksCollector,
 )
-from elastro.health.manager import HealthManager
+from elastro.health.collectors.health_report import (
+    HealthReportCollector,
+    non_passing_findings,
+)
 from elastro.health.models import (
     AssessmentReport,
     Finding,
     FindingStatus,
     Severity,
-    cluster_status_to_score,
     score_to_status,
 )
+from elastro.health.scoring import compute_fallback_score, compute_weighted_score
 
 logger = get_logger(__name__)
 
 _DEFAULT_COLLECTORS = [
+    HealthReportCollector(),
     ClusterHealthCollector(),
     PendingTasksCollector(),
 ]
@@ -40,7 +43,6 @@ class HealthAssessor:
         registry: Optional[CollectorRegistry] = None,
     ):
         self._client = client
-        self._manager = HealthManager(client)
         self._registry = registry or _build_default_registry()
 
     def run(
@@ -48,10 +50,15 @@ class HealthAssessor:
         *,
         timeout: str = "30s",
         collectors: Optional[List[str]] = None,
+        verbose_report: bool = True,
+        feature: Optional[str] = None,
     ) -> AssessmentReport:
-        """Run registered collectors and build a baseline assessment report."""
+        """Run registered collectors and build an assessment report."""
         start = time.monotonic()
         ctx = CollectContext(client=self._client, timeout=timeout)
+        ctx.options["verbose_report"] = verbose_report
+        if feature:
+            ctx.options["feature"] = feature
 
         try:
             info = self._client.client.info()
@@ -68,42 +75,72 @@ class HealthAssessor:
         findings: List[Finding] = []
         collectors_run: List[str] = []
         collectors_failed: List[str] = []
+        raw_health_report: Optional[dict] = None
+        used_health_report = False
 
         for result in results:
             collectors_run.append(result.name)
+            if result.status == "skipped":
+                if result.name == "health_report":
+                    findings.append(
+                        Finding(
+                            id="health_report.unavailable",
+                            category="cluster",
+                            title="Health report unavailable",
+                            status=FindingStatus.SKIPPED,
+                            severity=Severity.LOW,
+                            summary=result.error or "Health report collector was skipped.",
+                            source="collector",
+                        )
+                    )
+                continue
             if result.status != "ok":
                 collectors_failed.append(result.name)
                 continue
 
-            if result.name == "cluster_health":
+            if result.name == "health_report":
+                report_data = result.data
+                raw_health_report = report_data.get("report")
+                cluster_name = report_data.get("cluster_name", cluster_name) or cluster_name
+                indicators = report_data.get("indicators", {})
+                overall_score = compute_weighted_score(indicators)
+                findings.extend(non_passing_findings(report_data.get("findings", [])))
+                used_health_report = True
+
+            elif result.name == "cluster_health":
                 health = result.data
-                cluster_name = health.get("cluster_name", "unknown")
-                status = health.get("status", "unknown")
-                overall_score = cluster_status_to_score(status)
-
-                if status != "green":
-                    severity = Severity.CRITICAL if status == "red" else Severity.HIGH
-                    findings.append(
-                        Finding(
-                            id=f"cluster.status.{status}",
-                            category="cluster",
-                            title=f"Cluster status is {status}",
-                            status=(
-                                FindingStatus.FAIL
-                                if status == "red"
-                                else FindingStatus.WARN
-                            ),
-                            severity=severity,
-                            score_impact=100 - overall_score,
-                            summary=(
-                                f"Cluster '{cluster_name}' reports status '{status}'."
-                            ),
-                            source="collector",
-                            metadata=health,
+                cluster_name = health.get("cluster_name", cluster_name)
+                cluster_health_status = health.get("status", "unknown")
+                if not used_health_report:
+                    overall_score = compute_fallback_score(cluster_health_status)
+                    if cluster_health_status != "green":
+                        severity = (
+                            Severity.CRITICAL
+                            if cluster_health_status == "red"
+                            else Severity.HIGH
                         )
-                    )
+                        findings.append(
+                            Finding(
+                                id=f"cluster.status.{cluster_health_status}",
+                                category="cluster",
+                                title=f"Cluster status is {cluster_health_status}",
+                                status=(
+                                    FindingStatus.FAIL
+                                    if cluster_health_status == "red"
+                                    else FindingStatus.WARN
+                                ),
+                                severity=severity,
+                                score_impact=100 - overall_score,
+                                summary=(
+                                    f"Cluster '{cluster_name}' reports status "
+                                    f"'{cluster_health_status}'."
+                                ),
+                                source="collector",
+                                metadata=health,
+                            )
+                        )
 
-            if result.name == "pending_tasks":
+            elif result.name == "pending_tasks":
                 count = result.data.get("count", 0)
                 if count > 0:
                     findings.append(
@@ -131,6 +168,7 @@ class HealthAssessor:
             findings=findings,
             collectors_run=collectors_run,
             collectors_failed=collectors_failed,
+            raw_health_report=raw_health_report,
         )
         logger.info(
             "Health assessment complete: score=%s status=%s findings=%s",

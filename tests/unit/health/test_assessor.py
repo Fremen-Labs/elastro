@@ -1,67 +1,126 @@
 """Unit tests for HealthAssessor."""
 
+import json
 import unittest
-from unittest.mock import Mock, patch
+from pathlib import Path
+from unittest.mock import Mock
 
 from elastro.core.client import ElasticsearchClient
 from elastro.health.assessor import HealthAssessor
 from elastro.health.collectors.base import CollectContext, CollectorRegistry, CollectorResult
+from elastro.health.collectors.cluster import (
+    ClusterHealthCollector,
+    PendingTasksCollector,
+)
+from elastro.health.collectors.health_report import map_indicators
 from elastro.health.models import FindingStatus
 
+FIXTURES = Path(__file__).resolve().parents[2] / "fixtures" / "health"
 
-class _StubCollector:
-    name = "stub"
+
+class _HealthReportStub:
+    name = "health_report"
+
+    def __init__(self, report: dict):
+        self._report = report
 
     def collect(self, ctx: CollectContext) -> CollectorResult:
+        findings = map_indicators(self._report)
         return CollectorResult(
             name=self.name,
             status="ok",
-            data={"cluster_name": "custom", "status": "green"},
+            data={
+                "report": self._report,
+                "findings": findings,
+                "cluster_name": self._report["cluster_name"],
+                "status": self._report["status"],
+                "indicators": self._report["indicators"],
+            },
         )
 
 
 class TestHealthAssessor(unittest.TestCase):
     def setUp(self):
         self.mock_es = Mock()
-        self.mock_es.info.return_value = {"version": {"number": "8.17.2"}}
+        self.mock_es.info.return_value = {"version": {"number": "8.15.2"}}
         self.mock_client = Mock(spec=ElasticsearchClient)
         self.mock_client.client = self.mock_es
 
-    @patch("elastro.health.collectors.cluster.HealthManager")
-    def test_run_green_cluster(self, mock_manager_cls):
-        manager = mock_manager_cls.return_value
-        manager.cluster_health.return_value = {
-            "cluster_name": "prod",
-            "status": "green",
-        }
-        manager.pending_tasks.return_value = []
+    def _registry_with_report(self, report: dict) -> CollectorRegistry:
+        registry = CollectorRegistry()
+        registry.register(_HealthReportStub(report))
+        registry.register(ClusterHealthCollector())
+        registry.register(PendingTasksCollector())
+        return registry
 
-        report = HealthAssessor(self.mock_client).run()
+    def test_run_uses_health_report_score(self):
+        with open(
+            FIXTURES / "health_report_shards_yellow.json", encoding="utf-8"
+        ) as handle:
+            report = json.load(handle)
 
-        self.assertEqual(report.cluster_name, "prod")
-        self.assertEqual(report.overall_score, 100)
-        self.assertEqual(report.overall_status, FindingStatus.PASS)
-        self.assertEqual(report.findings, [])
-        self.assertIn("cluster_health", report.collectors_run)
-        self.assertEqual(report.elasticsearch_version, "8.17.2")
+        with unittest.mock.patch(
+            "elastro.health.collectors.cluster.HealthManager"
+        ) as mock_manager_cls:
+            manager = mock_manager_cls.return_value
+            manager.cluster_health.return_value = {
+                "cluster_name": "docker-cluster",
+                "status": "yellow",
+            }
+            manager.pending_tasks.return_value = []
 
-    @patch("elastro.health.collectors.cluster.HealthManager")
-    def test_run_yellow_cluster_with_pending_tasks(self, mock_manager_cls):
-        manager = mock_manager_cls.return_value
-        manager.cluster_health.return_value = {
-            "cluster_name": "dev",
-            "status": "yellow",
-        }
-        manager.pending_tasks.return_value = [{"action": "shard-started"}]
+            report_out = HealthAssessor(
+                self.mock_client,
+                registry=self._registry_with_report(report),
+            ).run()
 
-        report = HealthAssessor(self.mock_client).run()
+        self.assertEqual(report_out.cluster_name, "docker-cluster")
+        self.assertGreater(report_out.overall_score, 50)
+        self.assertLess(report_out.overall_score, 100)
+        self.assertEqual(len(report_out.findings), 1)
+        self.assertEqual(report_out.findings[0].indicator, "shards_availability")
+        self.assertIsNotNone(report_out.raw_health_report)
 
-        self.assertEqual(report.overall_score, 68)
-        self.assertEqual(len(report.findings), 2)
-        self.assertIn("cluster.status.yellow", [f.id for f in report.findings])
-        self.assertIn("cluster.pending_tasks", [f.id for f in report.findings])
+    def test_run_falls_back_when_health_report_skipped(self):
+        class _SkippedCollector:
+            name = "health_report"
 
-    def test_custom_registry(self):
+            def collect(self, ctx: CollectContext) -> CollectorResult:
+                return CollectorResult(
+                    name=self.name, status="skipped", error="requires 8.7+"
+                )
+
+        registry = CollectorRegistry()
+        registry.register(_SkippedCollector())
+        registry.register(ClusterHealthCollector())
+        registry.register(PendingTasksCollector())
+
+        with unittest.mock.patch(
+            "elastro.health.collectors.cluster.HealthManager"
+        ) as mock_manager_cls:
+            manager = mock_manager_cls.return_value
+            manager.cluster_health.return_value = {
+                "cluster_name": "legacy",
+                "status": "green",
+            }
+            manager.pending_tasks.return_value = []
+
+            report_out = HealthAssessor(
+                self.mock_client, registry=registry
+            ).run()
+
+        self.assertEqual(report_out.overall_score, 100)
+        self.assertEqual(len(report_out.findings), 1)
+        self.assertEqual(report_out.findings[0].id, "health_report.unavailable")
+        self.assertIsNone(report_out.raw_health_report)
+
+    def test_custom_registry_minimal(self):
+        class _StubCollector:
+            name = "stub"
+
+            def collect(self, ctx: CollectContext) -> CollectorResult:
+                return CollectorResult(name=self.name, status="ok", data={})
+
         registry = CollectorRegistry()
         registry.register(_StubCollector())
         report = HealthAssessor(self.mock_client, registry=registry).run(
