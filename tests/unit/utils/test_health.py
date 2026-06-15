@@ -66,6 +66,20 @@ class TestHealthManager(unittest.TestCase):
         )
         self.assertEqual(result, expected_result)
 
+    def test_cluster_health_wait_for_status(self):
+        """Test wait_for_status is passed to the Elasticsearch API."""
+        expected_result = {"status": "green", "timed_out": False}
+        self.mock_es.cluster.health.return_value = expected_result
+
+        result = self.health_manager.cluster_health(wait_for_status="green")
+
+        self.mock_es.cluster.health.assert_called_once_with(
+            level="cluster",
+            timeout="30s",
+            wait_for_status="green",
+        )
+        self.assertEqual(result, expected_result)
+
     def test_cluster_health_error(self):
         """Test error handling when cluster health fails."""
         # Setup mock to raise an exception

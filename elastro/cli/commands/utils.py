@@ -20,10 +20,20 @@ from elastro.cli.output import format_output
     default="cluster",
     help="Health check level",
 )
-@click.option("--wait", type=str, help="Wait for specified status (green, yellow, red)")
+@click.option(
+    "--wait",
+    type=click.Choice(["green", "yellow", "red"]),
+    default=None,
+    help="Wait for specified status (green, yellow, red)",
+)
 @click.option("--timeout", type=str, default="30s", help="Timeout for health check")
 @click.pass_obj
-def health(client: ElasticsearchClient, level: str, wait: str, timeout: str) -> None:
+def health(
+    client: ElasticsearchClient,
+    level: str,
+    wait: Optional[str],
+    timeout: str,
+) -> None:
     """
     Check Elasticsearch cluster health.
 
@@ -41,29 +51,25 @@ def health(client: ElasticsearchClient, level: str, wait: str, timeout: str) -> 
     elastro utils health --wait green --timeout 60s
     ```
     """
+    click.echo(
+        click.style(
+            "Deprecation: use 'elastro health status' instead (removal in 2.0)",
+            fg="yellow",
+        ),
+        err=True,
+    )
+
+    from elastro.cli.commands.health import _render_cluster_health
+
     health_manager = HealthManager(client)
 
     try:
-        # Note: wait_for_status needs to be supported by health manager API, if not we pass only supported args
-        # For now assume we fixed it or pass as kwargs if we can
-        result = health_manager.cluster_health(level=level, timeout=timeout)
-
-        # Format output based on status
-        status = result.get("status", "unknown")
-        status_colors = {"green": "green", "yellow": "yellow", "red": "red"}
-
-        click.echo(
-            click.style(
-                f"Cluster: {result.get('cluster_name', 'unknown')} | "
-                f"Status: {status} | "
-                f"Nodes: {result.get('number_of_nodes', 0)} | "
-                f"Data nodes: {result.get('number_of_data_nodes', 0)}",
-                fg=status_colors.get(status, "white"),
-            )
+        result = health_manager.cluster_health(
+            level=level,
+            timeout=timeout,
+            wait_for_status=wait,
         )
-
-        # Display additional info
-        click.echo(format_output(result, output_format="json"))
+        _render_cluster_health(result)
     except OperationError as e:
         click.echo(f"Error checking health: {str(e)}", err=True)
         exit(1)

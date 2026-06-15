@@ -112,6 +112,7 @@ from elastro.cli.commands.telemetry import telemetry_group
 from elastro.cli.commands.memory import memory_group
 from elastro.cli.commands.tools import tools_group
 from elastro.cli.commands.esql import esql_group
+from elastro.cli.commands.health import health_group
 
 # Register Top-Level Groups
 
@@ -296,6 +297,7 @@ cli.add_command(gui)
 cli.add_command(rag_group)
 cli.add_command(daemon_group)
 cli.add_command(esql_group)
+cli.add_command(health_group)
 
 
 def main() -> None:
