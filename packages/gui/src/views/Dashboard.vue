@@ -1,17 +1,23 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { Shield } from 'lucide-vue-next'
 import { state } from '../store'
 import axios from 'axios'
+import PageHeader from '../components/ui/PageHeader.vue'
+import StatusBadge from '../components/ui/StatusBadge.vue'
+import AlertBanner from '../components/ui/AlertBanner.vue'
+import EmptyState from '../components/ui/EmptyState.vue'
+import { healthColor } from '../utils/health'
 
 const apiBase = import.meta.env.VITE_API_URL || ''
 const error = ref<string | null>(null)
 
 const fetchClusters = async () => {
   if (!state.token) return
-  
+
   state.loadingClusters = true
   error.value = null
-  
+
   try {
     const res = await axios.get(`${apiBase}/api/clusters`, {
       headers: { Authorization: `Bearer ${state.token}` }
@@ -19,9 +25,9 @@ const fetchClusters = async () => {
     state.clusters = res.data.clusters
   } catch (err: any) {
     if (err.response?.status === 401) {
-       error.value = "Unauthorized: Invalid or missing security token."
+      error.value = 'Unauthorized: Invalid or missing security token.'
     } else {
-       error.value = "Failed to fetch cluster data. Is the Python backend running?"
+      error.value = 'Failed to fetch cluster data. Is the Python backend running?'
     }
   } finally {
     state.loadingClusters = false
@@ -32,7 +38,6 @@ onMounted(() => {
   if (state.token) {
     fetchClusters()
   } else {
-    // Check interval until token is injected by App.vue onMount
     const checkToken = setInterval(() => {
       if (state.token) {
         clearInterval(checkToken)
@@ -42,87 +47,69 @@ onMounted(() => {
   }
 })
 
-// Helper to determine index health color
-const getHealthColor = (health: string) => {
-  switch(health) {
-    case 'green': return 'hsl(var(--teal))'
-    case 'yellow': return 'hsl(var(--secondary))' // Reusing a warning-ish color
-    case 'red': return 'hsl(var(--destructive))'
-    default: return 'hsl(var(--muted-foreground))'
-  }
-}
+const unstableCount = () =>
+  state.clusters.reduce((acc, c) => acc + (c.unstable_indices || []).length, 0)
 </script>
 
 <template>
   <div class="dashboard animate-fade-in">
-    <header class="page-header">
-      <h1>Dashboard</h1>
-      <p>Overview of managed Elasticsearch clusters.</p>
-    </header>
+    <PageHeader
+      eyebrow="Overview"
+      title="Dashboard"
+      description="Overview of managed Elasticsearch clusters."
+    />
 
-    <div v-if="error" class="error-banner">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
-      {{ error }}
-    </div>
+    <AlertBanner v-if="error" variant="error">{{ error }}</AlertBanner>
 
-    <!-- Summary Statistics -->
-    <div class="stats-grid" v-if="state.loadingClusters || state.clusters.length > 0">
+    <div v-if="state.loadingClusters || state.clusters.length > 0" class="stats-grid">
       <div class="card stat-card">
-        <h3>Total Clusters</h3>
+        <h3 class="label-caps">Total Clusters</h3>
         <div v-if="state.loadingClusters" class="skeleton skeleton-text skeleton-jumbo w-12 mt-2"></div>
-        <div v-else class="value">{{ state.clusters.length }}</div>
+        <div v-else class="stat-value">{{ state.clusters.length }}</div>
       </div>
       <div class="card stat-card">
-        <h3>Unstable Indices</h3>
+        <h3 class="label-caps">Unstable Indices</h3>
         <div v-if="state.loadingClusters" class="skeleton skeleton-text skeleton-jumbo w-12 mt-2"></div>
-        <div v-else class="value text-destructive">
-          {{ state.clusters.reduce((acc, c) => acc + (c.unstable_indices || []).length, 0) }}
-        </div>
+        <div v-else class="stat-value text-destructive">{{ unstableCount() }}</div>
       </div>
     </div>
 
-    <!-- Skeleton Loading State -->
     <div v-if="state.loadingClusters" class="clusters-container">
       <div v-for="i in 3" :key="i" class="card cluster-card">
-        <div class="cluster-header" style="padding-bottom: 0; border-bottom: none;">
+        <div class="cluster-header skeleton-header">
           <div class="skeleton skeleton-text skeleton-title w-1/3" style="margin-bottom: 0;"></div>
           <div class="skeleton skeleton-badge w-16"></div>
         </div>
-        <div class="cluster-details" style="margin-bottom: 0px; margin-top: 1rem;">
-          <div class="skeleton skeleton-text w-1/4" style="margin-bottom: 0;"></div>
+        <div class="cluster-details" style="margin-top: 1rem;">
+          <div class="skeleton skeleton-text w-1/4" style="margin-bottom: 0.5rem;"></div>
           <div class="skeleton skeleton-text w-1/4" style="margin-bottom: 0;"></div>
         </div>
       </div>
     </div>
 
-    <!-- Cluster Lists -->
-    <div class="clusters-container" v-else-if="state.clusters.length > 0">
-      <router-link 
-        v-for="cluster in state.clusters" 
+    <div v-else-if="state.clusters.length > 0" class="clusters-container">
+      <router-link
+        v-for="cluster in state.clusters"
         :key="cluster.name"
         :to="`/cluster/${encodeURIComponent(cluster.name)}`"
-        class="card cluster-card cluster-link-wrapper"
+        class="card cluster-card cluster-link"
       >
-        
         <div class="cluster-header">
-          <h2>{{ cluster.name }} <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></h2>
-          <span 
-            class="health-badge" 
-            :class="{ 'status-pulse': cluster.health === 'red' || cluster.health === 'offline' }"
-            :style="{ backgroundColor: getHealthColor(cluster.health) }"
-          >
-            {{ cluster.health }}
-          </span>
+          <h2>
+            {{ cluster.name }}
+            <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </h2>
+          <StatusBadge :status="cluster.health" />
         </div>
-        
+
         <div class="cluster-details">
           <div class="info-block">
-            <p><strong>Host:</strong> <span class="highlight-val">{{ cluster.host }}</span></p>
-            <p><strong>Indices:</strong> <span class="highlight-val">{{ cluster.index_count }}</span></p>
+            <p><span class="label-caps info-label">Host</span> <span class="value-chip">{{ cluster.host }}</span></p>
+            <p><span class="label-caps info-label">Indices</span> <span class="value-chip">{{ cluster.index_count }}</span></p>
           </div>
         </div>
 
-        <div class="unstable-indices" v-if="cluster.unstable_indices?.length > 0">
+        <div v-if="cluster.unstable_indices?.length > 0" class="unstable-indices">
           <h4>Alerts (Unstable Indices)</h4>
           <table class="indices-table">
             <thead>
@@ -136,9 +123,8 @@ const getHealthColor = (health: string) => {
               <tr v-for="idx in cluster.unstable_indices" :key="idx.index">
                 <td>{{ idx.index }}</td>
                 <td>
-                   <svg v-if="idx.health === 'red'" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alert-icon-inline"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                   <span v-else class="health-dot" :style="{ backgroundColor: getHealthColor(idx.health) }"></span>
-                   <span :class="{ 'text-destructive font-bold': idx.health === 'red' }">{{ idx.health }}</span>
+                  <span class="health-dot" :style="{ backgroundColor: healthColor(idx.health) }"></span>
+                  <span :class="{ 'text-destructive': idx.health === 'red' }">{{ idx.health }}</span>
                 </td>
                 <td>{{ idx.status }}</td>
               </tr>
@@ -148,33 +134,22 @@ const getHealthColor = (health: string) => {
       </router-link>
     </div>
 
-    <div v-else-if="!state.loadingClusters && !error" class="empty-state card">
-      <div class="empty-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      </div>
-      <h2>No Clusters Managed</h2>
-      <p>You haven't added any Elasticsearch clusters yet.</p>
-      <router-link to="/settings" class="btn btn-primary mt-4">Add Cluster</router-link>
-    </div>
+    <EmptyState
+      v-else-if="!state.loadingClusters && !error"
+      title="No Clusters Managed"
+      description="You haven't added any Elasticsearch clusters yet."
+    >
+      <template #icon>
+        <Shield :size="48" />
+      </template>
+      <template #actions>
+        <router-link to="/settings" class="btn btn-primary">Add Cluster</router-link>
+      </template>
+    </EmptyState>
   </div>
 </template>
 
 <style scoped>
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.page-header h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 0.25rem;
-}
-
-.page-header p {
-  color: hsl(var(--muted-foreground));
-  font-size: 1rem;
-}
-
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -189,59 +164,43 @@ const getHealthColor = (health: string) => {
 }
 
 .stat-card h3 {
-  font-size: 0.875rem;
-  font-weight: 500;
   color: hsl(var(--muted-foreground));
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
-.stat-card .value {
+.stat-value {
   font-size: 2.5rem;
   font-weight: 700;
+  line-height: 1;
 }
 
-.text-destructive {
-  color: hsl(var(--destructive));
+.clusters-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .cluster-card {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0;
 }
 
-.cluster-link-wrapper {
+.cluster-link {
   display: block;
   text-decoration: none;
   color: inherit;
-  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.cluster-link-wrapper:hover {
+.cluster-link:hover {
   transform: translateY(-2px);
-  border-color: hsl(var(--ring));
+  border-color: hsl(var(--ring) / 0.5);
 }
 
-.cluster-link-wrapper:active {
-  transform: scale(0.98);
-  box-shadow: 0 0 15px hsl(var(--primary) / 0.3);
+.cluster-link:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
 }
 
-.cluster-link-wrapper .cluster-header h2 {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.cluster-link-wrapper .chevron {
-  opacity: 0;
-  transform: translateX(-10px);
-  transition: all 0.2s ease;
-  color: hsl(var(--primary));
-}
-
-.cluster-link-wrapper:hover .chevron {
-  opacity: 1;
-  transform: translateX(0);
+.cluster-link:active {
+  transform: scale(0.995);
 }
 
 .cluster-header {
@@ -253,36 +212,34 @@ const getHealthColor = (health: string) => {
   border-bottom: 1px solid hsl(var(--border) / 0.5);
 }
 
+.skeleton-header {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
 .cluster-header h2 {
   font-size: 1.25rem;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.health-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: white;
-  text-transform: uppercase;
+.chevron {
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  color: hsl(var(--primary));
 }
 
-@keyframes pulse-destructive {
-  0% { box-shadow: 0 0 0 0 hsl(var(--destructive) / 0.7); }
-  70% { box-shadow: 0 0 0 10px hsl(var(--destructive) / 0); }
-  100% { box-shadow: 0 0 0 0 hsl(var(--destructive) / 0); }
-}
-
-.status-pulse {
-  animation: pulse-destructive 2s infinite;
+.cluster-link:hover .chevron {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .cluster-details {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
 }
 
 .info-block {
@@ -293,31 +250,24 @@ const getHealthColor = (health: string) => {
 
 .info-block p {
   margin: 0;
-  font-size: 1.05rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
 }
 
-.info-block strong {
+.info-label {
   color: hsl(var(--muted-foreground));
-  font-weight: 500;
-  text-transform: uppercase;
-  font-size: 0.85rem;
-  letter-spacing: 0.05em;
+  min-width: 4.5rem;
 }
 
-.highlight-val {
-  color: hsl(var(--foreground));
-  font-family: var(--font-mono);
-  font-weight: 600;
-  background: hsl(var(--muted));
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
+.unstable-indices {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid hsl(var(--border) / 0.5);
 }
 
 .unstable-indices h4 {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
   margin-bottom: 0.75rem;
   color: hsl(var(--destructive));
@@ -349,57 +299,6 @@ const getHealthColor = (health: string) => {
   height: 8px;
   border-radius: 50%;
   margin-right: 0.5rem;
-}
-
-.alert-icon-inline {
-  color: hsl(var(--destructive));
-  display: inline-block;
-  vertical-align: text-bottom;
-  margin-right: 0.5rem;
-  animation: pulse-destructive 2s infinite;
-}
-
-.font-bold {
-  font-weight: 700;
-}
-
-.error-banner {
-  background: hsl(var(--destructive) / 0.1);
-  color: hsl(var(--destructive));
-  padding: 1rem;
-  border-radius: var(--radius);
-  margin-bottom: 2rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-weight: 500;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-  text-align: center;
-}
-
-.empty-icon {
-  color: hsl(var(--muted-foreground));
-  margin-bottom: 1rem;
-  opacity: 0.5;
-}
-
-.empty-state h2 {
-  font-size: 1.25rem;
-  margin-bottom: 0.5rem;
-}
-
-.empty-state p {
-  color: hsl(var(--muted-foreground));
-}
-
-.mt-4 {
-  margin-top: 1rem;
+  vertical-align: middle;
 }
 </style>

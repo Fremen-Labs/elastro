@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ArrowLeft } from 'lucide-vue-next'
 import { state } from '../store'
 import axios from 'axios'
 import { AnsiUp } from 'ansi_up'
+import PageHeader from '../components/ui/PageHeader.vue'
+import StatusBadge from '../components/ui/StatusBadge.vue'
+import AlertBanner from '../components/ui/AlertBanner.vue'
+import { healthColor } from '../utils/health'
 
 const route = useRoute()
 const router = useRouter()
@@ -55,14 +60,7 @@ onMounted(() => {
   }
 })
 
-const getHealthColor = (health: string) => {
-  switch(health) {
-    case 'green': return 'hsl(var(--teal))'
-    case 'yellow': return 'hsl(var(--warning))'
-    case 'red': return 'hsl(var(--destructive))'
-    default: return 'hsl(var(--muted-foreground))'
-  }
-}
+const getHealthColor = healthColor
 
 // Unhealthy Indices State & Fixes
 import { watch } from 'vue'
@@ -246,7 +244,7 @@ const executeCommand = async () => {
   <div class="cluster-detail-page animate-fade-in">
     <div class="header-actions">
       <button @click="router.push('/')" class="btn btn-secondary back-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        <ArrowLeft :size="16" />
         Back to Dashboard
       </button>
     </div>
@@ -264,24 +262,16 @@ const executeCommand = async () => {
       </div>
     </div>
 
-    <div v-else-if="error" class="error-banner card">
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
-      <div class="error-text">
-        <h3>Connection Failed</h3>
-        <p>{{ error }}</p>
-      </div>
-    </div>
+    <AlertBanner v-else-if="error" variant="error">
+      <strong>Connection Failed</strong> — {{ error }}
+    </AlertBanner>
 
     <div v-else-if="details" class="detail-content">
-      <header class="page-header">
-        <div class="title-group">
-          <h1>{{ details.name }}</h1>
-          <span class="health-badge outline" :style="{ borderColor: getHealthColor(details.health), color: getHealthColor(details.health) }">
-            {{ details.health }}
-          </span>
-        </div>
-        <p class="host-link"><a :href="details.host" target="_blank">{{ details.host }}</a></p>
-      </header>
+      <PageHeader :title="details.name" :description="details.host">
+        <template #actions>
+          <StatusBadge :status="details.health" variant="outline" />
+        </template>
+      </PageHeader>
 
       <div class="metrics-grid">
         <!-- Node Topology -->
@@ -311,7 +301,7 @@ const executeCommand = async () => {
             <div class="health-breakdown mt-3">
               <div class="health-bar-segment" :style="{ 
                 width: `${(details.indices.total - details.indices.red - details.indices.yellow) / details.indices.total * 100}%`,
-                background: 'hsl(var(--teal))' 
+                background: 'hsl(var(--health-green))' 
               }" title="Green Indices"></div>
               <div class="health-bar-segment" :style="{ 
                 width: `${details.indices.yellow / details.indices.total * 100}%`,
