@@ -25,6 +25,7 @@ _ROLLBACK_SETTINGS_KEYS = (
     "routing.allocation.require",
     "routing.allocation.include",
     "routing.allocation.exclude",
+    "blocks",
 )
 
 

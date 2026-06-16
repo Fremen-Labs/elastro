@@ -56,6 +56,13 @@ def build_prompt_from_planned(planned: PlannedAction) -> str:
             f"Clear all custom node routing allocation filters "
             f"for '{planned.index_name}'?"
         )
+    if planned.action_id == "ilm_retry" and planned.index_name:
+        return f"Retry ILM lifecycle step for '{planned.index_name}'?"
+    if planned.action_id == "clear_read_only" and planned.index_name:
+        return (
+            f"Clear read_only_allow_delete block for '{planned.index_name}'? "
+            f"Ensure disk pressure is resolved first."
+        )
     return build_confirm_prompt(planned)
 
 

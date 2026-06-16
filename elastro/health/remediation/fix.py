@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 from elastro.health.remediation.diagnosis import diagnose_unhealthy_indices
 from elastro.health.remediation.executor import RemediationExecutor
 from elastro.health.remediation.models import FixRunResult, PlannedAction, RemediationResult
+from elastro.health.remediation.catalog import CATALOG_ACTION_IDS
 from elastro.health.remediation.planner import RemediationPlanner
 from elastro.health.remediation.dry_run import is_preview_mode
 from elastro.health.remediation.safety import ConfirmFn, PromptFn, RemediationSafetyGate
@@ -64,14 +65,31 @@ def run_health_fix(
             if fnmatch.fnmatchcase(diagnosis.index_name, index_pattern)
         ]
 
-    planned = RemediationPlanner.plan_from_diagnoses(
-        executor.index_manager,
-        diagnoses,
-        index_pattern=index_pattern,
-        action_filter=action_filter,
-        target_replicas=target_replicas,
-        api_mode=api_mode,
-    )
+    if action_filter in {"ilm_retry", "clear_read_only"}:
+        planned = RemediationPlanner.plan_explicit(
+            executor.index_manager,
+            action_filter,
+            index_pattern=index_pattern,
+            target_replicas=target_replicas,
+            api_mode=api_mode,
+        )
+    else:
+        planned = RemediationPlanner.plan_from_diagnoses(
+            executor.index_manager,
+            diagnoses,
+            index_pattern=index_pattern,
+            action_filter=action_filter,
+            target_replicas=target_replicas,
+            api_mode=api_mode,
+        )
+        if action_filter and not planned and action_filter in CATALOG_ACTION_IDS:
+            planned = RemediationPlanner.plan_explicit(
+                executor.index_manager,
+                action_filter,
+                index_pattern=index_pattern,
+                target_replicas=target_replicas,
+                api_mode=api_mode,
+            )
 
     if plan_only:
         return FixRunResult(

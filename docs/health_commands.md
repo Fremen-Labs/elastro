@@ -1,6 +1,6 @@
 # Health Assessment Commands
 
-Elastro's `health` command group provides scored cluster assessments, actionable findings, safe remediation, rollback, and optional audit/history indexing. Available since v1.4.x; rollback and audit indexing shipped in **v1.8.0**; unified remediation workflow (`health fix`, `assess --plan`) shipped in **v1.10.0**; monitoring exit codes and `--fail-on` shipped in **v1.11.0**.
+Elastro's `health` command group provides scored cluster assessments, actionable findings, safe remediation, rollback, and optional audit/history indexing. Available since v1.4.x; rollback and audit indexing shipped in **v1.8.0**; unified remediation workflow (`health fix`, `assess --plan`) shipped in **v1.10.0**; monitoring exit codes and `--fail-on` shipped in **v1.11.0**; disk + ILM catalog remediations shipped in **v1.12.0**; fleet history trends and ES-backed GUI history shipped in **v1.13.0**.
 
 For the full implementation plan and PR history, see [health_assessment_implementation_plan.md](./health_assessment_implementation_plan.md).
 
@@ -43,7 +43,7 @@ elastro health assess [OPTIONS]
 | `--yes` | With `--fix`, auto-confirm CONFIRM-level actions |
 | `--force` | With `--fix` and `--yes`, allow DESTRUCTIVE actions |
 | `--index` | Limit fixes to an index pattern (with `--fix` / `--plan`) |
-| `--action` | Limit fixes to one action: `reduce_replicas`, `reroute_failed`, `clear_routing_filters` |
+| `--action` | Limit fixes to one action: `reduce_replicas`, `reroute_failed`, `clear_routing_filters`, `ilm_retry`, `clear_read_only` |
 | `--target-replicas` | Explicit replica target for `reduce_replicas` |
 | `--history` / `--no-history` | Index report to `elastro-health-assessments` (default: off) |
 | `--history-index` | Override assessment history index name |
@@ -77,7 +77,7 @@ elastro health fix [OPTIONS]
 | `--yes` | Auto-confirm CONFIRM-level actions (non-interactive) |
 | `--force` | With `--yes`, allow DESTRUCTIVE actions |
 | `--index` | Limit fixes to an index pattern |
-| `--action` | Limit to one remediation action |
+| `--action` | Limit to one remediation action (`reduce_replicas`, `reroute_failed`, `clear_routing_filters`, `ilm_retry`, `clear_read_only`) |
 | `--target-replicas` | Explicit replica target for `reduce_replicas` |
 
 Remediation failures exit `3` when any executed action fails.
@@ -96,9 +96,35 @@ elastro health fix -o table
 elastro health fix --dry-run -o table
 elastro health fix --yes --action reroute_failed
 elastro health fix --yes --force --index logs-*
+elastro health fix --dry-run --action ilm_retry --index logs-000042
+elastro health fix --yes --force --action clear_read_only --index logs-flood-*
 ```
 
 `elastro index fix` remains available but prints a deprecation notice and delegates to this workflow.
+
+---
+
+### `elastro health ilm`
+
+List indices with stuck or failed ILM lifecycle steps.
+
+```bash
+elastro health ilm [--stuck-only] [--index PATTERN]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--stuck-only` | Focus output on ERROR or blocked ILM steps |
+| `--index` | Limit to an index pattern |
+
+**Examples:**
+
+```bash
+elastro -o table health ilm --stuck-only
+elastro health ilm --index logs-* --stuck-only -o json
+```
+
+Pair with `elastro health fix --action ilm_retry --index <name>` to retry a failed step.
 
 ---
 
@@ -123,8 +149,38 @@ elastro health score [OPTIONS]
 ```bash
 elastro health score
 elastro health score -o json
-elastro health score --history --last 5 -o table
+elastro health score --history --last 30 -o table
 ```
+
+With `--history` and table output, Elastro renders a sparkline-friendly history table including a Unicode trend line across samples.
+
+---
+
+### `elastro health trends`
+
+Analyze assessment history for score deltas, recurring findings, and persistent yellow signals.
+
+```bash
+elastro health trends [OPTIONS]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--window` | History window such as `7d`, `24h`, or `30d` (default: `7d`) |
+| `--cluster` | Limit to one cluster; omit for a fleet summary table |
+| `--finding` | Filter recurring findings to a specific finding id |
+| `--limit` | Maximum assessment samples to analyze (default: `50`) |
+| `--history-index` | Override assessment history index name |
+
+**Examples:**
+
+```bash
+elastro health trends -o table
+elastro health trends --cluster docker-cluster --window 30d
+elastro health trends --finding shards.oversharded --window 30d -o json
+```
+
+When no history index documents exist, the command returns guidance to run `elastro health assess --history` first.
 
 ---
 
@@ -301,6 +357,10 @@ Supported automated actions (via `RemediationCatalog`):
 | `reduce_replicas` | Yellow index with unassigned replicas |
 | `reroute_failed` | Force retry of failed shard allocation |
 | `clear_routing_filters` | Remove custom node routing allocation filters |
+| `ilm_retry` | Retry a stuck ILM lifecycle step (`CONFIRM`) |
+| `clear_read_only` | Clear flood-stage `read_only_allow_delete` block (`DESTRUCTIVE`) |
+
+Disk findings suggest `elastro cluster settings` to review watermarks. Flood-stage indices with read-only blocks surface `clear_read_only` remediation hints during assessment.
 
 Use `--dry-run` on assess or rollback to preview changes without mutating the cluster.
 
@@ -377,7 +437,8 @@ The local GUI uses the same assessment and remediation stack:
 | `GET` | `/api/clusters/{name}/health/assess` | Full assessment |
 | `GET` | `/api/clusters/{name}/health/score` | Cached score (60s TTL) |
 | `GET` | `/api/clusters/{name}/health/findings` | Open findings from cache |
-| `GET` | `/api/clusters/{name}/health/history` | In-memory assessment history |
+| `GET` | `/api/clusters/{name}/health/history` | Assessment history (ES index when `health.assessment.enable_history=true`, merged with cache) |
+| `GET` | `/api/clusters/{name}/health/trends` | Trend report JSON for sparkline display (`?window=7d`) |
 | `GET` | `/api/clusters/{name}/health/nodes` | Node stats summary |
 | `POST` | `/api/clusters/{name}/health/fix` | Apply remediation; returns `rollback_id` |
 | `POST` | `/api/clusters/{name}/indices/{index}/fix` | Index-level fix; returns `rollback_id` |

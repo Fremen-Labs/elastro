@@ -40,7 +40,7 @@ def _mock_report(cluster_name: str = "docker-cluster") -> AssessmentReport:
     )
 
 
-def _assess_side_effect(cluster_name, target, **kwargs):
+def _assess_side_effect(cluster_name, target, read_config, **kwargs):
     report = _mock_report(cluster_name)
     store_report(cluster_name, report)
     return report
@@ -114,6 +114,63 @@ class TestHealthAPI:
         payload = response.json()
         assert len(payload["findings"]) == 1
         assert payload["findings"][0]["id"] == "indicator.shards_availability"
+
+    @patch("elastro.server.routes.health.compute_trends_from_records")
+    @patch("elastro.server.routes.health._load_cluster_history")
+    @patch("elastro.server.routes.health._run_assessment")
+    def test_trends_endpoint(
+        self,
+        mock_run,
+        mock_load_history,
+        mock_compute_from_records,
+        api_client,
+    ):
+        from datetime import datetime, timedelta, timezone
+
+        from elastro.health.trends import HistoryPoint, TrendReport
+
+        client, _ = api_client
+        assessed_at = datetime.now(timezone.utc) - timedelta(hours=2)
+        mock_load_history.return_value = [
+            {
+                "cluster_name": "docker-cluster",
+                "assessed_at": assessed_at.isoformat(),
+                "overall_score": 70,
+                "overall_status": "warn",
+                "findings": [],
+            },
+            {
+                "cluster_name": "docker-cluster",
+                "assessed_at": (assessed_at - timedelta(hours=1)).isoformat(),
+                "overall_score": 82,
+                "overall_status": "warn",
+                "findings": [],
+            },
+        ]
+        mock_compute_from_records.return_value = TrendReport(
+            cluster_name="docker-cluster",
+            window="7d",
+            sample_count=2,
+            points=[
+                HistoryPoint("2026-06-14T00:00:00+00:00", 70, "warn"),
+                HistoryPoint("2026-06-15T00:00:00+00:00", 82, "warn"),
+            ],
+            score_delta_7d=12,
+            source="cache",
+        )
+
+        response = client.get(
+            "/api/clusters/docker-cluster/health/trends",
+            headers={"Authorization": "Bearer test-token"},
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["cluster_name"] == "docker-cluster"
+        assert payload["score_delta_7d"] == 12
+        assert len(payload["points"]) == 2
+        mock_load_history.assert_called_once()
+        mock_compute_from_records.assert_called_once()
 
     @patch("elastro.server.routes.health._run_assessment")
     def test_history_endpoint(self, mock_run, api_client):

@@ -22,6 +22,7 @@ from elastro.health.models import AssessmentReport, FindingStatus
 from elastro.cli.output import format_output
 from elastro.health.remediation.display import render_fix_run_result
 from elastro.health.remediation.dry_run import remediation_result_payload
+from elastro.health.remediation.catalog import CATALOG_ACTION_IDS
 from elastro.health.remediation.fix import run_health_fix
 from elastro.health.remediation.models import FixRunResult
 
@@ -168,10 +169,7 @@ def health_group() -> None:
 @click.option(
     "--action",
     "action_filter",
-    type=click.Choice(
-        ["reduce_replicas", "reroute_failed", "clear_routing_filters"],
-        case_sensitive=False,
-    ),
+    type=click.Choice(CATALOG_ACTION_IDS, case_sensitive=False),
     default=None,
     help="Limit fixes to a single remediation action",
 )
@@ -376,10 +374,7 @@ def _render_health_fix(
 @click.option(
     "--action",
     "action_filter",
-    type=click.Choice(
-        ["reduce_replicas", "reroute_failed", "clear_routing_filters"],
-        case_sensitive=False,
-    ),
+    type=click.Choice(CATALOG_ACTION_IDS, case_sensitive=False),
     default=None,
     help="Limit fixes to a single remediation action",
 )
@@ -516,14 +511,11 @@ def health_score(
                 limit=last,
             )
             if output_fmt == "table":
-                for record in records:
-                    cluster = record.get("cluster_name", "unknown")
-                    score = record.get("overall_score", 0)
-                    status = record.get("overall_status", "unknown")
-                    assessed_at = record.get("assessed_at", "")
-                    click.echo(
-                        f"{cluster}: {score}/100 ({status}) @ {assessed_at}"
-                    )
+                from elastro.health.formatters.history_table import (
+                    format_score_history_table,
+                )
+
+                click.echo(format_score_history_table(records), nl=False)
             else:
                 click.echo(
                     format_output(
@@ -595,6 +587,133 @@ def health_score(
     except OperationError as e:
         click.echo(f"Error fetching health score: {str(e)}", err=True)
         raise SystemExit(1) from e
+
+
+@health_group.command("trends")
+@click.option(
+    "--window",
+    type=str,
+    default="7d",
+    show_default=True,
+    help="History window (e.g. 7d, 24h, 30d)",
+)
+@click.option(
+    "--cluster",
+    "cluster_name",
+    type=str,
+    default=None,
+    help="Limit trends to a single cluster (omit for fleet summary)",
+)
+@click.option(
+    "--finding",
+    "finding_id",
+    type=str,
+    default=None,
+    help="Filter recurring findings to a specific finding id",
+)
+@click.option(
+    "--limit",
+    type=int,
+    default=50,
+    show_default=True,
+    help="Maximum assessment samples to analyze",
+)
+@click.option(
+    "--history-index",
+    type=str,
+    default=None,
+    help="Assessment history index name",
+)
+@click.pass_context
+def health_trends(
+    ctx: click.Context,
+    window: str,
+    cluster_name: Optional[str],
+    finding_id: Optional[str],
+    limit: int,
+    history_index: Optional[str],
+) -> None:
+    """
+    Show score trends, recurring findings, and persistent yellow signals.
+
+    Examples:
+
+    ```bash
+    elastro health trends -o table
+    elastro health trends --cluster docker-cluster --window 30d
+    elastro health trends --finding shards.oversharded --window 30d -o json
+    ```
+    """
+    from elastro.health.config import DEFAULT_HISTORY_INDEX
+    from elastro.health.formatters.history_table import (
+        format_fleet_summary_table,
+        format_trends_table,
+    )
+    from elastro.health.history import history_cluster_summary, parse_window
+    from elastro.health.trends import compute_trends
+
+    client: ElasticsearchClient = ctx.obj
+    output_fmt = _output_format(ctx)
+    resolved_index = history_index or DEFAULT_HISTORY_INDEX
+
+    logger.info(
+        "health trends invoked window=%s cluster=%s finding=%s limit=%s",
+        window,
+        cluster_name,
+        finding_id,
+        limit,
+    )
+
+    try:
+        parse_window(window)
+    except ValueError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        raise SystemExit(2) from exc
+
+    try:
+        if cluster_name:
+            report = compute_trends(
+                client,
+                history_index=resolved_index,
+                cluster_name=cluster_name,
+                window=window,
+                limit=limit,
+                finding_id=finding_id,
+            )
+            if output_fmt == "table":
+                click.echo(format_trends_table(report), nl=False)
+            else:
+                click.echo(format_output(report.to_dict(), output_format=output_fmt))
+            return
+
+        summary = history_cluster_summary(
+            client,
+            history_index=resolved_index,
+            window=window,
+            limit=limit,
+        )
+        if output_fmt == "table":
+            click.echo(
+                format_fleet_summary_table(summary, window=window),
+                nl=False,
+            )
+        else:
+            click.echo(
+                format_output(
+                    {
+                        "window": window,
+                        "clusters": summary,
+                        "count": len(summary),
+                    },
+                    output_format=output_fmt,
+                )
+            )
+    except OperationError as exc:
+        click.echo(f"Error computing health trends: {exc}", err=True)
+        raise SystemExit(1) from exc
+    except ValueError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        raise SystemExit(2) from exc
 
 
 @health_group.command("nodes")
@@ -833,6 +952,64 @@ def health_shards(
     )
     if exit_code:
         raise SystemExit(exit_code)
+
+
+@health_group.command("ilm")
+@click.option(
+    "--stuck-only",
+    is_flag=True,
+    default=False,
+    help="Show only indices with failed or stuck ILM lifecycle steps",
+)
+@click.option("--index", "index_pattern", type=str, default=None, help="Limit to an index pattern")
+@click.pass_context
+def health_ilm(
+    ctx: click.Context,
+    stuck_only: bool,
+    index_pattern: Optional[str],
+) -> None:
+    """
+    Inspect ILM lifecycle status and list stuck indices.
+
+    Examples:
+
+    ```bash
+    elastro -o table health ilm --stuck-only
+    elastro health ilm --index logs-* --stuck-only -o json
+    elastro health fix --dry-run --action ilm_retry --index logs-000042
+    ```
+    """
+    from elastro.health.formatters.ilm_table import format_stuck_ilm_table
+    from elastro.health.ilm_status import list_ilm_indices
+
+    client: ElasticsearchClient = ctx.obj
+    logger.info(
+        "health ilm invoked stuck_only=%s index=%s",
+        stuck_only,
+        index_pattern,
+    )
+    output_fmt = _output_format(ctx)
+
+    try:
+        rows = list_ilm_indices(
+            client,
+            index_pattern=index_pattern,
+            stuck_only=stuck_only,
+        )
+
+        if output_fmt == "table":
+            click.echo(format_stuck_ilm_table(rows), nl=False)
+        else:
+            payload = {
+                "stuck_only": stuck_only,
+                "index_pattern": index_pattern,
+                "indices": [item.model_dump(mode="json") for item in rows],
+                "count": len(rows),
+            }
+            click.echo(format_output(payload, output_format=output_fmt))
+    except OperationError as exc:
+        click.echo(f"Error inspecting ILM status: {exc}", err=True)
+        raise SystemExit(1) from exc
 
 
 @health_group.command("hotspots")

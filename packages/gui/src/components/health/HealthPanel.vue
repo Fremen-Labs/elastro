@@ -19,6 +19,8 @@ const assessing = ref(false)
 const hasLoaded = ref(false)
 const error = ref<string | null>(null)
 const assessment = ref<HealthAssessment | null>(null)
+const trendPoints = ref<number[]>([])
+const trendDelta = ref<number | null>(null)
 const nodes = ref<NodeHealthSummary[]>([])
 const activeFix = ref<string | null>(null)
 const awaitingToken = ref(false)
@@ -91,6 +93,41 @@ const toAssessment = (raw: Record<string, unknown> | null): HealthAssessment | n
     collectors_failed: Array.isArray(source.collectors_failed)
       ? (source.collectors_failed as string[])
       : [],
+  }
+}
+
+const sparkline = computed(() => {
+  if (!trendPoints.value.length) return ''
+  const blocks = '▁▂▃▄▅▆▇█'
+  const scores = trendPoints.value
+  const low = Math.min(...scores)
+  const high = Math.max(...scores)
+  if (low === high) return blocks[4].repeat(scores.length)
+  return scores
+    .map((score) => {
+      const normalized = (score - low) / (high - low)
+      const index = Math.min(blocks.length - 1, Math.round(normalized * (blocks.length - 1)))
+      return blocks[index]
+    })
+    .join('')
+})
+
+const fetchTrends = async () => {
+  if (!state.token || !props.clusterName) return
+  try {
+    const res = await axios.get(
+      `${apiBase}/api/clusters/${encodeURIComponent(props.clusterName)}/health/trends`,
+      { headers: authHeaders(), timeout: 30000, params: { window: '7d', limit: 30 } }
+    )
+    const points = Array.isArray(res.data?.points) ? res.data.points : []
+    trendPoints.value = points
+      .map((point: { overall_score?: number }) => Number(point?.overall_score))
+      .filter((score: number) => Number.isFinite(score))
+    const delta = res.data?.score_delta_7d
+    trendDelta.value = typeof delta === 'number' && Number.isFinite(delta) ? delta : null
+  } catch {
+    trendPoints.value = []
+    trendDelta.value = null
   }
 }
 
@@ -173,7 +210,7 @@ const loadAssessment = async (forceRefresh = false) => {
         'The GUI server is outdated or returned an invalid response. Stop it and run `elastro gui` again to launch a fresh server with health API support.'
       return
     }
-    await fetchNodes()
+    await Promise.all([fetchNodes(), fetchTrends()])
   } catch (err: any) {
     hasLoaded.value = false
     assessment.value = null
@@ -288,6 +325,13 @@ watch(
           :status="hasLoaded ? assessment?.overall_status : undefined"
           :loading="isBusy"
         />
+        <div v-if="sparkline" class="health-trend">
+          <span class="label-caps">7d Trend</span>
+          <span class="sparkline" aria-hidden="true">{{ sparkline }}</span>
+          <span v-if="trendDelta !== null" class="trend-delta">
+            {{ trendDelta > 0 ? '+' : '' }}{{ trendDelta }}
+          </span>
+        </div>
         <div v-if="hasLoaded && assessment" class="health-meta">
           <p>
             <span class="label-caps">Version</span>
@@ -418,6 +462,25 @@ watch(
   flex-direction: column;
   align-items: center;
   gap: 1.25rem;
+}
+
+.health-trend {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.sparkline {
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  color: hsl(var(--primary));
+}
+
+.trend-delta {
+  font-family: var(--font-mono);
+  color: hsl(var(--muted-foreground));
 }
 
 .health-meta {

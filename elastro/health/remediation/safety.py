@@ -28,6 +28,15 @@ _IMPACTS: dict[str, str] = {
         "to nodes that were intentionally excluded, changing performance "
         "characteristics and cluster topology."
     ),
+    "ilm_retry": (
+        "Retries the current ILM lifecycle step. May trigger rollover, "
+        "forcemerge, shrink, or snapshot operations depending on policy phase."
+    ),
+    "clear_read_only": (
+        "Removes the flood-stage read_only_allow_delete block so writes and "
+        "deletes are allowed again. Only use after disk pressure is resolved; "
+        "otherwise Elasticsearch may re-block the index."
+    ),
 }
 
 

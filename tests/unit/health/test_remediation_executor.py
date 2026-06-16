@@ -10,11 +10,13 @@ from elastro.health.remediation.models import IndexDiagnosis
 
 
 class TestRemediationCatalog:
-    def test_lists_three_actions(self):
+    def test_lists_catalog_actions(self):
         assert set(RemediationCatalog.list_ids()) == {
             "reduce_replicas",
             "reroute_failed",
             "clear_routing_filters",
+            "ilm_retry",
+            "clear_read_only",
         }
 
     def test_planned_reduce_replicas(self):

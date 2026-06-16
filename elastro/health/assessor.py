@@ -33,7 +33,7 @@ from elastro.health.models import (
 )
 from elastro.health.audit import HealthAuditLogger
 from elastro.health.config import DEFAULT_HISTORY_INDEX
-from elastro.health.history import index_assessment
+from elastro.health.history import index_assessment, query_assessment_history
 from elastro.health.scoring import compute_fallback_score, compute_weighted_score
 
 logger = get_logger(__name__)
@@ -229,10 +229,21 @@ class HealthAssessor:
             for result in results
             if result.status == "ok"
         }
+
+        assessment_history = ctx.options.get("assessment_history")
+        if assessment_history is None:
+            assessment_history = _load_assessment_history(
+                self._client,
+                cluster_name=cluster_name,
+                history_index=history_index,
+                profile=profile,
+            )
+            ctx.options["assessment_history"] = assessment_history
+
         rule_ctx = RuleContext(
             cluster_name=cluster_name,
             collector_data=collector_data,
-            assessment_history=ctx.options.get("assessment_history", []),
+            assessment_history=assessment_history,
             es_version=es_version,
         )
         rule_findings = RuleEngine().evaluate(rule_ctx)
@@ -281,6 +292,39 @@ class HealthAssessor:
             )
 
         return report
+
+
+def _load_assessment_history(
+    client: ElasticsearchClient,
+    *,
+    cluster_name: str,
+    history_index: str,
+    profile: str,
+    limit: int = 20,
+) -> List[Dict[str, Any]]:
+    """Load recent ES-backed history for trend-aware rules."""
+    try:
+        records = query_assessment_history(
+            client,
+            history_index=history_index,
+            cluster_name=cluster_name if cluster_name != "unknown" else None,
+            profile=profile,
+            limit=limit,
+        )
+        logger.debug(
+            "Loaded assessment history cluster=%s profile=%s records=%s",
+            cluster_name,
+            profile,
+            len(records),
+        )
+        return records
+    except Exception as exc:
+        logger.warning(
+            "Assessment history unavailable for cluster=%s: %s",
+            cluster_name,
+            exc,
+        )
+        return []
 
 
 def _resolve_client_host(client: ElasticsearchClient) -> str:

@@ -8,13 +8,25 @@ from typing import Callable, Dict, Optional
 from elastro.core.index import IndexManager
 from elastro.health.models import RemediationSafety
 from elastro.health.remediation.actions import (
+    clear_read_only,
     clear_routing_filters,
+    ilm_retry,
+    planned_clear_read_only,
     planned_clear_routing_filters,
+    planned_ilm_retry,
     planned_reduce_replicas,
     planned_reroute_failed,
     reduce_replicas,
     reroute_failed,
 )
+
+CATALOG_ACTION_IDS = [
+    "reduce_replicas",
+    "reroute_failed",
+    "clear_routing_filters",
+    "ilm_retry",
+    "clear_read_only",
+]
 
 
 @dataclass(frozen=True)
@@ -64,6 +76,22 @@ class RemediationCatalog:
             execute=lambda mgr, index_name, **kwargs: clear_routing_filters(
                 mgr, index_name
             ),
+        ),
+        "ilm_retry": CatalogEntry(
+            id="ilm_retry",
+            label="Retry ILM lifecycle step",
+            safety=RemediationSafety.CONFIRM,
+            command="elastro health fix --action ilm_retry",
+            planned=planned_ilm_retry,
+            execute=lambda mgr, index_name, **kwargs: ilm_retry(mgr, index_name),
+        ),
+        "clear_read_only": CatalogEntry(
+            id="clear_read_only",
+            label="Clear read-only-allow-delete block",
+            safety=RemediationSafety.DESTRUCTIVE,
+            command="elastro health fix --action clear_read_only",
+            planned=planned_clear_read_only,
+            execute=lambda mgr, index_name, **kwargs: clear_read_only(mgr, index_name),
         ),
     }
 

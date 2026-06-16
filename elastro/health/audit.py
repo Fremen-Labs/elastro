@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 from elastro.core.client import ElasticsearchClient
 from elastro.core.logger import get_logger
 from elastro.health.config import AUDIT_INDEX_MAPPINGS, DEFAULT_AUDIT_INDEX
-from elastro.health.history import ensure_index
+from elastro.health.history import ensure_index, sanitize_host
 from elastro.health.models import AssessmentReport
 from elastro.health.remediation.models import RemediationResult
 from elastro.health.remediation.rollback import RollbackRecord
@@ -30,7 +30,7 @@ class HealthAuditLogger:
         self._client = client
         self._audit_index = audit_index
         self._profile = profile
-        self._host = host
+        self._host = sanitize_host(host)
 
     def log_event(
         self,

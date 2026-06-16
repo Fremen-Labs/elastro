@@ -103,3 +103,25 @@ class TestRemediationPlanner:
             )
         assert len(planned) == 1
         assert planned[0].action_id == "clear_routing_filters"
+
+    @patch("elastro.health.ilm_status.list_stuck_ilm_indices")
+    def test_plan_explicit_ilm_retry(self, mock_list_stuck):
+        from elastro.health.ilm_status import StuckIlmIndex
+
+        index_manager = MagicMock()
+        mock_list_stuck.return_value = [
+            StuckIlmIndex(
+                index_name="logs-000042",
+                issue="ILM step failed",
+            )
+        ]
+
+        planned = RemediationPlanner.plan_explicit(
+            index_manager,
+            "ilm_retry",
+            index_pattern="logs-*",
+        )
+
+        assert len(planned) == 1
+        assert planned[0].action_id == "ilm_retry"
+        assert "POST /logs-000042/_ilm/retry" == planned[0].planned_api_call

@@ -9,7 +9,15 @@ from elastro.core.logger import get_logger
 from elastro.health.collectors.base import CollectContext, CollectorResult
 from elastro.health.collectors.nodes import NodesCollector
 from elastro.health.manager import HealthManager
-from elastro.health.models import Finding, FindingStatus, Severity
+from elastro.core.index import IndexManager
+from elastro.health.disk_blocks import discover_read_only_blocked_indices
+from elastro.health.models import (
+    Finding,
+    FindingStatus,
+    RemediationAction,
+    RemediationSafety,
+    Severity,
+)
 
 logger = get_logger(__name__)
 
@@ -50,6 +58,9 @@ class DiskCollector:
             nodes = nodes_result.data.get("nodes", {})
             node_usages = build_node_disk_usages(nodes)
             findings = disk_watermark_findings(node_usages, watermarks)
+            findings.extend(
+                read_only_block_findings(IndexManager(ctx.client), findings)
+            )
 
             logger.info(
                 "Disk collector complete: nodes=%s findings=%s",
@@ -176,6 +187,12 @@ def disk_watermark_findings(
                 ),
                 affected_resources=[node_name],
                 source="collector",
+                remediation=RemediationAction(
+                    id="disk_watermark",
+                    label="Review disk watermarks",
+                    command="elastro cluster settings",
+                    safety=RemediationSafety.OBSERVE,
+                ),
                 metadata={
                     "node_id": node["node_id"],
                     "used_percent": used_pct,
@@ -185,4 +202,48 @@ def disk_watermark_findings(
             )
         )
 
+    return findings
+
+
+def read_only_block_findings(
+    index_manager: IndexManager,
+    existing_findings: List[Finding],
+) -> List[Finding]:
+    """Emit findings for indices blocked by flood-stage disk protection."""
+    if not any(
+        finding.metadata.get("stage") == "flood-stage"
+        for finding in existing_findings
+        if finding.category == "disk"
+    ):
+        return []
+
+    blocked = discover_read_only_blocked_indices(index_manager)
+    findings: List[Finding] = []
+    for index_name in blocked:
+        findings.append(
+            Finding(
+                id=f"disk.read_only_block.{index_name}",
+                category="disk",
+                title=f"Index blocked by flood-stage disk watermark: {index_name}",
+                status=FindingStatus.WARN,
+                severity=Severity.HIGH,
+                score_impact=8,
+                summary=(
+                    f"Index '{index_name}' has read_only_allow_delete enabled. "
+                    "Resolve disk pressure before clearing the block."
+                ),
+                affected_resources=[index_name],
+                source="collector",
+                remediation=RemediationAction(
+                    id="clear_read_only",
+                    label="Clear read-only-allow-delete block",
+                    command=(
+                        "elastro health fix --action clear_read_only "
+                        f"--index {index_name}"
+                    ),
+                    safety=RemediationSafety.DESTRUCTIVE,
+                ),
+                metadata={"index_name": index_name},
+            )
+        )
     return findings
