@@ -33,9 +33,11 @@ class SnapshotsCollector:
                     response = ctx.client.client.snapshot.verify_repository(
                         name=repo_name
                     )
+                    body = response.body if hasattr(response, "body") else response
+                    nodes = body.get("nodes", {}) if isinstance(body, dict) else {}
                     verified[repo_name] = {
                         "status": "ok",
-                        "nodes": list((response or {}).get("nodes", {}).keys()),
+                        "nodes": list(nodes.keys()),
                     }
                 except Exception as exc:
                     logger.warning(

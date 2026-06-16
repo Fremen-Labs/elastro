@@ -50,10 +50,16 @@ def _current_replica_count(index_manager: IndexManager, index_name: str) -> int:
 def _data_node_count(index_manager: IndexManager) -> int:
     try:
         es = index_manager._client.get_client()
-        health = es.cluster.health()
-        if hasattr(health, "body"):
-            health = health.body
-        return int((health or {}).get("number_of_data_nodes", 0))
+        health_response = es.cluster.health()
+        if hasattr(health_response, "body"):
+            health_data = health_response.body
+        elif isinstance(health_response, dict):
+            health_data = health_response
+        else:
+            health_data = {}
+        if not isinstance(health_data, dict):
+            health_data = {}
+        return int(health_data.get("number_of_data_nodes", 0))
     except Exception as exc:
         logger.debug("Failed to read data node count: %s", exc)
         return 0

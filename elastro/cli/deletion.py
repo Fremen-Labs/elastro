@@ -40,7 +40,7 @@ def resolve_output_format() -> str:
     ctx = click.get_current_context(silent=True)
     if ctx is None:
         return "json"
-    root = ctx
+    root: click.Context = ctx
     while root.parent is not None:
         root = root.parent
     return str(root.params.get("output") or "json")
@@ -113,7 +113,8 @@ def preview_index_delete(client: ElasticsearchClient, name: str) -> DeletePrevie
 
 def _document_exists(client: ElasticsearchClient, index: str, doc_id: str) -> bool:
     try:
-        client._ensure_connected()
+        if not client.is_connected():
+            client.connect()
         return bool(client.get_client().exists(index=index, id=doc_id))
     except Exception:
         return False
@@ -311,7 +312,8 @@ def preview_alias_delete(
 def preview_script_delete(client: ElasticsearchClient, script_id: str) -> DeletePreview:
     exists = False
     try:
-        client._ensure_connected()
+        if not client.is_connected():
+            client.connect()
         client.get_client().get_script(id=script_id)
         exists = True
     except Exception:
@@ -335,7 +337,8 @@ def preview_pipeline_delete(
 ) -> DeletePreview:
     exists = False
     try:
-        client._ensure_connected()
+        if not client.is_connected():
+            client.connect()
         client.get_client().ingest.get_pipeline(id=pipeline_id)
         exists = True
     except Exception:
