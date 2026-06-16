@@ -147,8 +147,8 @@ jobs:
         name: Release v${{ env.VERSION }}
         body_path: release-notes.md
         files: |
-          security/sbom/*
-          security/scans/*
+          security/sbom/*.zst
+          security/scans/*.zst
           dist/*
 
     - name: Publish to PyPI
