@@ -48,7 +48,7 @@ services:
         severityFail:
           - CRITICAL
           - HIGH
-        ignoreFile: ""
+        ignoreFile: security/trivyignore.yaml
         outputPath: security/scans/{{.Service}}-{{.Version}}.trivy.json.zst
         reportStorage:
           type: ""

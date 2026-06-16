@@ -36,14 +36,12 @@ mypy .
 *Note: We currently exclude `tests/` and `examples/` from strict checks, but all core library code must be typed.*
 
 ### Security Scanning
-We use **Bandit** (SAST) and **Pip-Audit** (Dependency Scanning).
+We use **pip-audit**, **npm audit**, and **Trivy** (via ReleaseFlow) for dependency scanning.
 ```bash
-# Check for common security issues (when integrated)
-bandit -r elastro
-
-# Check dependencies for CVEs
-pip-audit
+# Full security gate (matches CI)
+bash scripts/security-audit.sh
 ```
+See `security/remediation-2026-06.md` for the audit record and documented suppressions.
 
 ## 3. Testing
 We use **Pytest** for unit and integration testing.

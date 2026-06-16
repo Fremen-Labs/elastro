@@ -35,14 +35,12 @@ jobs:
       - name: Code quality - Mypy
         run: mypy .
 
-      - name: Security - Python runtime dependency audit
-        run: pip-audit -r requirements.txt
-
-      - name: Security - GUI production dependency audit
+      - name: Install Trivy
         run: |
-          cd packages/gui
-          npm ci
-          npm audit --omit=dev --audit-level=high
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Security - Dependency and Trivy audit
+        run: bash scripts/security-audit.sh
 
       - name: Security - GUI dev toolchain audit (informational)
         continue-on-error: true
