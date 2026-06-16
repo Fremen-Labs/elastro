@@ -11,21 +11,95 @@ This module is the thin orchestrator for the local GUI. It handles:
 All API route logic lives in elastro.server.routes.*.
 """
 
+import json
 import os
 import secrets
-import json
+import signal
+import urllib.error
+import urllib.request
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 import uvicorn
 from fastapi import FastAPI, Header, HTTPException
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
+from elastro import __version__
 from elastro.core.logger import get_logger
 
 logger = get_logger(__name__)
+
+GUI_CAPABILITIES: List[str] = ["clusters", "indices", "health", "cli", "config"]
+
+
+def _wait_for_server_ready(port: int, *, timeout: float = 8.0) -> bool:
+    """Poll /api/meta until the detached GUI server accepts connections."""
+    import time
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(
+                f"http://127.0.0.1:{port}/api/meta",
+                timeout=1,
+            ):
+                return True
+        except (urllib.error.URLError, TimeoutError, OSError):
+            time.sleep(0.2)
+    return False
+
+
+def _server_supports_health_api(port: int) -> bool:
+    """Return True when the running GUI server exposes the health API."""
+    try:
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/api/meta",
+            timeout=2,
+        ) as response:
+            payload = json.loads(response.read().decode())
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
+        return False
+    capabilities = payload.get("capabilities") or []
+    return "health" in capabilities
+
+
+def _stop_gui_process(pid: int) -> None:
+    """Terminate a detached GUI server process."""
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    except OSError:
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except OSError:
+            return
+
+
+def _should_reuse_gui_server(state: Dict[str, Any]) -> bool:
+    """Reuse only when pid is alive, version matches, and health API is available."""
+    pid = state.get("pid")
+    port = state.get("port")
+    token = state.get("token")
+    if not pid or not port or not token:
+        return False
+    if state.get("version") != __version__:
+        logger.info(
+            "GUI server version mismatch (running=%s, installed=%s); restarting",
+            state.get("version"),
+            __version__,
+        )
+        return False
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    if not _server_supports_health_api(int(port)):
+        logger.info("GUI server on port %s lacks health API; restarting", port)
+        return False
+    return True
 
 
 class ElastroGUI:
@@ -110,6 +184,7 @@ class ElastroGUI:
         from elastro.server.routes.clusters import cluster_routes
         from elastro.server.routes.indices import index_routes
         from elastro.server.routes.cli import cli_routes
+        from elastro.server.routes.health import health_routes
 
         self.app.include_router(
             config_routes(self._read_config, self._write_config, self.verify_token)
@@ -117,6 +192,15 @@ class ElastroGUI:
         self.app.include_router(cluster_routes(self._read_config, self.verify_token))
         self.app.include_router(index_routes(self._read_config, self.verify_token))
         self.app.include_router(cli_routes(self._read_config, self.verify_token))
+        self.app.include_router(health_routes(self._read_config, self.verify_token))
+
+        @self.app.get("/api/meta")
+        def api_meta() -> Dict[str, Any]:
+            """Lightweight capability probe for GUI process reuse decisions."""
+            return {
+                "version": __version__,
+                "capabilities": GUI_CAPABILITIES,
+            }
 
         # Mount static GUI files
         if self.static_dir.exists():
@@ -128,6 +212,9 @@ class ElastroGUI:
 
             @self.app.get("/{full_path:path}")
             def serve_gui(full_path: str) -> HTMLResponse:
+                # Never serve SPA HTML for API paths — avoids silent axios parse failures
+                if full_path.startswith("api/"):
+                    raise HTTPException(status_code=404, detail="API route not found")
                 index_path = self.static_dir / "index.html"
                 if index_path.exists():
                     with open(index_path, "r") as f:
@@ -154,25 +241,23 @@ def launch_gui_process() -> str:
     gui = ElastroGUI()
     state_file = gui.config_dir / ".gui_state.json"
 
-    # Check if process is already running
+    # Reuse only a compatible, healthy GUI server process
     if state_file.exists():
         try:
             with open(state_file, "r") as f:
                 state = json.load(f)
-                pid = state.get("pid")
-                port = state.get("port")
-                token = state.get("token")
 
-            if pid and port and token:
-                try:
-                    os.kill(pid, 0)
-                    # Process is still alive, reuse it!
-                    return f"http://127.0.0.1:{port}?token={token}"
-                except OSError:
-                    # Process is dead, delete state file
-                    state_file.unlink(missing_ok=True)
+            if _should_reuse_gui_server(state):
+                return (
+                    f"http://127.0.0.1:{state['port']}?token={state['token']}"
+                )
+
+            pid = state.get("pid")
+            if pid:
+                _stop_gui_process(int(pid))
+            state_file.unlink(missing_ok=True)
         except Exception:
-            pass
+            state_file.unlink(missing_ok=True)
 
     # Find an open port
     port = 8080
@@ -209,8 +294,22 @@ def launch_gui_process() -> str:
 
     if p.pid:
         gui.config_dir.mkdir(parents=True, exist_ok=True)
+        if not _wait_for_server_ready(port):
+            _stop_gui_process(p.pid)
+            raise RuntimeError(
+                "Elastro GUI server failed to start. Check that port "
+                f"{port} is available and retry `elastro gui`."
+            )
         with open(state_file, "w") as f:
-            json.dump({"pid": p.pid, "port": port, "token": gui.token}, f)
+            json.dump(
+                {
+                    "pid": p.pid,
+                    "port": port,
+                    "token": gui.token,
+                    "version": __version__,
+                },
+                f,
+            )
 
     url = f"http://127.0.0.1:{port}?token={gui.token}"
     return url

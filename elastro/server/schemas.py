@@ -26,3 +26,11 @@ class ClusterCLIRequestSchema(BaseModel):
 class IndexFixRequestSchema(BaseModel):
     action: str
     dry_run: bool = False
+
+
+class HealthFixRequestSchema(BaseModel):
+    finding_id: str = ""
+    action: str
+    dry_run: bool = True
+    force: bool = False
+    index_name: Optional[str] = None

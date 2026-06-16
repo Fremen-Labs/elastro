@@ -8,6 +8,7 @@ import { AnsiUp } from 'ansi_up'
 import PageHeader from '../components/ui/PageHeader.vue'
 import StatusBadge from '../components/ui/StatusBadge.vue'
 import AlertBanner from '../components/ui/AlertBanner.vue'
+import HealthPanel from '../components/health/HealthPanel.vue'
 import { healthColor } from '../utils/health'
 
 const route = useRoute()
@@ -15,6 +16,7 @@ const router = useRouter()
 const apiBase = import.meta.env.VITE_API_URL || ''
 
 const clusterName = ref(decodeURIComponent(route.params.name as string))
+const activeView = ref<'overview' | 'health'>('overview')
 const loading = ref(true)
 const error = ref<string | null>(null)
 const details = ref<any>(null)
@@ -249,6 +251,30 @@ const executeCommand = async () => {
       </button>
     </div>
 
+    <div class="view-tabs">
+      <button
+        class="view-tab"
+        :class="{ active: activeView === 'overview' }"
+        @click="activeView = 'overview'"
+      >
+        Overview
+      </button>
+      <button
+        class="view-tab"
+        :class="{ active: activeView === 'health' }"
+        @click="activeView = 'health'"
+      >
+        Health
+      </button>
+    </div>
+
+    <HealthPanel
+      v-if="activeView === 'health'"
+      :key="clusterName"
+      :cluster-name="clusterName"
+    />
+
+    <template v-else-if="activeView === 'overview'">
     <div v-if="loading" class="metrics-grid mt-4">
       <div v-for="i in 4" :key="i" class="card metric-card">
         <div class="metric-header" style="margin-bottom: 1rem;">
@@ -527,12 +553,49 @@ const executeCommand = async () => {
       </div>
 
     </div>
+    </template>
   </div>
 </template>
 
 <style scoped>
+.view-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+}
+
+.view-tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0.65rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  margin-bottom: -1px;
+  font-family: inherit;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.view-tab:hover {
+  color: hsl(var(--foreground));
+}
+
+.view-tab.active {
+  color: hsl(var(--primary));
+  border-bottom-color: hsl(var(--primary));
+  font-weight: 600;
+}
+
+.view-tab:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
 .header-actions {
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
 }
 
 .back-btn {

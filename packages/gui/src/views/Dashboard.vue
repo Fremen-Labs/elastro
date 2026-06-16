@@ -8,9 +8,12 @@ import StatusBadge from '../components/ui/StatusBadge.vue'
 import AlertBanner from '../components/ui/AlertBanner.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 import { healthColor } from '../utils/health'
+import { scoreColor } from '../types/health'
 
 const apiBase = import.meta.env.VITE_API_URL || ''
 const error = ref<string | null>(null)
+const clusterScores = ref<Record<string, number | null>>({})
+const loadingScores = ref(false)
 
 const fetchClusters = async () => {
   if (!state.token) return
@@ -23,6 +26,7 @@ const fetchClusters = async () => {
       headers: { Authorization: `Bearer ${state.token}` }
     })
     state.clusters = res.data.clusters
+    fetchScores()
   } catch (err: any) {
     if (err.response?.status === 401) {
       error.value = 'Unauthorized: Invalid or missing security token.'
@@ -49,6 +53,30 @@ onMounted(() => {
 
 const unstableCount = () =>
   state.clusters.reduce((acc, c) => acc + (c.unstable_indices || []).length, 0)
+
+const fetchScores = async () => {
+  if (!state.token || state.clusters.length === 0) return
+  loadingScores.value = true
+  const headers = { Authorization: `Bearer ${state.token}` }
+  await Promise.all(
+    state.clusters.map(async (cluster) => {
+      if (cluster.health === 'offline') {
+        clusterScores.value[cluster.name] = null
+        return
+      }
+      try {
+        const res = await axios.get(
+          `${apiBase}/api/clusters/${encodeURIComponent(cluster.name)}/health/score`,
+          { headers }
+        )
+        clusterScores.value[cluster.name] = res.data.overall_score
+      } catch {
+        clusterScores.value[cluster.name] = null
+      }
+    })
+  )
+  loadingScores.value = false
+}
 </script>
 
 <template>
@@ -99,7 +127,20 @@ const unstableCount = () =>
             {{ cluster.name }}
             <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
           </h2>
-          <StatusBadge :status="cluster.health" />
+          <div class="cluster-badges">
+            <div
+              v-if="loadingScores && clusterScores[cluster.name] === undefined"
+              class="score-skeleton skeleton skeleton-badge"
+            ></div>
+            <div
+              v-else-if="clusterScores[cluster.name] != null"
+              class="score-pill"
+              :style="{ borderColor: scoreColor(clusterScores[cluster.name]), color: scoreColor(clusterScores[cluster.name]) }"
+            >
+              {{ clusterScores[cluster.name] }}
+            </div>
+            <StatusBadge :status="cluster.health" />
+          </div>
         </div>
 
         <div class="cluster-details">
@@ -224,6 +265,26 @@ const unstableCount = () =>
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.cluster-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.score-pill {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  border: 1.5px solid;
+  font-family: var(--font-mono);
+}
+
+.score-skeleton {
+  width: 2.5rem;
+  height: 1.5rem;
 }
 
 .chevron {
