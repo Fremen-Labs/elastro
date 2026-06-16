@@ -48,6 +48,10 @@ class ElasticIndexError(OperationError):
     pass
 
 
+# Backward-compatible alias used by tests and docs.
+IndexError = ElasticIndexError
+
+
 class DocumentError(OperationError):
     """Raised when a document operation fails."""
 

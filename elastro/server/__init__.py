@@ -248,9 +248,7 @@ def launch_gui_process() -> str:
                 state = json.load(f)
 
             if _should_reuse_gui_server(state):
-                return (
-                    f"http://127.0.0.1:{state['port']}?token={state['token']}"
-                )
+                return f"http://127.0.0.1:{state['port']}?token={state['token']}"
 
             pid = state.get("pid")
             if pid:

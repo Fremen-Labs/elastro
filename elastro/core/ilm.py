@@ -182,4 +182,6 @@ class IlmManager(BaseManager):
             return True
         except Exception as e:
             logger.error("Failed to retry ILM lifecycle for '%s': %s", index, e)
-            raise OperationError(f"Failed to retry ILM lifecycle for '{index}': {e}") from e
+            raise OperationError(
+                f"Failed to retry ILM lifecycle for '{index}': {e}"
+            ) from e

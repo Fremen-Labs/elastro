@@ -9,7 +9,11 @@ from rich import box
 from rich.console import Console
 from rich.table import Table
 
-from elastro.health.formatters.table import _SEVERITY_ORDER, _SEVERITY_STYLE, _STATUS_STYLE
+from elastro.health.formatters.table import (
+    _SEVERITY_ORDER,
+    _SEVERITY_STYLE,
+    _STATUS_STYLE,
+)
 from elastro.health.models import Finding
 
 
@@ -24,7 +28,11 @@ def format_lint_table(findings: List[Finding]) -> str:
 
     sorted_findings = sorted(
         findings,
-        key=lambda item: (_SEVERITY_ORDER.get(item.severity, 99), item.category, item.id),
+        key=lambda item: (
+            _SEVERITY_ORDER.get(item.severity, 99),
+            item.category,
+            item.id,
+        ),
     )
 
     table = Table(

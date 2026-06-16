@@ -7,7 +7,11 @@ from unittest.mock import Mock
 
 from elastro.core.client import ElasticsearchClient
 from elastro.health.assessor import HealthAssessor
-from elastro.health.collectors.base import CollectContext, CollectorRegistry, CollectorResult
+from elastro.health.collectors.base import (
+    CollectContext,
+    CollectorRegistry,
+    CollectorResult,
+)
 from elastro.health.collectors.cluster import (
     ClusterHealthCollector,
     PendingTasksCollector,
@@ -105,9 +109,7 @@ class TestHealthAssessor(unittest.TestCase):
             }
             manager.pending_tasks.return_value = []
 
-            report_out = HealthAssessor(
-                self.mock_client, registry=registry
-            ).run()
+            report_out = HealthAssessor(self.mock_client, registry=registry).run()
 
         self.assertEqual(report_out.overall_score, 100)
         self.assertEqual(len(report_out.findings), 1)

@@ -38,10 +38,9 @@ def _record_indicates_yellow(record: Dict[str, Any]) -> bool:
         finding_id = str(finding.get("id", ""))
         if finding_id.startswith("cluster.status.yellow"):
             return True
-        if (
-            finding.get("indicator") == "shards_availability"
-            and finding.get("status") in {"warn", "fail"}
-        ):
+        if finding.get("indicator") == "shards_availability" and finding.get(
+            "status"
+        ) in {"warn", "fail"}:
             return True
 
     overall_status = str(record.get("overall_status", "")).lower()

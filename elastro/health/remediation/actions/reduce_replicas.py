@@ -19,10 +19,7 @@ def planned_reduce_replicas(
 ) -> str:
     target = target_replicas if target_replicas is not None else 0
     payload = _payload(api_mode=api_mode, target_replicas=target)
-    return (
-        f"PUT /{index_name}/_settings "
-        f"body={payload}"
-    )
+    return f"PUT /{index_name}/_settings body={payload}"
 
 
 def _payload(*, api_mode: bool, target_replicas: int) -> Dict[str, Any]:
@@ -115,7 +112,5 @@ def reduce_replicas(
             ignore_unavailable=True,
         )
     if api_mode:
-        return (
-            f"Replicas reduced to {target} and auto-expand disabled for {index_name}"
-        )
+        return f"Replicas reduced to {target} and auto-expand disabled for {index_name}"
     return f"Replicas reduced to {target} for {index_name}"

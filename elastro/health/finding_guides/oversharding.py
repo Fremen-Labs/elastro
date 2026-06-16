@@ -181,7 +181,7 @@ def build_oversharding_guide(
             ),
             "commands": [
                 "elastro health ilm --stuck-only -o table",
-                "curl -X GET \"$ES_HOST/_data_stream/*?filter_path=data_streams.name\"",
+                'curl -X GET "$ES_HOST/_data_stream/*?filter_path=data_streams.name"',
             ],
         },
         {
@@ -194,9 +194,9 @@ def build_oversharding_guide(
             ),
             "commands": [
                 "curl -X PUT \"$ES_HOST/my-index/_settings\" -H 'Content-Type: application/json' "
-                '-d \'{"index.blocks.write": true}\'',
-                "curl -X POST \"$ES_HOST/my-index/_shrink/my-index-shrunk\" "
-                '-H \'Content-Type: application/json\' '
+                "-d '{\"index.blocks.write\": true}'",
+                'curl -X POST "$ES_HOST/my-index/_shrink/my-index-shrunk" '
+                "-H 'Content-Type: application/json' "
                 '-d \'{"settings": {"index.number_of_shards": 1}}\'',
             ],
         },
@@ -220,7 +220,7 @@ def build_oversharding_guide(
                 "to production writers."
             ),
             "commands": [
-                "curl -X GET \"$ES_HOST/_index_template/my-template\"",
+                'curl -X GET "$ES_HOST/_index_template/my-template"',
             ],
         },
     ]
@@ -255,5 +255,7 @@ def build_oversharding_guide(
     if es_version:
         sections["elasticsearch_version"] = es_version
 
-    affected = [str(item.get("index", "")) for item in top_indices[:10] if item.get("index")]
+    affected = [
+        str(item.get("index", "")) for item in top_indices[:10] if item.get("index")
+    ]
     return _detail_text(sections), {"detail_sections": sections}, affected

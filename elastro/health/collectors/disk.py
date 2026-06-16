@@ -52,7 +52,8 @@ class DiskCollector:
                 return CollectorResult(
                     name=self.name,
                     status="error",
-                    error=nodes_result.error or "Failed to collect node filesystem stats",
+                    error=nodes_result.error
+                    or "Failed to collect node filesystem stats",
                 )
 
             nodes = nodes_result.data.get("nodes", {})
@@ -166,7 +167,11 @@ def disk_watermark_findings(
         used_pct = node["used_percent"]
         node_name = node["node_name"]
         if used_pct >= flood_threshold:
-            status, severity, stage = FindingStatus.FAIL, Severity.CRITICAL, "flood-stage"
+            status, severity, stage = (
+                FindingStatus.FAIL,
+                Severity.CRITICAL,
+                "flood-stage",
+            )
             score_impact = 15
         elif used_pct >= high_threshold:
             status, severity, stage = FindingStatus.WARN, Severity.HIGH, "high"

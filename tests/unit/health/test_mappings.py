@@ -29,9 +29,7 @@ class TestMappingHelpers(unittest.TestCase):
         self.assertEqual(count_mapping_fields(properties), 5)
 
     def test_extract_field_limit_reads_index_setting(self):
-        limit = extract_field_limit(
-            {"index": {"mapping.total_fields.limit": "750"}}
-        )
+        limit = extract_field_limit({"index": {"mapping.total_fields.limit": "750"}})
         self.assertEqual(limit, 750)
 
     def test_summarize_index_mapping_computes_ratio(self):

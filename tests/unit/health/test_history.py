@@ -126,7 +126,9 @@ class TestAssessmentHistory:
             "index_not_found_exception: no such index [elastro-health-assessments]"
         )
 
-        records = query_assessment_history(client, history_index="elastro-health-assessments")
+        records = query_assessment_history(
+            client, history_index="elastro-health-assessments"
+        )
 
         assert records == []
 

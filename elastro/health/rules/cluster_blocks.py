@@ -49,7 +49,9 @@ def cluster_block_findings(ctx: RuleContext) -> List[Finding]:
                     "Writes or metadata updates may be blocked cluster-wide."
                 ),
                 detail=_block_detail(block_id, block_data),
-                affected_resources=[ctx.cluster_name] if ctx.cluster_name != "unknown" else [],
+                affected_resources=[ctx.cluster_name]
+                if ctx.cluster_name != "unknown"
+                else [],
                 source="rule",
                 metadata={"block_id": block_id, "block": block_data},
             )

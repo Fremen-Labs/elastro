@@ -140,7 +140,10 @@ def delete_repository(
     elastro -o json snapshot repo delete my_backup --dry-run
     ```
     """
-    from elastro.cli.deletion import emit_delete_preview, preview_snapshot_repository_delete
+    from elastro.cli.deletion import (
+        emit_delete_preview,
+        preview_snapshot_repository_delete,
+    )
 
     if dry_run:
         emit_delete_preview(preview_snapshot_repository_delete(client, name))
@@ -307,7 +310,7 @@ def restore_snapshot(
         if not repository:
             console.print("\nAvailable Repositories:")
             for i, r in enumerate(repo_names):
-                console.print(f"  {i+1}. {r}")
+                console.print(f"  {i + 1}. {r}")
 
             repo_idx = int(Prompt.ask("Select Repository", default="1")) - 1
             repository = repo_names[repo_idx]
@@ -334,7 +337,7 @@ def restore_snapshot(
             for i in range(limit):
                 s = snaps[i]
                 console.print(
-                    f"  {i+1}. {s['snapshot']} ({s['state']}, {len(s['indices'])} indices)"
+                    f"  {i + 1}. {s['snapshot']} ({s['state']}, {len(s['indices'])} indices)"
                 )
 
             snap_idx = int(Prompt.ask("Select Snapshot", default="1")) - 1

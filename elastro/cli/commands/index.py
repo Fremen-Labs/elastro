@@ -186,7 +186,9 @@ def update_index(client: ElasticsearchClient, name: str, settings: Any) -> None:
     help="Preview deletion without executing (scriptable with -o json)",
 )
 @click.pass_obj
-def delete_index(client: ElasticsearchClient, name: str, force: bool, dry_run: bool) -> None:
+def delete_index(
+    client: ElasticsearchClient, name: str, force: bool, dry_run: bool
+) -> None:
     """
     Delete an index.
 
@@ -210,7 +212,11 @@ def delete_index(client: ElasticsearchClient, name: str, force: bool, dry_run: b
     elastro index delete my-logs --force
     ```
     """
-    from elastro.cli.deletion import emit_delete_preview, preview_index_delete, should_prompt_for_delete
+    from elastro.cli.deletion import (
+        emit_delete_preview,
+        preview_index_delete,
+        should_prompt_for_delete,
+    )
 
     if dry_run:
         emit_delete_preview(preview_index_delete(client, name))
@@ -337,7 +343,9 @@ def list_indices(client: ElasticsearchClient, pattern: str) -> None:
             color = (
                 "green"
                 if health == "green"
-                else "yellow" if health == "yellow" else "red"
+                else "yellow"
+                if health == "yellow"
+                else "red"
             )
 
             table.add_row(
@@ -603,7 +611,9 @@ def fix_indices(client: ElasticsearchClient) -> None:
         fix_result = run_health_fix(
             client,
             interactive=True,
-            confirm=lambda prompt, default: Confirm.ask(f"   {prompt}", default=default),
+            confirm=lambda prompt, default: Confirm.ask(
+                f"   {prompt}", default=default
+            ),
             prompt=lambda message: Prompt.ask(f"   {message}"),
         )
         render_fix_run_result(fix_result, output_format="table")

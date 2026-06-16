@@ -176,9 +176,7 @@ class HealthManager:
                 e,
                 exc_info=True,
             )
-            raise OperationError(
-                f"Failed to verify repository {repository}: {str(e)}"
-            )
+            raise OperationError(f"Failed to verify repository {repository}: {str(e)}")
 
     def index_stats(self, index: Optional[str] = None) -> Dict[str, Any]:
         logger.debug("Fetching index stats index=%s", index)

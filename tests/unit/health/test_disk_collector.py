@@ -40,9 +40,7 @@ class TestDiskWatermarkParsing(unittest.TestCase):
 
 class TestDiskFindings(unittest.TestCase):
     def setUp(self):
-        payload = json.loads(
-            (FIXTURES / "nodes_stats_disk_pressure.json").read_text()
-        )
+        payload = json.loads((FIXTURES / "nodes_stats_disk_pressure.json").read_text())
         self.usages = build_node_disk_usages(
             {
                 "node-1": {
@@ -96,9 +94,7 @@ class TestDiskCollectorIntegration(unittest.TestCase):
             "transient": {},
         }
 
-        payload = json.loads(
-            (FIXTURES / "nodes_stats_disk_pressure.json").read_text()
-        )
+        payload = json.loads((FIXTURES / "nodes_stats_disk_pressure.json").read_text())
         mock_nodes_collect.return_value = Mock(
             status="ok",
             data={

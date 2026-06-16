@@ -91,7 +91,16 @@ class TestDeleteCommandDryRunCLI:
 
         result = runner.invoke(
             cli,
-            ["-h", "http://localhost:9205", "-o", "json", "index", "delete", "logs-2024", "--dry-run"],
+            [
+                "-h",
+                "http://localhost:9205",
+                "-o",
+                "json",
+                "index",
+                "delete",
+                "logs-2024",
+                "--dry-run",
+            ],
         )
 
         assert result.exit_code == 0, result.output

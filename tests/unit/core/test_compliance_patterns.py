@@ -49,7 +49,9 @@ class TestHIPAAPatterns:
         assert PII_PATTERNS["url"].search("at https://secure.site.org/api/v1")
 
     def test_ipv6_full(self):
-        assert PII_PATTERNS["ipv6"].search("addr: 2001:0db8:85a3:0000:0000:8a2e:0370:7334")
+        assert PII_PATTERNS["ipv6"].search(
+            "addr: 2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+        )
 
     def test_vin_valid_17_chars(self):
         assert PII_PATTERNS["vin"].search("VIN: 1HGBH41JXMN109186")
@@ -229,9 +231,7 @@ class TestSanitizationChainCompliance:
 
     def test_mask_sensitive_fields_masks_bank_account(self):
         chain = SanitizationChain(mask_sensitive_fields=True)
-        keep, doc = chain.sanitize(
-            {"bank_account": "123456789", "status": "active"}
-        )
+        keep, doc = chain.sanitize({"bank_account": "123456789", "status": "active"})
         assert doc["bank_account"] == "******"
         assert doc["status"] == "active"
 

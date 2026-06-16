@@ -6,7 +6,13 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from elastro.core.logger import get_logger
 from elastro.health.collectors.base import CollectContext, CollectorResult
-from elastro.health.models import Finding, FindingStatus, RemediationAction, RemediationSafety, Severity
+from elastro.health.models import (
+    Finding,
+    FindingStatus,
+    RemediationAction,
+    RemediationSafety,
+    Severity,
+)
 
 logger = get_logger(__name__)
 
@@ -149,9 +155,7 @@ def _overprivileged_role_findings(roles: Dict[str, Any]) -> List[Finding]:
         if not isinstance(role_body, dict):
             continue
         cluster_privs = {
-            str(item).lower()
-            for item in (role_body.get("cluster") or [])
-            if item
+            str(item).lower() for item in (role_body.get("cluster") or []) if item
         }
         if not cluster_privs.intersection(_PRIVILEGED_CLUSTER_PRIVS):
             continue

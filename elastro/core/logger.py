@@ -120,9 +120,7 @@ def configure_logging(log_level: Optional[str] = None) -> logging.Logger:
         )
         package_logger.addHandler(file_handler)
     except Exception:
-        sys.stderr.write(
-            f"Warning: Could not set up file logging to {LOG_FILE_PATH}\n"
-        )
+        sys.stderr.write(f"Warning: Could not set up file logging to {LOG_FILE_PATH}\n")
 
     if _logloom_handler is not None:
         try:

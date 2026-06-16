@@ -42,6 +42,7 @@ def _mock_es():
     es.snapshot.get_repository.return_value = {
         "repo1": {"type": "fs"},
     }
+
     def _cat_indices(**kwargs):
         if kwargs.get("index") == ".kibana*":
             return [{"index": ".kibana_1"}]

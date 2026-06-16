@@ -84,7 +84,7 @@ class TestNDJSONReader:
     def test_basic_ndjson(self, tmp_path: Path) -> None:
         ndjson_file = tmp_path / "test.ndjson"
         ndjson_file.write_text(
-            '{"name": "Alice", "age": 30}\n' '{"name": "Bob", "age": 25}\n'
+            '{"name": "Alice", "age": 30}\n{"name": "Bob", "age": 25}\n'
         )
 
         docs = list(NDJSONReader(ndjson_file).read())

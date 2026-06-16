@@ -21,9 +21,7 @@ def summarize_fix_run(result: FixRunResult) -> Dict[str, Any]:
     """Build a stable scripting summary for fix / plan / dry-run passes."""
     executed = sum(1 for item in result.results if item.executed)
     previewed = sum(
-        1
-        for item in result.results
-        if item.dry_run and item.planned_api_call
+        1 for item in result.results if item.dry_run and item.planned_api_call
     )
     return {
         "preview_only": is_preview_mode(

@@ -52,9 +52,7 @@ def describe_impact(
         "May change cluster or index state. Review the planned API call.",
     )
     if action_id == "reduce_replicas" and index_name and target_replicas is not None:
-        return (
-            f"Set '{index_name}' replicas to {target_replicas}. {base}"
-        )
+        return f"Set '{index_name}' replicas to {target_replicas}. {base}"
     if index_name:
         return f"Apply to index '{index_name}'. {base}"
     return base
@@ -62,11 +60,7 @@ def describe_impact(
 
 def build_confirm_prompt(planned: PlannedAction) -> str:
     """Build the primary yes/no confirmation prompt."""
-    scope = (
-        f" for '{planned.index_name}'"
-        if planned.index_name
-        else " (cluster-wide)"
-    )
+    scope = f" for '{planned.index_name}'" if planned.index_name else " (cluster-wide)"
     return f"Apply {planned.label}{scope}?"
 
 

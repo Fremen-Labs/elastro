@@ -37,7 +37,15 @@ class TestHealthFixCLI:
 
         result = runner.invoke(
             cli,
-            ["-h", "http://localhost:9205", "-o", "table", "health", "fix", "--dry-run"],
+            [
+                "-h",
+                "http://localhost:9205",
+                "-o",
+                "table",
+                "health",
+                "fix",
+                "--dry-run",
+            ],
         )
 
         assert result.exit_code == 0, result.output
@@ -126,7 +134,11 @@ class TestHealthFixCLI:
         mock_connect,
         runner,
     ):
-        from elastro.health.remediation.models import FixRunResult, IndexDiagnosis, PlannedAction
+        from elastro.health.remediation.models import (
+            FixRunResult,
+            IndexDiagnosis,
+            PlannedAction,
+        )
         from elastro.health.models import RemediationSafety
 
         mock_connect.return_value = None
@@ -166,7 +178,15 @@ class TestHealthFixCLI:
             ):
                 result = runner.invoke(
                     cli,
-                    ["-h", "http://localhost:9205", "-o", "table", "health", "assess", "--plan"],
+                    [
+                        "-h",
+                        "http://localhost:9205",
+                        "-o",
+                        "table",
+                        "health",
+                        "assess",
+                        "--plan",
+                    ],
                 )
 
         assert result.exit_code == 2, result.output

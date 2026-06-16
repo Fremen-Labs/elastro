@@ -138,9 +138,7 @@ def analyze_shards(
             undersharded.append(record)
 
     avg_bytes = (
-        sum(item.store_bytes for item in measured) / len(measured)
-        if measured
-        else 0.0
+        sum(item.store_bytes for item in measured) / len(measured) if measured else 0.0
     )
     logger.debug(
         "Shard analysis: total=%s measured=%s oversharded=%s undersharded=%s",

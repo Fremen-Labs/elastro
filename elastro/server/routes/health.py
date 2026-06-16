@@ -43,9 +43,7 @@ def _health_assessment_settings(read_config: Any) -> Dict[str, Any]:
         assessment = {}
     return {
         "enable_history": bool(assessment.get("enable_history", False)),
-        "history_index": str(
-            assessment.get("history_index", DEFAULT_HISTORY_INDEX)
-        ),
+        "history_index": str(assessment.get("history_index", DEFAULT_HISTORY_INDEX)),
     }
 
 
@@ -145,9 +143,7 @@ def _open_findings(report: AssessmentReport) -> List[Dict[str, Any]]:
         FindingStatus.UNKNOWN,
     }
     findings = [
-        finding
-        for finding in report.findings
-        if finding.status in open_statuses
+        finding for finding in report.findings if finding.status in open_statuses
     ]
     findings.sort(
         key=lambda item: (

@@ -9,7 +9,13 @@ from elastro.core.ilm import IlmManager
 from elastro.core.index import IndexManager
 from elastro.core.logger import get_logger
 from elastro.health.collectors.base import CollectContext, CollectorResult
-from elastro.health.models import Finding, FindingStatus, RemediationAction, RemediationSafety, Severity
+from elastro.health.models import (
+    Finding,
+    FindingStatus,
+    RemediationAction,
+    RemediationSafety,
+    Severity,
+)
 
 logger = get_logger(__name__)
 

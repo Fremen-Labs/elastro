@@ -133,7 +133,9 @@ def recurring_finding_ids(
     threshold = max(1, int(len(records) * _RECURRING_THRESHOLD))
     recurring = [
         finding_id
-        for finding_id, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+        for finding_id, count in sorted(
+            counts.items(), key=lambda item: (-item[1], item[0])
+        )
         if count >= threshold
     ]
     if finding_filter:

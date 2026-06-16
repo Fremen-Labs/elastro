@@ -141,9 +141,7 @@ class HealthReportCollector:
     def collect(self, ctx: CollectContext) -> CollectorResult:
         version = ctx.es_version or "unknown"
         if not supports_health_report(version):
-            logger.info(
-                "Skipping health_report collector: ES %s < 8.7", version
-            )
+            logger.info("Skipping health_report collector: ES %s < 8.7", version)
             return CollectorResult(
                 name=self.name,
                 status="skipped",

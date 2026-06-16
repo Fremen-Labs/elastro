@@ -5,7 +5,11 @@ from unittest.mock import MagicMock, patch
 
 from elastro.core.client import ElasticsearchClient
 from elastro.health.collectors.base import CollectContext
-from elastro.health.collectors.ilm import IlmCollector, _lifecycle_issue, _select_explain_targets
+from elastro.health.collectors.ilm import (
+    IlmCollector,
+    _lifecycle_issue,
+    _select_explain_targets,
+)
 
 
 class TestIlmCollector(unittest.TestCase):

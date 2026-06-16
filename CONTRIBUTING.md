@@ -21,10 +21,10 @@ pip install -e ".[dev]"
 We enforce strict quality gates. All checks must pass before merging.
 
 ### Formatting & Linting
-We use **Black** (formatter) and **Isort** (import sorter).
+We use **Ruff** for formatting and linting.
 ```bash
-black .
-isort .
+ruff format .
+ruff check --fix .
 ```
 
 ### Static Type Checking

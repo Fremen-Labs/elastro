@@ -164,7 +164,6 @@ class TestElasticsearchClient:
             patch("elastro.core.client.Elasticsearch") as mock_es_class,
             patch("urllib3.disable_warnings") as mock_disable_warnings,
         ):
-
             mock_instance = MagicMock()
             mock_instance.ping.return_value = True
             mock_es_class.return_value = mock_instance

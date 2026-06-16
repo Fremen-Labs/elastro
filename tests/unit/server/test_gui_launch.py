@@ -26,9 +26,12 @@ def test_should_not_reuse_when_health_api_missing():
         "token": "abc",
         "version": __version__,
     }
-    with patch("elastro.server.os.kill") as mock_kill, patch(
-        "elastro.server._server_supports_health_api",
-        return_value=False,
+    with (
+        patch("elastro.server.os.kill") as mock_kill,
+        patch(
+            "elastro.server._server_supports_health_api",
+            return_value=False,
+        ),
     ):
         mock_kill.return_value = None
         assert _should_reuse_gui_server(state) is False
@@ -41,9 +44,12 @@ def test_should_reuse_compatible_server():
         "token": "abc",
         "version": __version__,
     }
-    with patch("elastro.server.os.kill") as mock_kill, patch(
-        "elastro.server._server_supports_health_api",
-        return_value=True,
+    with (
+        patch("elastro.server.os.kill") as mock_kill,
+        patch(
+            "elastro.server._server_supports_health_api",
+            return_value=True,
+        ),
     ):
         mock_kill.return_value = None
         assert _should_reuse_gui_server(state) is True

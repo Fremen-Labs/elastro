@@ -20,10 +20,7 @@ _ROUTING_FILTER_SETTINGS: Dict[str, Any] = {
 
 
 def planned_clear_routing_filters(index_name: str) -> str:
-    return (
-        f"PUT /{index_name}/_settings "
-        f"body={{'index': {_ROUTING_FILTER_SETTINGS}}}"
-    )
+    return f"PUT /{index_name}/_settings body={{'index': {_ROUTING_FILTER_SETTINGS}}}"
 
 
 def clear_routing_filters(index_manager: IndexManager, index_name: str) -> str:

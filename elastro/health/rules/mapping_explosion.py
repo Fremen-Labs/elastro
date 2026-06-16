@@ -6,7 +6,13 @@ from typing import List
 
 from elastro.core.logger import get_logger
 from elastro.health.mappings import DEFAULT_FIELD_WARN_RATIO
-from elastro.health.models import Finding, FindingStatus, RemediationAction, RemediationSafety, Severity
+from elastro.health.models import (
+    Finding,
+    FindingStatus,
+    RemediationAction,
+    RemediationSafety,
+    Severity,
+)
 from elastro.health.rules.engine import RuleContext
 
 logger = get_logger(__name__)
