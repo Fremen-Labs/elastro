@@ -95,6 +95,7 @@ def _run_assessment(
         timeout=timeout,
         verbose_report=verbose,
         feature=feature,
+        assessment_history=get_history(cluster_name, limit=20),
     )
     if report.cluster_name == "unknown":
         report = report.model_copy(update={"cluster_name": cluster_name})

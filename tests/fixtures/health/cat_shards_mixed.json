@@ -1,0 +1,8 @@
+[
+  {"index": "logs-000001", "shard": "0", "prirep": "p", "state": "STARTED", "store": "512kb", "node": "node-1"},
+  {"index": "logs-000001", "shard": "0", "prirep": "r", "state": "STARTED", "store": "512kb", "node": "node-2"},
+  {"index": "metrics-2024", "shard": "0", "prirep": "p", "state": "STARTED", "store": "60gb", "node": "node-1"},
+  {"index": "tiny-index", "shard": "0", "prirep": "p", "state": "STARTED", "store": "128b", "node": "node-2"},
+  {"index": "tiny-index", "shard": "1", "prirep": "p", "state": "STARTED", "store": "256b", "node": "node-1"},
+  {"index": "stale-index", "shard": "0", "prirep": "p", "state": "UNASSIGNED", "store": null, "node": "-"}
+]

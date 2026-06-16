@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from elastro.core.logger import get_logger
 from elastro.health.models import Finding, FindingStatus, Severity
+from elastro.health.rules.engine import RuleContext
 
 logger = get_logger(__name__)
 
@@ -81,3 +82,11 @@ def jvm_pressure_findings(
         )
 
     return findings
+
+
+def jvm_rule(ctx: RuleContext) -> List[Finding]:
+    """RuleEngine adapter for JVM heap pressure checks."""
+    nodes_data = ctx.collector_data.get("nodes") or {}
+    if not nodes_data:
+        return []
+    return jvm_pressure_findings(nodes_data)

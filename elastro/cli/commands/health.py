@@ -264,11 +264,18 @@ def health_score(
     show_default=True,
     help="Comma-separated node stats metrics (jvm, fs, os, breaker)",
 )
+@click.option(
+    "--hotspots",
+    is_flag=True,
+    default=False,
+    help="Highlight per-node JVM, disk, and CPU variance hotspots",
+)
 @click.pass_context
 def health_nodes(
     ctx: click.Context,
     node_id: Optional[str],
     metrics: str,
+    hotspots: bool,
 ) -> None:
     """
     Show per-node JVM, disk, OS, and circuit-breaker stats.
@@ -313,6 +320,22 @@ def health_nodes(
     nodes = result.data.get("nodes", {})
     metric_list = [part.strip() for part in metrics.split(",") if part.strip()]
 
+    if hotspots:
+        from elastro.health.formatters.hotspots_table import format_hotspots_table
+        from elastro.health.rules.hotspots import hotspot_variance
+
+        hotspot_rows = hotspot_variance(result.data)
+        if output_fmt == "table":
+            click.echo(format_hotspots_table(hotspot_rows), nl=False)
+        else:
+            click.echo(
+                format_output(
+                    {"hotspots": hotspot_rows},
+                    output_format=output_fmt,
+                )
+            )
+        return
+
     if output_fmt == "table":
         click.echo(format_nodes_table(nodes, metric_list), nl=False)
     elif output_fmt == "yaml":
@@ -337,6 +360,159 @@ def health_nodes(
                 output_format="json",
             )
         )
+
+
+@health_group.command("shards")
+@click.option("--index", type=str, default=None, help="Limit to a specific index pattern")
+@click.option(
+    "--analyze",
+    is_flag=True,
+    default=False,
+    help="Analyze shard sizes for oversharding and undersharding",
+)
+@click.option(
+    "--explain",
+    is_flag=True,
+    default=False,
+    help="Explain shard allocation (optionally for --index)",
+)
+@click.option(
+    "--overshard-mb",
+    type=float,
+    default=1.0,
+    show_default=True,
+    help="Overshard threshold in megabytes",
+)
+@click.option(
+    "--undershard-gb",
+    type=float,
+    default=50.0,
+    show_default=True,
+    help="Undershard threshold in gigabytes",
+)
+@click.pass_context
+def health_shards(
+    ctx: click.Context,
+    index: Optional[str],
+    analyze: bool,
+    explain: bool,
+    overshard_mb: float,
+    undershard_gb: float,
+) -> None:
+    """
+    Inspect cluster shards, analyze shard sizes, or explain allocation.
+
+    Examples:
+
+    Analyze shard sizing:
+    ```bash
+    elastro -o table health shards --analyze
+    ```
+
+    Explain allocation for an index:
+    ```bash
+    elastro health shards --explain --index logs-000001
+    ```
+    """
+    from elastro.health.collectors.base import CollectContext
+    from elastro.health.collectors.shards import ShardsCollector, explain_allocation
+    from elastro.health.formatters.shards_table import (
+        format_shard_analyze_summary,
+        format_shard_analyze_table,
+    )
+
+    client: ElasticsearchClient = ctx.obj
+    output_fmt = _output_format(ctx)
+    collect_ctx = CollectContext(
+        client=client,
+        options={
+            "index": index,
+            "overshard_threshold_mb": overshard_mb,
+            "undershard_threshold_gb": undershard_gb,
+        },
+    )
+
+    if explain:
+        try:
+            payload = explain_allocation(collect_ctx, index_name=index)
+        except OperationError as exc:
+            click.echo(f"Error explaining allocation: {exc}", err=True)
+            raise SystemExit(1) from exc
+        click.echo(format_output(payload, output_format=output_fmt))
+        return
+
+    collector = ShardsCollector()
+    result = collector.collect(collect_ctx)
+    if result.status != "ok":
+        click.echo(
+            f"Error collecting shard stats: {result.error or 'unknown error'}",
+            err=True,
+        )
+        raise SystemExit(1)
+
+    analysis = result.data.get("analysis", {})
+    if analyze:
+        if output_fmt == "table":
+            click.echo(format_shard_analyze_table(analysis), nl=False)
+        elif output_fmt == "yaml":
+            click.echo(format_output(analysis, output_format="yaml"))
+        else:
+            click.echo(format_output(analysis, output_format="json"))
+        return
+
+    summary = {
+        "total_shards": analysis.get("total_shards", 0),
+        "unassigned_shards": analysis.get("unassigned_count", 0),
+        "index": index,
+    }
+    if output_fmt == "table":
+        click.echo(format_shard_analyze_summary(analysis))
+    else:
+        click.echo(format_output(summary, output_format=output_fmt))
+
+
+@health_group.command("hotspots")
+@click.option(
+    "--variance",
+    type=float,
+    default=30.0,
+    show_default=True,
+    help="Minimum spread (percentage points) to flag a hotspot",
+)
+@click.pass_context
+def health_hotspots(ctx: click.Context, variance: float) -> None:
+    """
+    Detect per-node JVM, disk, and CPU hotspots.
+
+    Alias for `elastro health nodes --hotspots`.
+
+    Examples:
+
+    ```bash
+    elastro -o table health hotspots
+    elastro health hotspots --variance 25 -o json
+    ```
+    """
+    from elastro.health.collectors.base import CollectContext
+    from elastro.health.collectors.nodes import NodesCollector
+    from elastro.health.formatters.hotspots_table import format_hotspots_table
+    from elastro.health.rules.hotspots import hotspot_variance
+
+    client: ElasticsearchClient = ctx.obj
+    output_fmt = _output_format(ctx)
+    result = NodesCollector().collect(CollectContext(client=client))
+    if result.status != "ok":
+        click.echo(
+            f"Error collecting node stats: {result.error or 'unknown error'}",
+            err=True,
+        )
+        raise SystemExit(1)
+
+    hotspots = hotspot_variance(result.data, variance_threshold=variance)
+    if output_fmt == "table":
+        click.echo(format_hotspots_table(hotspots), nl=False)
+    else:
+        click.echo(format_output({"hotspots": hotspots}, output_format=output_fmt))
 
 
 @health_group.command("status")

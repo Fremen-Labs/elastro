@@ -161,6 +161,46 @@ class TestHealthAssessor(unittest.TestCase):
         self.assertEqual(report.findings[0].category, "disk")
         self.assertLess(report.overall_score, 100)
 
+    def test_run_applies_rule_engine_findings(self):
+        class _NodesStub:
+            name = "nodes"
+
+            def collect(self, ctx: CollectContext) -> CollectorResult:
+                from elastro.health.models import Finding, Severity
+
+                return CollectorResult(
+                    name=self.name,
+                    status="ok",
+                    data={
+                        "nodes": {
+                            "n1": {
+                                "name": "es-node-1",
+                                "roles": ["data"],
+                                "jvm": {"mem": {"heap_used_percent": 88}},
+                            }
+                        }
+                    },
+                )
+
+        class _IlmStub:
+            name = "ilm"
+
+            def collect(self, ctx: CollectContext) -> CollectorResult:
+                return CollectorResult(
+                    name=self.name,
+                    status="ok",
+                    data={"indices": [], "findings": []},
+                )
+
+        registry = CollectorRegistry()
+        registry.register(_NodesStub())
+        registry.register(_IlmStub())
+        report = HealthAssessor(self.mock_client, registry=registry).run(
+            collectors=["nodes", "ilm"]
+        )
+        rule_ids = {finding.id for finding in report.findings}
+        self.assertIn("jvm.heap_pressure.es-node-1", rule_ids)
+
 
 if __name__ == "__main__":
     unittest.main()

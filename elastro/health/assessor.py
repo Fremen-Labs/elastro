@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from elastro.core.client import ElasticsearchClient
 from elastro.core.logger import get_logger
@@ -18,8 +18,10 @@ from elastro.health.collectors.health_report import (
     non_passing_findings,
 )
 from elastro.health.collectors.nodes import NodesCollector
+from elastro.health.collectors.ilm import IlmCollector
+from elastro.health.collectors.shards import ShardsCollector
 from elastro.health.collectors.snapshots import SnapshotsCollector
-from elastro.health.rules.jvm import jvm_pressure_findings
+from elastro.health.rules.engine import RuleContext, RuleEngine
 from elastro.health.models import (
     AssessmentReport,
     Finding,
@@ -38,6 +40,8 @@ _DEFAULT_COLLECTORS = [
     NodesCollector(),
     DiskCollector(),
     SnapshotsCollector(),
+    IlmCollector(),
+    ShardsCollector(),
 ]
 
 
@@ -59,6 +63,7 @@ class HealthAssessor:
         collectors: Optional[List[str]] = None,
         verbose_report: bool = True,
         feature: Optional[str] = None,
+        assessment_history: Optional[List[Dict[str, Any]]] = None,
     ) -> AssessmentReport:
         """Run registered collectors and build an assessment report."""
         start = time.monotonic()
@@ -66,6 +71,8 @@ class HealthAssessor:
         ctx.options["verbose_report"] = verbose_report
         if feature:
             ctx.options["feature"] = feature
+        if assessment_history:
+            ctx.options["assessment_history"] = assessment_history
 
         try:
             info = self._client.client.info()
@@ -75,7 +82,7 @@ class HealthAssessor:
         ctx.es_version = es_version
 
         logger.info("Starting health assessment (es_version=%s)", es_version)
-        results = self._registry.run(ctx, names=collectors)
+        results = _run_collectors(self._registry, ctx, names=collectors)
 
         cluster_name = "unknown"
         overall_score = 0
@@ -165,11 +172,13 @@ class HealthAssessor:
                     )
                     overall_score = max(0, overall_score - min(count * 2, 10))
 
-            elif result.name == "nodes":
-                rule_findings = jvm_pressure_findings(result.data)
-                if rule_findings:
-                    findings.extend(rule_findings)
-                    deduction = sum(item.score_impact for item in rule_findings)
+            elif result.name == "ilm":
+                ilm_findings = result.data.get("findings", [])
+                if ilm_findings:
+                    findings.extend(ilm_findings)
+                    deduction = sum(
+                        getattr(item, "score_impact", 0) for item in ilm_findings
+                    )
                     overall_score = max(0, overall_score - deduction)
 
             elif result.name == "disk":
@@ -189,6 +198,23 @@ class HealthAssessor:
                         getattr(item, "score_impact", 0) for item in snapshot_findings
                     )
                     overall_score = max(0, overall_score - deduction)
+
+        collector_data = {
+            result.name: result.data
+            for result in results
+            if result.status == "ok"
+        }
+        rule_ctx = RuleContext(
+            cluster_name=cluster_name,
+            collector_data=collector_data,
+            assessment_history=ctx.options.get("assessment_history", []),
+            es_version=es_version,
+        )
+        rule_findings = RuleEngine().evaluate(rule_ctx)
+        if rule_findings:
+            findings.extend(rule_findings)
+            deduction = sum(item.score_impact for item in rule_findings)
+            overall_score = max(0, overall_score - deduction)
 
         duration_ms = int((time.monotonic() - start) * 1000)
         report = AssessmentReport(
@@ -216,3 +242,50 @@ def _build_default_registry() -> CollectorRegistry:
     for collector in _DEFAULT_COLLECTORS:
         registry.register(collector)
     return registry
+
+
+def _run_collectors(
+    registry: CollectorRegistry,
+    ctx: CollectContext,
+    *,
+    names: Optional[List[str]] = None,
+) -> List:
+    """Run collectors sequentially, sharing health report context with later collectors."""
+    from elastro.health.collectors.base import CollectorResult
+
+    targets = names if names is not None else registry.list()
+    results: List[CollectorResult] = []
+
+    for name in targets:
+        collector = registry.get(name)
+        if collector is None:
+            results.append(
+                CollectorResult(
+                    name=name,
+                    status="skipped",
+                    error=f"Unknown collector: {name}",
+                )
+            )
+            continue
+
+        start = time.monotonic()
+        try:
+            result = collector.collect(ctx)
+        except Exception as exc:
+            logger.warning("Collector %s failed: %s", name, exc)
+            result = CollectorResult(
+                name=name,
+                status="error",
+                error=str(exc),
+                duration_ms=int((time.monotonic() - start) * 1000),
+            )
+        else:
+            if result.duration_ms == 0:
+                result.duration_ms = int((time.monotonic() - start) * 1000)
+
+        if result.name == "health_report" and result.status == "ok":
+            ctx.options["health_report"] = result.data.get("report")
+
+        results.append(result)
+
+    return results
