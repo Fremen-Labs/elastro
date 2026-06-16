@@ -1,6 +1,6 @@
 # Health Assessment Commands
 
-Elastro's `health` command group provides scored cluster assessments, actionable findings, safe remediation, rollback, and optional audit/history indexing. Available since v1.4.x; rollback and audit indexing shipped in **v1.8.0**.
+Elastro's `health` command group provides scored cluster assessments, actionable findings, safe remediation, rollback, and optional audit/history indexing. Available since v1.4.x; rollback and audit indexing shipped in **v1.8.0**; unified remediation workflow (`health fix`, `assess --plan`) shipped in **v1.10.0**.
 
 For the full implementation plan and PR history, see [health_assessment_implementation_plan.md](./health_assessment_implementation_plan.md).
 
@@ -37,8 +37,14 @@ elastro health assess [OPTIONS]
 | `--feature` | Limit `_health_report` to one indicator; repeatable |
 | `--verbose-report` / `--no-verbose-report` | Request verbose root-cause analysis (default: on) |
 | `--include-raw` | Include raw `_health_report` in JSON/YAML output |
-| `--fix` | After assessment, offer interactive index remediations |
+| `--fix` | After assessment, run the unified remediation workflow |
+| `--plan` | After assessment, show remediation runbook only (no mutations) |
 | `--dry-run` | With `--fix`, preview API calls without executing |
+| `--yes` | With `--fix`, auto-confirm CONFIRM-level actions |
+| `--force` | With `--fix` and `--yes`, allow DESTRUCTIVE actions |
+| `--index` | Limit fixes to an index pattern (with `--fix` / `--plan`) |
+| `--action` | Limit fixes to one action: `reduce_replicas`, `reroute_failed`, `clear_routing_filters` |
+| `--target-replicas` | Explicit replica target for `reduce_replicas` |
 | `--history` / `--no-history` | Index report to `elastro-health-assessments` (default: off) |
 | `--history-index` | Override assessment history index name |
 
@@ -48,10 +54,48 @@ elastro health assess [OPTIONS]
 elastro health assess -o table
 elastro health assess --feature disk -o json
 elastro health assess --fix --dry-run -o table
+elastro health assess --plan -o table
 elastro health assess --history -o table
 ```
 
 Exit code `2` when overall status is `fail` (score band red).
+
+---
+
+### `elastro health fix`
+
+Unified remediation workflow for yellow/red indices. Diagnoses allocation issues, builds an ordered runbook, shows impact before each action, and captures rollback snapshots for index-setting changes.
+
+```bash
+elastro health fix [OPTIONS]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--dry-run` | Preview planned API calls without executing |
+| `--yes` | Auto-confirm CONFIRM-level actions (non-interactive) |
+| `--force` | With `--yes`, allow DESTRUCTIVE actions |
+| `--index` | Limit fixes to an index pattern |
+| `--action` | Limit to one remediation action |
+| `--target-replicas` | Explicit replica target for `reduce_replicas` |
+
+**Safety behavior:**
+
+| Safety level | Interactive default | Non-interactive automation |
+|--------------|---------------------|----------------------------|
+| `CONFIRM` | Prompt (default No) | Requires `--yes` |
+| `DESTRUCTIVE` | Prompt + type index name (default No) | Requires `--yes --force` |
+
+**Examples:**
+
+```bash
+elastro health fix -o table
+elastro health fix --dry-run -o table
+elastro health fix --yes --action reroute_failed
+elastro health fix --yes --force --index logs-*
+```
+
+`elastro index fix` remains available but prints a deprecation notice and delegates to this workflow.
 
 ---
 
@@ -198,7 +242,7 @@ Security posture checks also run during `health assess` via the security collect
 
 ## Remediation and rollback workflow
 
-1. Run `elastro health assess --fix` (or `elastro index fix`) and confirm a suggested action.
+1. Run `elastro health fix` (or `elastro health assess --plan` to preview, `elastro health assess --fix` to fix after assessment).
 2. Before applying, Elastro captures relevant index settings (replicas, routing filters, etc.).
 3. The remediation executes; the result includes a `rollback_id` when a snapshot was saved.
 4. If the fix was incorrect, run `elastro health rollback --id <rollback_id>`.
@@ -212,6 +256,35 @@ Supported automated actions (via `RemediationCatalog`):
 | `clear_routing_filters` | Remove custom node routing allocation filters |
 
 Use `--dry-run` on assess or rollback to preview changes without mutating the cluster.
+
+### Scriptable dry-run (v1.10.0+)
+
+Dry-run is **preview-only**: no index settings change, no cluster reroute, no rollback snapshot writes, and no audit documents indexed to Elasticsearch. Diagnostics (cat indices, allocation explain) are read-only cluster calls.
+
+**Recommended scripting paths:**
+
+```bash
+# Preview remediation runbook as JSON
+elastro -o json health fix --dry-run
+
+# Preview rollback restore
+elastro -o json health rollback apply --id rb-... --dry-run
+
+# Assessment + runbook without mutations
+elastro -o json health assess --plan
+```
+
+JSON output for `health fix --dry-run` includes:
+
+| Field | Meaning |
+|-------|---------|
+| `dry_run` | Always `true` |
+| `summary.preview_only` | `true` when no mutations will occur |
+| `summary.executed_count` | Always `0` in dry-run |
+| `planned_actions[].planned_api_call` | Exact API preview per step |
+| `results[].planned_api_call` | Same preview echoed per result |
+
+Rollback dry-run JSON includes `planned_api_call` with the `PUT /{index}/_settings` body that would be restored.
 
 ---
 

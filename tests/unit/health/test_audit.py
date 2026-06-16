@@ -32,3 +32,17 @@ class TestHealthAuditLogger:
         )
         logger.log_fix(result, session_id="sess-1")
         client.client.index.assert_called()
+
+    def test_log_fix_skips_index_on_dry_run(self):
+        client = MagicMock()
+        logger = HealthAuditLogger(client)
+        result = RemediationResult(
+            action_id="reduce_replicas",
+            index_name="logs-2024",
+            success=True,
+            executed=False,
+            dry_run=True,
+            message="preview",
+        )
+        logger.log_fix(result, session_id="sess-1")
+        client.client.index.assert_not_called()

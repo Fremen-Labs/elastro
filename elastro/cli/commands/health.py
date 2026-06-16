@@ -12,6 +12,9 @@ from elastro.health.formatters.render import render_assessment
 from elastro.health.manager import HealthManager
 from elastro.health.models import AssessmentReport, FindingStatus
 from elastro.cli.output import format_output
+from elastro.health.remediation.display import render_fix_run_result
+from elastro.health.remediation.dry_run import remediation_result_payload
+from elastro.health.remediation.fix import run_health_fix
 
 _VALID_WAIT_STATUSES = ("green", "yellow", "red")
 logger = get_logger(__name__)
@@ -109,7 +112,13 @@ def health_group() -> None:
     "--fix",
     is_flag=True,
     default=False,
-    help="Offer the same interactive index remediations as 'elastro index fix'",
+    help="After assessment, run the unified remediation workflow (prefer 'health fix')",
+)
+@click.option(
+    "--plan",
+    is_flag=True,
+    default=False,
+    help="After assessment, show remediation runbook without executing",
 )
 @click.option(
     "--dry-run",
@@ -117,6 +126,25 @@ def health_group() -> None:
     default=False,
     help="With --fix, show planned API calls without executing",
 )
+@click.option("--yes", is_flag=True, default=False, help="With --fix, auto-confirm CONFIRM actions")
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="With --fix and --yes, allow DESTRUCTIVE actions in non-interactive mode",
+)
+@click.option("--index", "index_pattern", type=str, default=None, help="Limit fixes to an index pattern")
+@click.option(
+    "--action",
+    "action_filter",
+    type=click.Choice(
+        ["reduce_replicas", "reroute_failed", "clear_routing_filters"],
+        case_sensitive=False,
+    ),
+    default=None,
+    help="Limit fixes to a single remediation action",
+)
+@click.option("--target-replicas", type=int, default=None, help="Explicit replica target for reduce_replicas")
 @click.option(
     "--history/--no-history",
     default=False,
@@ -136,7 +164,13 @@ def health_assess(
     verbose_report: bool,
     include_raw: bool,
     fix: bool,
+    plan: bool,
     dry_run: bool,
+    yes: bool,
+    force: bool,
+    index_pattern: Optional[str],
+    action_filter: Optional[str],
+    target_replicas: Optional[int],
     history: bool,
     history_index: Optional[str],
 ) -> None:
@@ -171,6 +205,12 @@ def health_assess(
     if dry_run and not fix:
         click.echo("Error: --dry-run requires --fix", err=True)
         raise SystemExit(2)
+    if plan and fix:
+        click.echo("Error: --plan and --fix are mutually exclusive", err=True)
+        raise SystemExit(2)
+    if (yes or force) and not fix:
+        click.echo("Error: --yes and --force require --fix", err=True)
+        raise SystemExit(2)
 
     client: ElasticsearchClient = ctx.obj
     logger.info(
@@ -197,46 +237,176 @@ def health_assess(
         )
         click.echo(output, nl=not output.endswith("\n"))
 
-        if fix or dry_run:
-            logger.info(
-                "Starting post-assessment remediation dry_run=%s",
-                dry_run,
-            )
-            from rich.prompt import Confirm
-
-            from elastro.health.remediation.diagnosis import diagnose_unhealthy_indices
-            from elastro.health.remediation.display import render_remediation_summary
-            from elastro.health.remediation.executor import RemediationExecutor
-
-            from elastro.health.audit import HealthAuditLogger
-
-            audit = HealthAuditLogger(
-                client,
-                profile=_cli_profile(ctx),
-                host=_client_host(client),
-            )
-            executor = RemediationExecutor(
+        if plan or fix or dry_run:
+            _render_health_fix(
+                ctx,
                 client,
                 dry_run=dry_run,
-                interactive=fix and not dry_run,
-                confirm=lambda prompt, default: Confirm.ask(prompt, default=default),
+                plan_only=plan,
+                auto_yes=yes,
+                force=force,
+                index_pattern=index_pattern,
+                action_filter=action_filter,
+                target_replicas=target_replicas,
                 session_id=report.session_id,
-                audit_logger=audit,
                 cluster_name=report.cluster_name,
+                interactive=fix and not dry_run and not yes,
             )
-            diagnoses = diagnose_unhealthy_indices(executor.index_manager)
-            results = []
-            for diagnosis in diagnoses:
-                result = executor.remediate_diagnosis(diagnosis)
-                if result is not None:
-                    results.append(result)
-            render_remediation_summary(diagnoses, results, dry_run=dry_run)
 
         if report.overall_status.value == "fail":
             raise SystemExit(2)
     except OperationError as e:
         click.echo(f"Error running health assessment: {str(e)}", err=True)
         raise SystemExit(1) from e
+
+
+def _render_health_fix(
+    ctx: click.Context,
+    client: ElasticsearchClient,
+    *,
+    dry_run: bool,
+    plan_only: bool,
+    auto_yes: bool,
+    force: bool,
+    index_pattern: Optional[str],
+    action_filter: Optional[str],
+    target_replicas: Optional[int],
+    session_id: Optional[str],
+    cluster_name: Optional[str],
+    interactive: bool,
+) -> None:
+    from rich.prompt import Confirm, Prompt
+
+    from elastro.health.audit import HealthAuditLogger
+
+    logger.info(
+        "Health fix flow invoked dry_run=%s plan_only=%s auto_yes=%s force=%s",
+        dry_run,
+        plan_only,
+        auto_yes,
+        force,
+    )
+    audit = HealthAuditLogger(
+        client,
+        profile=_cli_profile(ctx),
+        host=_client_host(client),
+    )
+    fix_result = run_health_fix(
+        client,
+        dry_run=dry_run,
+        plan_only=plan_only,
+        auto_yes=auto_yes,
+        force=force,
+        index_pattern=index_pattern,
+        action_filter=action_filter,
+        target_replicas=target_replicas,
+        interactive=interactive,
+        session_id=session_id,
+        cluster_name=cluster_name,
+        audit_logger=audit,
+        confirm=lambda prompt, default: Confirm.ask(prompt, default=default),
+        prompt=lambda message: Prompt.ask(message),
+    )
+    render_fix_run_result(fix_result, output_format=_output_format(ctx))
+
+
+@health_group.command("fix")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="Preview planned API calls without executing",
+)
+@click.option(
+    "--yes",
+    is_flag=True,
+    default=False,
+    help="Auto-confirm CONFIRM-level actions (non-interactive)",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="With --yes, allow DESTRUCTIVE actions in non-interactive mode",
+)
+@click.option("--index", "index_pattern", type=str, default=None, help="Limit fixes to an index pattern")
+@click.option(
+    "--action",
+    "action_filter",
+    type=click.Choice(
+        ["reduce_replicas", "reroute_failed", "clear_routing_filters"],
+        case_sensitive=False,
+    ),
+    default=None,
+    help="Limit fixes to a single remediation action",
+)
+@click.option(
+    "--target-replicas",
+    type=int,
+    default=None,
+    help="Explicit replica target for reduce_replicas",
+)
+@click.pass_context
+def health_fix(
+    ctx: click.Context,
+    dry_run: bool,
+    yes: bool,
+    force: bool,
+    index_pattern: Optional[str],
+    action_filter: Optional[str],
+    target_replicas: Optional[int],
+) -> None:
+    """
+    Diagnose unhealthy indices and apply safe, confirmed remediations.
+
+    Shows impact and consequences before destructive changes. Use ``--dry-run``
+    to preview, ``--yes`` for automation-friendly CONFIRM actions, and
+    ``--force`` with ``--yes`` for DESTRUCTIVE actions.
+
+    Examples:
+
+    Interactive fix workflow:
+    ```bash
+    elastro health fix -o table
+    ```
+
+    Preview without changes:
+    ```bash
+    elastro health fix --dry-run -o table
+    ```
+
+    CI-safe reroute retry:
+    ```bash
+    elastro health fix --yes --action reroute_failed
+    ```
+    """
+    client: ElasticsearchClient = ctx.obj
+    logger.info(
+        "health fix invoked dry_run=%s yes=%s force=%s index=%s action=%s",
+        dry_run,
+        yes,
+        force,
+        index_pattern,
+        action_filter,
+    )
+    try:
+        _render_health_fix(
+            ctx,
+            client,
+            dry_run=dry_run,
+            plan_only=False,
+            auto_yes=yes,
+            force=force,
+            index_pattern=index_pattern,
+            action_filter=action_filter,
+            target_replicas=target_replicas,
+            session_id=None,
+            cluster_name=None,
+            interactive=not (yes or dry_run),
+        )
+    except OperationError as exc:
+        click.echo(f"Error running health fix: {exc}", err=True)
+        raise SystemExit(1) from exc
 
 
 @health_group.command("score")
@@ -801,7 +971,7 @@ def _run_health_rollback(
         rollback_id,
         dry_run,
     )
-    audit = HealthAuditLogger(
+    audit = None if dry_run else HealthAuditLogger(
         client,
         profile=_cli_profile(ctx),
         host=_client_host(client),
@@ -814,9 +984,11 @@ def _run_health_rollback(
     )
     result = executor.rollback(rollback_id, dry_run=dry_run)
     output_fmt = _output_format(ctx)
-    payload = result.model_dump(mode="json")
+    payload = remediation_result_payload(result)
     if output_fmt == "table":
         click.echo(result.message)
+        if result.planned_api_call:
+            click.echo(f"Planned: {result.planned_api_call}")
         if result.rollback_id:
             click.echo(f"Rollback id: {result.rollback_id}")
     else:

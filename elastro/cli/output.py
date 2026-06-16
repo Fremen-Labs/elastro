@@ -27,32 +27,16 @@ def format_output(data: Any, output_format: Optional[str] = None) -> str:
         except:
             output_format = "json"
 
-    display_console = Console(file=StringIO(), force_terminal=True)
-
     if output_format == "json":
-        # Handle objects that are not directly JSON serializable
+        # Plain JSON for scriptable stdout (pipes, jq, CI artifacts).
         if hasattr(data, "body"):
             data = data.body
-
-        json_str = json.dumps(data, indent=2, default=str)
-        # Use Rich Syntax for highlighting
-        from rich.syntax import Syntax
-
-        syntax = Syntax(json_str, "json", theme="monokai", word_wrap=True)
-
-        display_console.print(syntax)
-        return cast(StringIO, display_console.file).getvalue()
+        return json.dumps(data, indent=2, default=str) + "\n"
 
     elif output_format == "yaml":
         if hasattr(data, "body"):
             data = data.body
-        yaml_str = yaml.dump(data, default_flow_style=False)
-        from rich.syntax import Syntax
-
-        syntax = Syntax(yaml_str, "yaml", theme="monokai", word_wrap=True)
-
-        display_console.print(syntax)
-        return cast(StringIO, display_console.file).getvalue()
+        return yaml.dump(data, default_flow_style=False, sort_keys=False)
     elif output_format == "table":
         console = Console()
 

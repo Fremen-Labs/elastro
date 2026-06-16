@@ -529,20 +529,27 @@ def fix_indices(client: ElasticsearchClient) -> None:
     elastro index fix
     ```
     """
-    from rich.prompt import Confirm
+    from rich.prompt import Confirm, Prompt
     from rich.console import Console
     from rich.panel import Panel
     from rich.table import Table
     from elastro.core.index import IndexManager
     from elastro.core.errors import OperationError
-    from elastro.health.remediation.diagnosis import (
-        diagnose_unhealthy_indices,
-        list_unhealthy_indices,
-    )
-    from elastro.health.remediation.executor import RemediationExecutor
+    from elastro.health.remediation.diagnosis import list_unhealthy_indices
+    from elastro.health.remediation.display import render_fix_run_result
+    from elastro.health.remediation.fix import run_health_fix
 
     console = Console()
     index_manager = IndexManager(client)
+
+    click.echo(
+        click.style(
+            "Deprecation: 'elastro index fix' delegates to 'elastro health fix'. "
+            "Prefer: elastro health fix -o table",
+            fg="yellow",
+        ),
+        err=True,
+    )
 
     console.print(
         Panel.fit(
@@ -578,39 +585,13 @@ def fix_indices(client: ElasticsearchClient) -> None:
         console.print(table)
         console.print()
 
-        executor = RemediationExecutor(
+        fix_result = run_health_fix(
             client,
             interactive=True,
             confirm=lambda prompt, default: Confirm.ask(f"   {prompt}", default=default),
+            prompt=lambda message: Prompt.ask(f"   {message}"),
         )
-
-        for diagnosis in diagnose_unhealthy_indices(index_manager):
-            console.print(
-                f"[bold]Diagnosing index:[/] {diagnosis.index_name} ({diagnosis.health})"
-            )
-            console.print(
-                f"   [yellow]Explanation:[/] {diagnosis.allocate_explanation}"
-            )
-            console.print(f"   [yellow]Reason Code:[/] {diagnosis.reason}")
-
-            if diagnosis.suggestion_text:
-                console.print(
-                    f"   [bold cyan]Suggestion:[/] {diagnosis.suggestion_text}"
-                )
-                result = executor.remediate_diagnosis(diagnosis)
-                if result and result.executed and result.success:
-                    console.print(f"   [green]✓ {result.message}[/]")
-                elif result and not result.executed:
-                    console.print("   [dim]Skipped.[/]")
-                elif result and not result.success:
-                    console.print(f"   [bold red]{result.message}[/]")
-            else:
-                console.print(
-                    "   [dim]No automated quick fix available for this specific constraint. Review explain JSON for details.[/]"
-                )
-
-            console.print("-" * 40)
-
+        render_fix_run_result(fix_result, output_format="table")
         console.print("\n[bold green]Diagnostics complete.[/]")
 
     except OperationError as e:

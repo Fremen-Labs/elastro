@@ -274,7 +274,7 @@ def _suggest_command(
         if "tier" in diagnosis_id or "tier" in action_lower:
             return "elastro cluster allocation"
         if "replica" in action_lower and "index" in action_lower:
-            return "elastro index fix"
+            return "elastro health fix"
         return "elastro cluster allocation"
     if indicator_name == "disk":
         return "elastro health report --feature disk --verbose"
@@ -285,5 +285,5 @@ def _suggest_command(
     if "routing" in action_lower:
         return "elastro cluster settings --enable-routing all"
     if "replica" in action_lower:
-        return "elastro index fix"
+        return "elastro health fix"
     return "elastro health report --verbose"

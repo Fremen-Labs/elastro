@@ -58,6 +58,14 @@ class HealthAuditLogger:
         if self._client is None:
             return
 
+        if payload.get("dry_run"):
+            logger.debug(
+                "Skipping audit index write for dry-run event=%s session_id=%s",
+                event_type,
+                session_id,
+            )
+            return
+
         document = {
             "event_type": event_type,
             "session_id": session_id,

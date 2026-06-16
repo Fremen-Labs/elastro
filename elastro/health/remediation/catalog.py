@@ -26,6 +26,7 @@ class CatalogEntry:
     planned: Callable[..., str]
     execute: Callable[..., str]
     requires_index: bool = True
+    rollback_command: str = "elastro health rollback apply --id {rollback_id}"
 
 
 class RemediationCatalog:
@@ -36,7 +37,7 @@ class RemediationCatalog:
             id="reduce_replicas",
             label="Reduce replicas to safe target",
             safety=RemediationSafety.DESTRUCTIVE,
-            command="elastro health assess --fix",
+            command="elastro health fix",
             planned=planned_reduce_replicas,
             execute=lambda mgr, index_name, **kwargs: reduce_replicas(
                 mgr,
@@ -49,7 +50,7 @@ class RemediationCatalog:
             id="reroute_failed",
             label="Retry failed shard allocation",
             safety=RemediationSafety.CONFIRM,
-            command="elastro index fix",
+            command="elastro health fix",
             planned=planned_reroute_failed,
             execute=lambda mgr, index_name, **kwargs: reroute_failed(mgr),
             requires_index=False,
@@ -58,7 +59,7 @@ class RemediationCatalog:
             id="clear_routing_filters",
             label="Clear routing allocation filters",
             safety=RemediationSafety.CONFIRM,
-            command="elastro index fix",
+            command="elastro health fix",
             planned=planned_clear_routing_filters,
             execute=lambda mgr, index_name, **kwargs: clear_routing_filters(
                 mgr, index_name
@@ -138,6 +139,8 @@ class RemediationCatalog:
             return False
         normalized = command.strip().lower()
         return normalized in {
+            "elastro health fix",
+            "elastro health assess --fix",
             "elastro index fix",
             "elastro cluster allocation",
         }

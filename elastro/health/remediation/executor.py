@@ -14,12 +14,19 @@ if TYPE_CHECKING:
 from elastro.health.remediation.actions.reduce_replicas import resolve_replica_target
 from elastro.health.remediation.catalog import RemediationCatalog
 from elastro.health.remediation.diagnosis import diagnose_unhealthy_indices
-from elastro.health.remediation.models import IndexDiagnosis, RemediationResult
+from elastro.health.remediation.models import (
+    IndexDiagnosis,
+    PlannedAction,
+    RemediationResult,
+)
+from elastro.health.models import RemediationSafety
+from elastro.health.remediation.safety import build_confirm_prompt
 from elastro.health.remediation.rollback import (
     RollbackStore,
     apply_rollback,
     capture_index_settings,
     create_rollback_record,
+    describe_rollback_restore,
 )
 
 
@@ -27,6 +34,29 @@ ConfirmFn = Callable[[str, bool], bool]
 PromptFn = Callable[[str], str]
 
 logger = get_logger(__name__)
+
+
+def build_prompt_from_planned(planned: PlannedAction) -> str:
+    """Build a remediation prompt from a planned action."""
+    if (
+        planned.action_id == "reduce_replicas"
+        and planned.index_name
+        and planned.target_replicas is not None
+        and planned.diagnosis is not None
+    ):
+        return (
+            f"Reduce replicas for '{planned.index_name}' to "
+            f"{planned.target_replicas} to fix "
+            f"{planned.diagnosis.health} state?"
+        )
+    if planned.action_id == "reroute_failed":
+        return "Force retry allocation via cluster reroute?"
+    if planned.action_id == "clear_routing_filters" and planned.index_name:
+        return (
+            f"Clear all custom node routing allocation filters "
+            f"for '{planned.index_name}'?"
+        )
+    return build_confirm_prompt(planned)
 
 
 class RemediationExecutor:
@@ -38,6 +68,8 @@ class RemediationExecutor:
         *,
         dry_run: bool = False,
         interactive: bool = True,
+        auto_yes: bool = False,
+        force: bool = False,
         confirm: Optional[ConfirmFn] = None,
         api_mode: bool = False,
         session_id: Optional[str] = None,
@@ -48,6 +80,8 @@ class RemediationExecutor:
         self._index_manager = IndexManager(client)
         self.dry_run = dry_run
         self.interactive = interactive
+        self.auto_yes = auto_yes
+        self.force = force
         self._confirm = confirm
         self.api_mode = api_mode
         self._session_id = session_id or str(uuid4())
@@ -59,11 +93,26 @@ class RemediationExecutor:
     def index_manager(self) -> IndexManager:
         return self._index_manager
 
-    def _should_execute(self, prompt: str, *, default: bool = True) -> bool:
+    def _should_execute(
+        self,
+        prompt: str,
+        *,
+        default: bool = True,
+        safety: Optional[RemediationSafety] = None,
+        confirmed: Optional[bool] = None,
+    ) -> bool:
         if self.dry_run:
             return False
-        if not self.interactive:
+        if confirmed is not None:
+            return confirmed
+        if self.api_mode:
             return True
+        if not self.interactive:
+            if safety == RemediationSafety.DESTRUCTIVE:
+                return self.auto_yes and self.force
+            if safety in {RemediationSafety.CONFIRM, RemediationSafety.SUGGEST}:
+                return self.auto_yes
+            return self.auto_yes
         if self._confirm is not None:
             return self._confirm(prompt, default)
         return default
@@ -76,6 +125,7 @@ class RemediationExecutor:
         prompt: Optional[str] = None,
         default_confirm: Optional[bool] = None,
         target_replicas: Optional[int] = None,
+        confirmed: Optional[bool] = None,
     ) -> RemediationResult:
         """Execute or preview a single catalog action."""
         entry = RemediationCatalog.get(action_id)
@@ -127,7 +177,12 @@ class RemediationExecutor:
             if default_confirm is not None
             else RemediationCatalog.default_confirm(action_id)
         )
-        if not self._should_execute(confirm_prompt, default=confirm_default):
+        if not self._should_execute(
+            confirm_prompt,
+            default=confirm_default,
+            safety=entry.safety,
+            confirmed=confirmed,
+        ):
             logger.info(
                 "Remediation skipped: action=%s index=%s",
                 action_id,
@@ -260,6 +315,7 @@ class RemediationExecutor:
                     rollback_id=rollback_id,
                 )
 
+        planned_call = describe_rollback_restore(record) if dry_run else None
         try:
             message = apply_rollback(
                 self._index_manager,
@@ -273,6 +329,7 @@ class RemediationExecutor:
                 executed=not dry_run,
                 dry_run=dry_run,
                 message=message,
+                planned_api_call=planned_call,
                 rollback_id=rollback_id,
             )
             if self._audit is not None:
@@ -306,6 +363,65 @@ class RemediationExecutor:
                 message=str(exc),
                 rollback_id=rollback_id,
             )
+
+    def execute_planned(
+        self,
+        planned: PlannedAction,
+        *,
+        confirmed: Optional[bool] = None,
+        skip_reason: Optional[str] = None,
+    ) -> RemediationResult:
+        """Execute or preview a planned remediation step."""
+        entry = RemediationCatalog.get(planned.action_id)
+        if entry is None:
+            return RemediationResult(
+                action_id=planned.action_id,
+                index_name=planned.index_name,
+                success=False,
+                executed=False,
+                dry_run=self.dry_run,
+                message=f"Unknown remediation action: {planned.action_id}",
+            )
+
+        if self.dry_run:
+            return RemediationResult(
+                action_id=planned.action_id,
+                index_name=planned.index_name,
+                success=True,
+                executed=False,
+                dry_run=True,
+                message=planned.label,
+                planned_api_call=planned.planned_api_call,
+            )
+
+        prompt = build_prompt_from_planned(planned)
+        confirm_default = RemediationCatalog.default_confirm(planned.action_id)
+        should_run = self._should_execute(
+            prompt,
+            default=confirm_default,
+            safety=entry.safety,
+            confirmed=confirmed,
+        )
+        if not should_run:
+            message = skip_reason or "Skipped by user"
+            return RemediationResult(
+                action_id=planned.action_id,
+                index_name=planned.index_name,
+                success=True,
+                executed=False,
+                dry_run=False,
+                message=message,
+                planned_api_call=planned.planned_api_call,
+            )
+
+        return self.execute_action(
+            planned.action_id,
+            planned.index_name,
+            prompt=prompt,
+            default_confirm=confirm_default,
+            target_replicas=planned.target_replicas,
+            confirmed=True,
+        )
 
     def remediate_diagnosis(
         self,

@@ -27,6 +27,8 @@ class TestRemediationCatalog:
         assert "number_of_replicas" in planned
 
     def test_triggers_remediation_scan(self):
+        assert RemediationCatalog.triggers_remediation_scan("elastro health fix")
+        assert RemediationCatalog.triggers_remediation_scan("elastro health assess --fix")
         assert RemediationCatalog.triggers_remediation_scan("elastro index fix")
         assert RemediationCatalog.triggers_remediation_scan("elastro cluster allocation")
         assert not RemediationCatalog.triggers_remediation_scan("elastro health report")
@@ -45,7 +47,7 @@ class TestRemediationExecutor:
         assert result.success is True
         assert "PUT /logs-2024/_settings" in (result.planned_api_call or "")
 
-    def test_non_interactive_executes(self, client):
+    def test_non_interactive_executes_with_api_mode(self, client):
         with patch(
             "elastro.health.remediation.executor.RemediationCatalog.execute",
             return_value="done",
@@ -62,6 +64,28 @@ class TestRemediationExecutor:
         assert result.success is True
         assert result.message == "done"
         mock_execute.assert_called_once()
+
+    def test_non_interactive_confirm_requires_yes(self, client):
+        executor = RemediationExecutor(
+            client,
+            dry_run=False,
+            interactive=False,
+            auto_yes=False,
+        )
+        result = executor.execute_action("reroute_failed", None)
+        assert result.executed is False
+        assert result.message == "Skipped by user"
+
+    def test_non_interactive_destructive_requires_force(self, client):
+        executor = RemediationExecutor(
+            client,
+            dry_run=False,
+            interactive=False,
+            auto_yes=True,
+            force=False,
+        )
+        result = executor.execute_action("reduce_replicas", "logs-2024")
+        assert result.executed is False
 
     def test_interactive_decline_skips_execution(self, client):
         executor = RemediationExecutor(
