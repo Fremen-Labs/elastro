@@ -192,6 +192,7 @@ elastro health assess --history -o table
 elastro health rollback --id rb-abc123 --dry-run
 elastro health shards --analyze
 elastro health hotspots
+elastro health lint -o table
 
 # Classic cluster status (prefer over utils health)
 elastro health status

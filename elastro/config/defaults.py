@@ -54,7 +54,14 @@ DEFAULT_CONFIG = {
             "history_index": "elastro-health-assessments",
             "audit_index": "elastro-health-audit",
             "enable_history": False,
-        }
+        },
+        "rules": {
+            "overshard_threshold_mb": 1,
+            "undershard_threshold_gb": 50,
+            "jvm_heap_warn_pct": 75,
+            "hotspot_variance_pct": 30,
+            "mapping_field_warn_ratio": 0.8,
+        },
     },
     "logging": {
         "level": "INFO",

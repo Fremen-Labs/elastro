@@ -156,6 +156,42 @@ elastro health hotspots [--variance 30]
 
 ---
 
+### `elastro health lint`
+
+Best-practice linter for index settings, mapping field counts, and shard layout. Shipped in **v1.9.0**.
+
+```bash
+elastro health lint [--category settings|mappings|shards] [--index PATTERN] [--timeout 30s]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--category` | Category to lint; repeatable (default: all three) |
+| `--index` | Limit shard analysis to an index pattern |
+| `--timeout` | Per-request timeout |
+
+**Examples:**
+
+```bash
+elastro health lint -o table
+elastro health lint --category mappings --category shards -o json
+elastro health lint --category shards --index logs-* -o table
+```
+
+Exit codes: `0` when clean, `1` when warnings are found, `2` when fail-level issues exist (e.g. unassigned shards).
+
+Lint checks include:
+
+| Category | Examples |
+|----------|----------|
+| `settings` | Zero replicas, aggressive refresh on large indices, high primary shard counts on small indices |
+| `mappings` | Field counts approaching `index.mapping.total_fields.limit` |
+| `shards` | Unassigned, oversharded, and undersharded shards |
+
+Security posture checks (plain HTTP, default `elastic` user, elevated roles) run during `health assess` via the security collector.
+
+---
+
 ## Remediation and rollback workflow
 
 1. Run `elastro health assess --fix` (or `elastro index fix`) and confirm a suggested action.

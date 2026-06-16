@@ -343,6 +343,13 @@ elastro health rollback --id rb-abc123
 
 Snapshots are stored under `~/.elastic/health-rollbacks/`.
 
+### Lint cluster best practices
+
+```bash
+elastro health lint -o table
+elastro health lint --category mappings --category shards -o json
+```
+
 ### Other health commands
 
 ```bash

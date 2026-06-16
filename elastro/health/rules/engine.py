@@ -33,6 +33,7 @@ class RuleEngine:
     def default_rules(cls) -> List[RuleFn]:
         from elastro.health.rules.hotspots import hotspot_findings
         from elastro.health.rules.jvm import jvm_rule
+        from elastro.health.rules.mapping_explosion import mapping_explosion_findings
         from elastro.health.rules.oversharding import oversharding_findings
         from elastro.health.rules.persistent_yellow import persistent_yellow_findings
         from elastro.health.rules.replica import replica_misconfig_findings
@@ -43,6 +44,7 @@ class RuleEngine:
             persistent_yellow_findings,
             oversharding_findings,
             hotspot_findings,
+            mapping_explosion_findings,
         ]
 
     def evaluate(self, ctx: RuleContext) -> List[Finding]:

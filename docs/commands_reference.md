@@ -116,6 +116,7 @@ See [Health Commands](./health_commands.md) for full option reference.
 - **`nodes`**: Per-node JVM, disk, and breaker metrics; `--hotspots` for variance detection.
 - **`shards`**: Shard allocation view; `--analyze` for oversharding/undersharding detection.
 - **`hotspots`**: Shortcut for node hotspot variance analysis.
+- **`lint`**: Best-practice linter for index settings, mapping field counts, and shard layout (`--category settings|mappings|shards`).
 
 ---
 

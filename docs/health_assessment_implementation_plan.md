@@ -1,7 +1,7 @@
 # Elastro Health Assessment — Technical Implementation Plan
 
-**Status:** Active — PR-3c shipped (v1.8.0)  
-**Version target:** 1.4.x → 1.8.0 (PR-4a next)  
+**Status:** Active — PR-4a shipped (v1.9.0)  
+**Version target:** 1.4.x → 1.9.0
 **Author:** Engineering (derived from strategic health assessment report)  
 **Last updated:** 2026-06-15
 
@@ -821,19 +821,27 @@ Avg size: 2.3 GB
 
 ---
 
-### PR-4a: Lint, mapping explosion, docs
+### PR-4a: Lint, mapping explosion, docs ✅ Shipped (v1.9.0)
 
 **Estimate:** 5 days  
 **Depends on:** PR-3b, PR-3c
 
 | Task | File(s) |
 |------|---------|
-| `elastro health lint` | `cli/commands/health.py` |
-| Mapping explosion rule | `health/rules/mapping_explosion.py` |
+| `elastro health lint` | `cli/commands/health.py`, `health/lint.py` |
+| Mapping explosion rule | `health/rules/mapping_explosion.py`, `health/collectors/mappings.py` |
 | Security collector (basic) | `health/collectors/security.py` |
-| Update `docs/commands_reference.md` | docs |
-| Deprecation notices | `cli/commands/utils.py` |
+| Lint table formatter | `health/formatters/lint_table.py` |
+| Update docs | `docs/health_commands.md`, `docs/cli_usage.md`, `docs/commands_reference.md` |
+| Deprecation notices | `cli/commands/utils.py`, `cli/commands/cluster.py` |
 | LogLoom CI lint gate | `.github/workflows/ci.yml` |
+
+**Acceptance criteria:**
+- `elastro health lint -o table` reports settings/mappings/shard issues
+- `elastro health lint --category mappings` detects high field counts
+- `health assess` includes security collector findings and mapping explosion rule
+- `elastro cluster allocation` and `elastro utils health` print deprecation notices
+- `pytest tests/unit/health/` passes including lint/security/mapping tests
 
 ---
 

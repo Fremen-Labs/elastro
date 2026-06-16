@@ -10,7 +10,7 @@ from elastro.core.logger import get_logger
 from elastro.health.assessor import HealthAssessor
 from elastro.health.formatters.render import render_assessment
 from elastro.health.manager import HealthManager
-from elastro.health.models import AssessmentReport
+from elastro.health.models import AssessmentReport, FindingStatus
 from elastro.cli.output import format_output
 
 _VALID_WAIT_STATUSES = ("green", "yellow", "red")
@@ -630,6 +630,70 @@ def health_hotspots(ctx: click.Context, variance: float) -> None:
         click.echo(format_hotspots_table(hotspots), nl=False)
     else:
         click.echo(format_output({"hotspots": hotspots}, output_format=output_fmt))
+
+
+@health_group.command("lint")
+@click.option(
+    "--category",
+    "categories",
+    multiple=True,
+    type=click.Choice(["settings", "mappings", "shards"]),
+    help="Lint category to run; repeatable (default: all)",
+)
+@click.option("--index", type=str, default=None, help="Limit shard lint to an index pattern")
+@click.option("--timeout", type=str, default="30s", help="Per-request timeout")
+@click.pass_context
+def health_lint(
+    ctx: click.Context,
+    categories: Tuple[str, ...],
+    index: Optional[str],
+    timeout: str,
+) -> None:
+    """
+    Lint index settings, mappings, and shard layout against best practices.
+
+    Examples:
+
+    ```bash
+    elastro health lint -o table
+    elastro health lint --category mappings --category shards -o json
+    elastro health lint --category shards --index logs-* -o table
+    ```
+    """
+    from elastro.health.formatters.lint_table import format_lint_table
+    from elastro.health.lint import run_lint
+
+    client: ElasticsearchClient = ctx.obj
+    selected = list(categories) if categories else None
+    logger.info(
+        "health lint invoked categories=%s index=%s",
+        selected or "all",
+        index,
+    )
+    try:
+        findings = run_lint(
+            client,
+            categories=selected,
+            index_pattern=index,
+            timeout=timeout,
+        )
+        output_fmt = _output_format(ctx)
+        if output_fmt == "table":
+            click.echo(format_lint_table(findings), nl=False)
+        else:
+            payload = {
+                "findings": [item.model_dump(mode="json") for item in findings],
+                "issue_count": len(findings),
+            }
+            click.echo(format_output(payload, output_format=output_fmt))
+
+        if any(item.status == FindingStatus.FAIL for item in findings):
+            raise SystemExit(2)
+        if findings:
+            raise SystemExit(1)
+    except OperationError as exc:
+        click.echo(f"Error running health lint: {exc}", err=True)
+        raise SystemExit(1) from exc
 
 
 @health_group.command("rollback")

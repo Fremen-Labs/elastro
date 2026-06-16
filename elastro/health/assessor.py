@@ -19,6 +19,8 @@ from elastro.health.collectors.health_report import (
 )
 from elastro.health.collectors.nodes import NodesCollector
 from elastro.health.collectors.ilm import IlmCollector
+from elastro.health.collectors.mappings import MappingsCollector
+from elastro.health.collectors.security import SecurityCollector
 from elastro.health.collectors.shards import ShardsCollector
 from elastro.health.collectors.snapshots import SnapshotsCollector
 from elastro.health.rules.engine import RuleContext, RuleEngine
@@ -45,6 +47,8 @@ _DEFAULT_COLLECTORS = [
     SnapshotsCollector(),
     IlmCollector(),
     ShardsCollector(),
+    MappingsCollector(),
+    SecurityCollector(),
 ]
 
 
@@ -204,6 +208,15 @@ class HealthAssessor:
                     findings.extend(snapshot_findings)
                     deduction = sum(
                         getattr(item, "score_impact", 0) for item in snapshot_findings
+                    )
+                    overall_score = max(0, overall_score - deduction)
+
+            elif result.name == "security":
+                security_findings = result.data.get("findings", [])
+                if security_findings:
+                    findings.extend(security_findings)
+                    deduction = sum(
+                        getattr(item, "score_impact", 0) for item in security_findings
                     )
                     overall_score = max(0, overall_score - deduction)
 
