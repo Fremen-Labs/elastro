@@ -35,6 +35,10 @@ def index_routes(read_config: Any, verify_token: Any) -> APIRouter:
         target_c = _find_cluster(cluster_name)
 
         try:
+            logger.info(
+                "GUI unhealthy indices requested for cluster=%s",
+                cluster_name,
+            )
             client = build_es_client(target_c)
 
             from elastro.core.index import IndexManager
@@ -96,7 +100,12 @@ def index_routes(read_config: Any, verify_token: Any) -> APIRouter:
                         }
                     )
                 except Exception as e:
-                    logger.error(f"Failed to explain {name}: {e}")
+                    logger.error(
+                        "Failed to explain allocation for index=%s: %s",
+                        name,
+                        e,
+                        exc_info=True,
+                    )
                     results.append(
                         {
                             "index": name,
@@ -107,9 +116,20 @@ def index_routes(read_config: Any, verify_token: Any) -> APIRouter:
                             "routing_filter_fault": False,
                         }
                     )
+            logger.info(
+                "Unhealthy indices complete cluster=%s count=%s",
+                cluster_name,
+                len(results),
+            )
             return {"indices": results}
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            logger.error(
+                "Unhealthy indices failed for cluster=%s: %s",
+                cluster_name,
+                e,
+                exc_info=True,
+            )
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     @router.post("/clusters/{cluster_name}/indices/{index_name}/fix")
     def fix_index(
@@ -121,58 +141,58 @@ def index_routes(read_config: Any, verify_token: Any) -> APIRouter:
         target_c = _find_cluster(cluster_name)
 
         try:
+            logger.info(
+                "GUI index fix requested cluster=%s index=%s action=%s dry_run=%s",
+                cluster_name,
+                index_name,
+                req.action,
+                req.dry_run,
+            )
+            from elastro.health.audit import HealthAuditLogger
+
             client = build_es_client(target_c)
+            audit = HealthAuditLogger(client, host=str(target_c.get("host", "unknown")))
 
-            from elastro.core.index import IndexManager
+            from elastro.health.remediation.executor import RemediationExecutor
 
-            idx_mgr = IndexManager(client)
+            action = req.action
+            if action == "reroute":
+                action = "reroute_failed"
 
-            if req.action == "reduce_replicas":
-                payload = {
-                    "index": {
-                        "number_of_replicas": 0,
-                        "auto_expand_replicas": "false",
-                    }
-                }
-                try:
-                    idx_mgr.update(index_name, payload)
-                except Exception:
-                    client.client.indices.put_settings(
-                        index=index_name,
-                        body=payload,
-                        allow_no_indices=False,
-                        expand_wildcards="all",
-                        ignore_unavailable=True,
-                    )
-
+            executor = RemediationExecutor(
+                client,
+                dry_run=req.dry_run,
+                interactive=False,
+                api_mode=True,
+                audit_logger=audit,
+                cluster_name=cluster_name,
+            )
+            result = executor.execute_action(action, index_name)
+            if result.dry_run:
                 return {
-                    "status": "success",
-                    "message": f"Replicas reduced to 0 and auto-expand disabled for {index_name}",
+                    "status": "dry_run",
+                    "planned_api_call": result.planned_api_call,
+                    "rollback_id": result.rollback_id,
                 }
-            elif req.action == "reroute":
-                idx_mgr.reroute(retry_failed=True)
-                return {
-                    "status": "success",
-                    "message": "Cluster rerouted successfully",
-                }
-            elif req.action == "clear_routing_filters":
-                settings_payload = {
-                    "routing.allocation.require._name": None,
-                    "routing.allocation.include._name": None,
-                    "routing.allocation.exclude._name": None,
-                    "routing.allocation.require.*": None,
-                    "routing.allocation.include.*": None,
-                    "routing.allocation.exclude.*": None,
-                }
-                idx_mgr.update(index_name, {"index": settings_payload})
-                return {
-                    "status": "success",
-                    "message": f"Custom routing allocation filters cleared for {index_name}",
-                }
-            else:
-                raise HTTPException(status_code=400, detail="Unknown action")
+            if not result.success:
+                raise HTTPException(status_code=500, detail=result.message)
+            return {
+                "status": "success",
+                "message": result.message,
+                "rollback_id": result.rollback_id,
+            }
 
+        except HTTPException:
+            raise
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            logger.error(
+                "Index fix failed cluster=%s index=%s action=%s: %s",
+                cluster_name,
+                index_name,
+                req.action,
+                e,
+                exc_info=True,
+            )
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     return router

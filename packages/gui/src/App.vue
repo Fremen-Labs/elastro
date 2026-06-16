@@ -1,23 +1,21 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { LayoutDashboard, BookOpen, FileCode2, Settings, AlertTriangle } from 'lucide-vue-next'
 import { state } from './store'
 
 const router = useRouter()
 const route = useRoute()
 
-// Extract token from URL on load
 onMounted(() => {
-  // In Vue Hash router, the URL might look like /?token=XYZ#/ or /#/?token=XYZ
   let token = new URLSearchParams(window.location.search).get('token') || ''
   if (!token) {
-    // Check if it's in the hash
     const hashMatches = window.location.hash.match(/[?&]token=([^&]+)/)
     if (hashMatches && hashMatches[1]) {
       token = hashMatches[1]
     }
   }
-  
+
   if (token) {
     state.token = token
   }
@@ -26,54 +24,42 @@ onMounted(() => {
 const navigate = (path: string) => {
   router.push(path)
 }
+
+const navItems = [
+  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/docs', label: 'Documentation', icon: BookOpen },
+  { path: '/mapping-builder', label: 'Mapping Builder', icon: FileCode2 },
+  { path: '/settings', label: 'Settings', icon: Settings },
+]
 </script>
 
 <template>
   <div class="layout">
     <aside class="sidebar glass-panel">
       <div class="sidebar-header">
-        <div class="logo-placeholder">E</div>
-        <h2>Elastro</h2>
+        <div class="logo-mark" aria-hidden="true">E</div>
+        <div class="brand-text">
+          <h2>Elastro</h2>
+          <span class="brand-sub label-caps">Cluster Ops</span>
+        </div>
       </div>
-      
-      <nav class="sidebar-nav">
-        <button 
-          class="nav-item" 
-          :class="{ active: route.path === '/' }"
-          @click="navigate('/')"
+
+      <nav class="sidebar-nav" aria-label="Main navigation">
+        <button
+          v-for="item in navItems"
+          :key="item.path"
+          class="nav-item"
+          :class="{ active: route.path === item.path }"
+          @click="navigate(item.path)"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
-          Dashboard
-        </button>
-        <button 
-          class="nav-item" 
-          :class="{ active: route.path === '/docs' }"
-          @click="navigate('/docs')"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          Documentation
-        </button>
-        <button 
-          class="nav-item" 
-          :class="{ active: route.path === '/mapping-builder' }"
-          @click="navigate('/mapping-builder')"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"/></svg>
-          Mapping Builder
-        </button>
-        <button 
-          class="nav-item" 
-          :class="{ active: route.path === '/settings' }"
-          @click="navigate('/settings')"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-          Settings
+          <component :is="item.icon" :size="20" class="nav-icon" />
+          {{ item.label }}
         </button>
       </nav>
-      
-      <div v-if="!state.token" class="token-warning animate-fade-in">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-        No security token found.
+
+      <div v-if="!state.token" class="token-warning animate-fade-in" role="status">
+        <AlertTriangle :size="16" />
+        <span>No security token found. Launch via <code>elastro gui</code>.</span>
       </div>
     </aside>
 
@@ -85,7 +71,7 @@ const navigate = (path: string) => {
           </transition>
         </router-view>
       </div>
-      
+
       <footer class="app-footer">
         <p>Elastro &copy; {{ new Date().getFullYear() }} Fremen Labs</p>
       </footer>
@@ -101,49 +87,55 @@ const navigate = (path: string) => {
 }
 
 .sidebar {
-  width: 280px;
+  width: 260px;
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem;
+  padding: 1.5rem 1rem;
   border-right: 1px solid hsl(var(--border));
   z-index: 10;
+  flex-shrink: 0;
 }
 
 .sidebar-header {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 2.5rem;
+  gap: 0.875rem;
+  margin-bottom: 2rem;
+  padding: 0 0.5rem;
 }
 
-.logo-placeholder {
+.logo-mark {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
-  background: var(--gradient-accent);
+  border-radius: 10px;
+  background: var(--gradient-primary);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
+  font-weight: 700;
   font-size: 1.25rem;
   box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
 }
 
-.sidebar-header h2 {
-  font-size: 1.5rem;
+.brand-text h2 {
+  font-size: 1.25rem;
   font-weight: 700;
-  background: var(--gradient-accent);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  line-height: 1.2;
+  color: hsl(var(--foreground));
+}
+
+.brand-sub {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.65rem;
 }
 
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
   flex: 1;
 }
 
@@ -151,16 +143,18 @@ const navigate = (path: string) => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.75rem 1rem;
+  padding: 0.7rem 0.875rem;
   border-radius: var(--radius);
   background: transparent;
   border: none;
+  border-left: 3px solid transparent;
   color: hsl(var(--muted-foreground));
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   text-align: left;
+  font-family: inherit;
 }
 
 .nav-item:hover {
@@ -168,32 +162,60 @@ const navigate = (path: string) => {
   color: hsl(var(--foreground));
 }
 
+.nav-item:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
 .nav-item.active {
-  background: hsl(var(--primary) / 0.1);
-  color: hsl(var(--primary));
+  background: hsl(var(--nav-active-bg));
+  border-left-color: hsl(var(--primary));
+  color: hsl(var(--foreground));
   font-weight: 600;
+}
+
+.nav-icon {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.nav-item.active .nav-icon {
+  color: hsl(var(--primary));
+  opacity: 1;
 }
 
 .token-warning {
   margin-top: auto;
-  padding: 1rem;
+  padding: 0.875rem;
   border-radius: var(--radius);
   background: hsl(var(--destructive) / 0.1);
   color: hsl(var(--destructive));
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
+  line-height: 1.4;
+  border: 1px solid hsl(var(--destructive) / 0.2);
+}
+
+.token-warning code {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  background: hsl(var(--destructive) / 0.15);
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
 }
 
 .main-content {
   flex: 1;
   height: 100%;
   overflow-y: auto;
-  padding: 2.5rem 2.5rem 0 2.5rem;
+  padding: 2.5rem 2.5rem 0;
   background-color: hsl(var(--background));
+  background-image: var(--gradient-hero);
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .page-wrapper {
@@ -205,12 +227,11 @@ const navigate = (path: string) => {
   padding: 2rem 0;
   border-top: 1px solid hsl(var(--border) / 0.5);
   color: hsl(var(--muted-foreground));
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   text-align: center;
   flex-shrink: 0;
 }
 
-/* Page Transitions */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease, transform 0.2s ease;
@@ -224,5 +245,17 @@ const navigate = (path: string) => {
 .fade-leave-to {
   opacity: 0;
   transform: translateY(-10px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: opacity 0.1s ease;
+  }
+
+  .fade-enter-from,
+  .fade-leave-to {
+    transform: none;
+  }
 }
 </style>

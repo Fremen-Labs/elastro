@@ -389,3 +389,21 @@ def delete_snapshot(
     elastro snapshot delete my_backup snap_old
     ```
     """
+    manager = SnapshotManager(client)
+
+    if not click.confirm(
+        f"Permanently delete snapshot '{snapshot}' from repository '{repository}'?"
+    ):
+        click.echo("Operation cancelled.")
+        return
+
+    try:
+        if manager.delete_snapshot(repository, snapshot):
+            console.print(
+                f"[bold green]Snapshot '{snapshot}' deleted from '{repository}'.[/]"
+            )
+        else:
+            console.print("[yellow]Deletion not acknowledged.[/]")
+    except OperationError as e:
+        console.print(f"[bold red]Error deleting snapshot:[/] {str(e)}")
+        exit(1)

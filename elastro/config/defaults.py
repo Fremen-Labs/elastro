@@ -46,6 +46,23 @@ DEFAULT_CONFIG = {
     "document": {"default_refresh": DEFAULT_DOCUMENT_REFRESH},
     "datastream": {"default_settings": DEFAULT_DATASTREAM_SETTINGS},
     "cli": {"output_format": DEFAULT_CLI_OUTPUT_FORMAT, "verbose": DEFAULT_CLI_VERBOSE},
+    "health": {
+        "assessment": {
+            "timeout": "30s",
+            "verbose_report": True,
+            "cache_ttl_seconds": 60,
+            "history_index": "elastro-health-assessments",
+            "audit_index": "elastro-health-audit",
+            "enable_history": False,
+        },
+        "rules": {
+            "overshard_threshold_mb": 1,
+            "undershard_threshold_gb": 50,
+            "jvm_heap_warn_pct": 75,
+            "hotspot_variance_pct": 30,
+            "mapping_field_warn_ratio": 0.8,
+        },
+    },
     "logging": {
         "level": "INFO",
         "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",

@@ -2,6 +2,10 @@
 import { ref, onMounted } from 'vue'
 import { state } from '../store'
 import axios from 'axios'
+import PageHeader from '../components/ui/PageHeader.vue'
+import StatusBadge from '../components/ui/StatusBadge.vue'
+import AlertBanner from '../components/ui/AlertBanner.vue'
+import EmptyState from '../components/ui/EmptyState.vue'
 
 const apiBase = import.meta.env.VITE_API_URL || ''
 const error = ref<string | null>(null)
@@ -90,17 +94,14 @@ onMounted(() => {
 
 <template>
   <div class="settings animate-fade-in">
-    <header class="page-header">
-      <h1>Settings</h1>
-      <p>Manage your local Elastro configuration and connected clusters.</p>
-    </header>
+    <PageHeader
+      eyebrow="Configuration"
+      title="Settings"
+      description="Manage your local Elastro configuration and connected clusters."
+    />
 
-    <div v-if="error" class="alert error-banner animate-fade-in">
-      {{ error }}
-    </div>
-    <div v-if="successMsg" class="alert success-banner animate-fade-in">
-      {{ successMsg }}
-    </div>
+    <AlertBanner v-if="error" variant="error">{{ error }}</AlertBanner>
+    <AlertBanner v-if="successMsg" variant="success">{{ successMsg }}</AlertBanner>
 
     <div class="tabs-container">
       <div class="tabs">
@@ -135,10 +136,7 @@ onMounted(() => {
                   <strong>{{ cluster.name }}</strong>
                   <span class="host-url">{{ cluster.host }}</span>
                 </div>
-                <div class="health-chip" :class="'health-' + (cluster.health || 'offline')">
-                   <div class="chip-dot"></div>
-                   {{ cluster.health || 'offline' }}
-                </div>
+                <StatusBadge :status="cluster.health || 'offline'" variant="outline" />
               </div>
               
               <div class="card-stats">
@@ -159,9 +157,15 @@ onMounted(() => {
             </div>
           </div>
           
-          <div v-else class="empty-list mt-4 card">
-            No clusters configured yet.
-          </div>
+          <EmptyState
+            v-else
+            title="No clusters configured"
+            description="Add your first Elasticsearch cluster to get started."
+          >
+            <template #actions>
+              <button class="btn btn-primary" @click="activeTab = 'add'">Add Cluster</button>
+            </template>
+          </EmptyState>
         </div>
       </div>
 
@@ -278,6 +282,12 @@ onMounted(() => {
   color: hsl(var(--primary));
   border-bottom: 2px solid hsl(var(--primary));
   background: transparent;
+  font-weight: 600;
+}
+
+.tab-btn:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
 }
 
 .tab-content {

@@ -1,0 +1,36 @@
+{
+  "nodes": {
+    "node-1": {
+      "name": "es-node-1",
+      "host_name": "host-1",
+      "fs": {
+        "total": {
+          "total_in_bytes": 100000000000,
+          "available_in_bytes": 5000000000
+        }
+      },
+      "jvm": {
+        "mem": {
+          "heap_used_percent": 82,
+          "heap_used_in_bytes": 4200000000,
+          "heap_max_in_bytes": 8000000000
+        }
+      }
+    },
+    "node-2": {
+      "name": "es-node-2",
+      "host_name": "host-2",
+      "fs": {
+        "total": {
+          "total_in_bytes": 100000000000,
+          "available_in_bytes": 40000000000
+        }
+      },
+      "jvm": {
+        "mem": {
+          "heap_used_percent": 55
+        }
+      }
+    }
+  }
+}

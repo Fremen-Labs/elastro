@@ -529,13 +529,17 @@ def fix_indices(client: ElasticsearchClient) -> None:
     elastro index fix
     ```
     """
-    from rich.prompt import Prompt, Confirm, IntPrompt
+    from rich.prompt import Confirm
     from rich.console import Console
     from rich.panel import Panel
     from rich.table import Table
     from elastro.core.index import IndexManager
-    import json
     from elastro.core.errors import OperationError
+    from elastro.health.remediation.diagnosis import (
+        diagnose_unhealthy_indices,
+        list_unhealthy_indices,
+    )
+    from elastro.health.remediation.executor import RemediationExecutor
 
     console = Console()
     index_manager = IndexManager(client)
@@ -549,12 +553,7 @@ def fix_indices(client: ElasticsearchClient) -> None:
     )
 
     try:
-        # 1. Fetch all indices
-        # We catch any potential parsing empty responses as we are converting cat responses
-        indices = index_manager.list()
-        unhealthy_indices = [
-            idx for idx in indices if idx.get("health", "green") in ["yellow", "red"]
-        ]
+        unhealthy_indices = list_unhealthy_indices(index_manager)
 
         if not unhealthy_indices:
             console.print(
@@ -579,116 +578,35 @@ def fix_indices(client: ElasticsearchClient) -> None:
         console.print(table)
         console.print()
 
-        # 2. Iterate and diagnose each
-        for idx in unhealthy_indices:
-            name = str(idx.get("index", ""))
-            if not name:
-                continue
+        executor = RemediationExecutor(
+            client,
+            interactive=True,
+            confirm=lambda prompt, default: Confirm.ask(f"   {prompt}", default=default),
+        )
 
-            health = str(idx.get("health", "unknown"))
-            console.print(f"[bold]Diagnosing index:[/] {name} ({health})")
+        for diagnosis in diagnose_unhealthy_indices(index_manager):
+            console.print(
+                f"[bold]Diagnosing index:[/] {diagnosis.index_name} ({diagnosis.health})"
+            )
+            console.print(
+                f"   [yellow]Explanation:[/] {diagnosis.allocate_explanation}"
+            )
+            console.print(f"   [yellow]Reason Code:[/] {diagnosis.reason}")
 
-            try:
-                explain_result = index_manager.allocation_explain(name)
-
-                # Basic parsed reasons
-                allocate_explanation = explain_result.get(
-                    "allocate_explanation", "No explanation available"
-                )
-                # unassigned_info holds the exact reason why the active allocation failed
-                unassigned_info = explain_result.get("unassigned_info", {})
-                reason = unassigned_info.get("reason", "UNKNOWN_REASON")
-
-                console.print(f"   [yellow]Explanation:[/] {allocate_explanation}")
-                console.print(f"   [yellow]Reason Code:[/] {reason}")
-
-                # Simple automatic fix suggestions based on common failure modes
-                # Mode A: Yellow due to replica assignment failure (e.g., node limits)
-                if health == "yellow" and (
-                    reason in ["CLUSTER_RECOVERED", "REPLICA_ADDED"]
-                    or (
-                        "replica" in str(allocate_explanation).lower()
-                        and (
-                            "permitted" in str(allocate_explanation).lower()
-                            or "too many copies" in str(allocate_explanation).lower()
-                            or "same node" in str(allocate_explanation).lower()
-                        )
-                    )
-                ):
-                    console.print(
-                        "   [bold cyan]Suggestion:[/] The replica count is likely higher than the number of available physical nodes."
-                    )
-                    if Confirm.ask(
-                        f"   Reduce replicas for '{name}' to 0 to fix Yellow state?",
-                        default=True,
-                    ):
-                        index_manager.update(name, {"index": {"number_of_replicas": 0}})
-                        console.print(
-                            f"   [green]✓ Replicas reduced to 0 for {name}.[/]"
-                        )
-                    else:
-                        console.print("   [dim]Skipped.[/]")
-
-                # Mode B: Red/Yellow due to max retries
-                elif reason == "ALLOCATION_FAILED":
-                    console.print(
-                        "   [bold cyan]Suggestion:[/] Allocation failed multiple times and hit max retries."
-                    )
-                    if Confirm.ask(
-                        f"   Force retry allocation via cluster reroute?", default=True
-                    ):
-                        index_manager.reroute(retry_failed=True)
-                        console.print(
-                            f"   [green]✓ Cluster rerouted to retry failed shards.[/]"
-                        )
-                    else:
-                        console.print("   [dim]Skipped.[/]")
-                else:
-                    routing_filter_fault = False
-                    for node_decision in explain_result.get(
-                        "node_allocation_decisions", []
-                    ):
-                        for decider in node_decision.get("deciders", []):
-                            if decider.get(
-                                "decider"
-                            ) == "filter" and "index.routing.allocation" in decider.get(
-                                "explanation", ""
-                            ):
-                                routing_filter_fault = True
-                                break
-                        if routing_filter_fault:
-                            break
-
-                    if routing_filter_fault:
-                        console.print(
-                            "   [bold cyan]Suggestion:[/] Explicit node routing filters are preventing shard allocation."
-                        )
-                        if Confirm.ask(
-                            f"   Clear all custom node routing allocation filters for '{name}'?",
-                            default=True,
-                        ):
-                            settings_payload = {
-                                "routing.allocation.require._name": None,
-                                "routing.allocation.include._name": None,
-                                "routing.allocation.exclude._name": None,
-                                "routing.allocation.require.*": None,
-                                "routing.allocation.include.*": None,
-                                "routing.allocation.exclude.*": None,
-                            }
-                            index_manager.update(name, {"index": settings_payload})
-                            console.print(
-                                f"   [green]✓ Custom routing allocation filters cleared for {name}.[/]"
-                            )
-                        else:
-                            console.print("   [dim]Skipped.[/]")
-                    else:
-                        console.print(
-                            "   [dim]No automated quick fix available for this specific constraint. Review explain JSON for details.[/]"
-                        )
-
-            except Exception as explain_error:
+            if diagnosis.suggestion_text:
                 console.print(
-                    f"   [bold red]Failed to explain allocation:[/] {explain_error}"
+                    f"   [bold cyan]Suggestion:[/] {diagnosis.suggestion_text}"
+                )
+                result = executor.remediate_diagnosis(diagnosis)
+                if result and result.executed and result.success:
+                    console.print(f"   [green]✓ {result.message}[/]")
+                elif result and not result.executed:
+                    console.print("   [dim]Skipped.[/]")
+                elif result and not result.success:
+                    console.print(f"   [bold red]{result.message}[/]")
+            else:
+                console.print(
+                    "   [dim]No automated quick fix available for this specific constraint. Review explain JSON for details.[/]"
                 )
 
             console.print("-" * 40)

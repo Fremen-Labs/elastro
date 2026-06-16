@@ -125,6 +125,32 @@ This guide helps you diagnose and resolve common issues encountered while using 
 3. Create the index if needed
 4. Use `ignore_missing=True` for operations where appropriate
 
+## Health Assessment & Remediation
+
+### Undoing an incorrect fix
+
+**Symptoms:**
+- Index settings changed unexpectedly after `elastro health assess --fix` or `elastro index fix`
+- Replica count or routing filters differ from before remediation
+
+**Solutions:**
+1. Note the `rollback_id` returned in CLI JSON output or the GUI fix API response.
+2. Preview the restore: `elastro health rollback --id <rollback_id> --dry-run`
+3. Apply the rollback: `elastro health rollback --id <rollback_id>`
+4. If the id was lost, list recent snapshots under `~/.elastic/health-rollbacks/`.
+
+### Assessment history not appearing
+
+**Symptoms:**
+- `elastro health score --history` returns no records
+
+**Solutions:**
+1. Run at least one assessment with `--history`: `elastro health assess --history`
+2. Confirm the history index name: `elastro config get health.assessment.history_index` (default: `elastro-health-assessments`)
+3. Verify the connected user can create and write to that index.
+
+---
+
 ## Document Operations Issues
 
 ### Document Indexing Failures

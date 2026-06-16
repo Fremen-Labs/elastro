@@ -28,6 +28,13 @@ def explain_allocation(client: ElasticsearchClient, index: str) -> None:
     Runs GET _cluster/allocation/explain to diagnose exactly why a shard is
     sitting in an unassigned (UNASSIGNED) state, returning the node decision logic.
     """
+    click.echo(
+        click.style(
+            "Deprecation: use 'elastro health shards --explain' instead (removal in 2.0)",
+            fg="yellow",
+        ),
+        err=True,
+    )
     console = Console()
     try:
         es = client.client

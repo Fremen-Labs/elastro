@@ -305,11 +305,80 @@ elastro datastream delete DATASTREAM_NAME
 elastro datastream rollover DATASTREAM_NAME [--conditions CONDITIONS_FILE]
 ```
 
+## Health Assessment
+
+The `health` command group (v1.4+) provides scored assessments, findings, remediation, rollback, and optional audit/history indexing. See [Health Commands](./health_commands.md) for the complete reference.
+
+### Run an assessment
+
+```bash
+# Table output (recommended)
+elastro health assess -o table
+
+# Disk indicator only
+elastro health assess --feature disk -o json
+
+# Preview fixes without applying
+elastro health assess --fix --dry-run -o table
+
+# Persist assessment to Elasticsearch history index
+elastro health assess --history -o table
+```
+
+### Score and history
+
+```bash
+elastro health score
+elastro health score --history --last 5 -o table
+```
+
+### Rollback a remediation
+
+When a fix captures settings before applying, the result includes a `rollback_id`:
+
+```bash
+elastro health rollback --id rb-abc123 --dry-run
+elastro health rollback --id rb-abc123
+```
+
+Snapshots are stored under `~/.elastic/health-rollbacks/`.
+
+### Lint cluster best practices
+
+```bash
+elastro health lint -o table
+elastro health lint --category mappings --category shards -o json
+```
+
+### Other health commands
+
+```bash
+elastro health status [--level cluster|indices|shards] [--wait green]
+elastro health report
+elastro health nodes --metric jvm,fs --hotspots
+elastro health shards --analyze
+elastro health hotspots --variance 25
+```
+
+### Health configuration
+
+```bash
+elastro config get health.assessment.history_index
+elastro config get health.assessment.audit_index
+```
+
+Default indices: `elastro-health-assessments` (history) and `elastro-health-audit` (audit events).
+
+---
+
 ## Utility Commands
 
 ### Cluster Health
 
+> **Deprecation:** Prefer `elastro health status`. `utils health` remains for backward compatibility.
+
 ```bash
+elastro health status [--level LEVEL] [--wait green|yellow|red]
 elastro utils health [--level LEVEL] [--wait-for-status STATUS]
 ```
 
@@ -386,4 +455,5 @@ cat document.json | jq
 
 ## Additional Resources
 
-For more advanced usage and API documentation, refer to the project's [API documentation](./api_docs.md).    
+- [Health Commands](./health_commands.md) — assessment, remediation, rollback, audit
+- [API Reference](./api_reference.md) — Python API documentation
