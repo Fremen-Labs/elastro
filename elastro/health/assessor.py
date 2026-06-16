@@ -89,7 +89,11 @@ class HealthAssessor:
         try:
             info = self._client.client.info()
             es_version = info.get("version", {}).get("number", "unknown")
-        except Exception:
+        except Exception as exc:
+            logger.warning(
+                "Failed to fetch Elasticsearch version; continuing with unknown: %s",
+                exc,
+            )
             es_version = "unknown"
         ctx.es_version = es_version
 
@@ -250,10 +254,13 @@ class HealthAssessor:
             raw_health_report=raw_health_report,
         )
         logger.info(
-            "Health assessment complete: score=%s status=%s findings=%s",
+            "Health assessment complete: score=%s status=%s findings=%s "
+            "duration_ms=%s collectors_failed=%s",
             report.overall_score,
             report.overall_status.value,
             len(report.findings),
+            duration_ms,
+            len(collectors_failed),
         )
 
         resolved_host = host or _resolve_client_host(self._client)

@@ -91,8 +91,9 @@ class TestRemediationExecutor:
         )
 
         store = RollbackStore(root=tmp_path)
+        rollback_id = "rb-550e8400-e29b-41d4-a716-446655440000"
         record = RollbackRecord(
-            rollback_id="rb-test",
+            rollback_id=rollback_id,
             session_id="sess-1",
             action_id="reduce_replicas",
             index_name="logs-2024",
@@ -105,7 +106,7 @@ class TestRemediationExecutor:
             interactive=False,
             rollback_store=store,
         )
-        result = executor.rollback("rb-test", dry_run=False)
+        result = executor.rollback(rollback_id, dry_run=False)
         assert result.success is True
         assert result.executed is True
         assert "Restored settings" in result.message

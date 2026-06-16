@@ -13,6 +13,11 @@ from elastro.health.remediation.rollback import (
 
 
 class TestRollbackStore:
+    def test_rejects_invalid_rollback_id(self, tmp_path):
+        store = RollbackStore(root=tmp_path)
+        assert store.get("../etc/passwd") is None
+        assert store.get("rb-test") is None
+
     def test_save_and_get_round_trip(self, tmp_path):
         store = RollbackStore(root=tmp_path)
         record = create_rollback_record(
@@ -64,7 +69,7 @@ class TestRollbackHelpers:
     def test_apply_rollback_restores_settings(self):
         manager = MagicMock()
         record = RollbackRecord(
-            rollback_id="rb-test",
+            rollback_id="rb-550e8400-e29b-41d4-a716-446655440000",
             session_id="sess-1",
             action_id="reduce_replicas",
             index_name="logs-2024",
@@ -80,7 +85,7 @@ class TestRollbackHelpers:
     def test_apply_rollback_dry_run_skips_update(self):
         manager = MagicMock()
         record = RollbackRecord(
-            rollback_id="rb-test",
+            rollback_id="rb-550e8400-e29b-41d4-a716-446655440000",
             session_id="sess-1",
             action_id="reduce_replicas",
             index_name="logs-2024",

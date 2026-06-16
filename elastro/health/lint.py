@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Iterable, List, Optional, Sequence, Set
+from typing import List, Optional, Sequence, Set
 
 from elastro.core.client import ElasticsearchClient
 from elastro.core.errors import OperationError
@@ -11,6 +11,7 @@ from elastro.core.index import IndexManager
 from elastro.core.logger import get_logger
 from elastro.health.collectors.base import CollectContext
 from elastro.health.collectors.mappings import MappingsCollector
+from elastro.health.collectors.security import SecurityCollector
 from elastro.health.collectors.shards import ShardsCollector
 from elastro.health.mappings import is_system_index
 from elastro.health.models import Finding, FindingStatus, RemediationAction, RemediationSafety, Severity
@@ -20,7 +21,7 @@ from elastro.health.shards import DEFAULT_OVERSHARD_THRESHOLD_MB, DEFAULT_UNDERS
 
 logger = get_logger(__name__)
 
-LINT_CATEGORIES = ("settings", "mappings", "shards")
+LINT_CATEGORIES = ("settings", "mappings", "shards", "security")
 _DEFAULT_MAX_INDICES = 50
 
 
@@ -40,10 +41,23 @@ def run_lint(
         ctx.options["index"] = index_pattern
 
     findings: List[Finding] = []
+    skipped: List[str] = []
     start = time.monotonic()
+    logger.info(
+        "Starting health lint categories=%s index_pattern=%s max_indices=%s",
+        ",".join(sorted(selected)),
+        index_pattern or "*",
+        max_indices,
+    )
 
     if "settings" in selected:
-        findings.extend(_lint_settings(client, max_indices=max_indices))
+        findings.extend(
+            _lint_settings(
+                client,
+                max_indices=max_indices,
+                index_pattern=index_pattern,
+            )
+        )
 
     collector_data: dict = {}
     if "mappings" in selected:
@@ -56,6 +70,7 @@ def run_lint(
                 )
             )
         elif mappings_result.error:
+            skipped.append("mappings")
             logger.warning("Mappings lint skipped: %s", mappings_result.error)
 
     if "shards" in selected:
@@ -63,7 +78,29 @@ def run_lint(
         if shards_result.status == "ok":
             findings.extend(_lint_shards(shards_result.data))
         elif shards_result.error:
+            skipped.append("shards")
             logger.warning("Shards lint skipped: %s", shards_result.error)
+
+    if "security" in selected:
+        security_result = SecurityCollector().collect(ctx)
+        if security_result.status == "ok":
+            findings.extend(security_result.data.get("findings", []))
+        elif security_result.error:
+            skipped.append("security")
+            logger.warning("Security lint skipped: %s", security_result.error)
+
+    if skipped:
+        findings.append(
+            Finding(
+                id="lint.categories_skipped",
+                category="lint",
+                title="Some lint categories were skipped",
+                status=FindingStatus.WARN,
+                severity=Severity.LOW,
+                summary=f"Skipped categories: {', '.join(skipped)}",
+                source="lint",
+            )
+        )
 
     logger.info(
         "Health lint complete categories=%s findings=%s duration_ms=%s",
@@ -91,12 +128,13 @@ def _lint_settings(
     client: ElasticsearchClient,
     *,
     max_indices: int,
+    index_pattern: Optional[str] = None,
 ) -> List[Finding]:
     index_manager = IndexManager(client)
     findings: List[Finding] = []
 
     try:
-        indices = index_manager.list()
+        indices = index_manager.list(pattern=index_pattern or "*")
     except OperationError as exc:
         logger.error("Settings lint failed listing indices: %s", exc, exc_info=True)
         raise

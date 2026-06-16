@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -17,6 +18,7 @@ from elastro.core.logger import get_logger
 logger = get_logger(__name__)
 
 DEFAULT_ROLLBACK_DIR = Path.home() / ".elastic" / "health-rollbacks"
+_ROLLBACK_ID_PATTERN = re.compile(r"^rb-[0-9a-f-]{36}$")
 _ROLLBACK_SETTINGS_KEYS = (
     "number_of_replicas",
     "auto_expand_replicas",
@@ -75,7 +77,14 @@ class RollbackStore:
 
     def get(self, rollback_id: str) -> Optional[RollbackRecord]:
         """Load a rollback record by id."""
-        path = self._root / f"{rollback_id}.json"
+        if not _ROLLBACK_ID_PATTERN.match(rollback_id):
+            logger.warning("Invalid rollback_id format: %s", rollback_id)
+            return None
+        path = (self._root / f"{rollback_id}.json").resolve()
+        root = self._root.resolve()
+        if not path.is_relative_to(root):
+            logger.warning("Rollback path escapes store root: %s", rollback_id)
+            return None
         if not path.exists():
             return None
         return RollbackRecord.model_validate_json(path.read_text(encoding="utf-8"))
@@ -85,7 +94,7 @@ class RollbackStore:
         if not self._root.exists():
             return []
         records: List[RollbackRecord] = []
-        for path in sorted(self._root.glob("*.json"), reverse=True):
+        for path in self._root.glob("*.json"):
             try:
                 records.append(
                     RollbackRecord.model_validate_json(
@@ -98,10 +107,8 @@ class RollbackStore:
                     path.name,
                     exc,
                 )
-            if len(records) >= limit:
-                break
         records.sort(key=lambda item: item.applied_at, reverse=True)
-        return records
+        return records[:limit]
 
 
 def capture_index_settings(
@@ -116,6 +123,7 @@ def capture_index_settings(
             "Failed to capture settings for rollback index=%s: %s",
             index_name,
             exc,
+            exc_info=True,
         )
         return None
 
@@ -167,9 +175,10 @@ def apply_rollback(
 ) -> str:
     """Restore index settings captured in a rollback record."""
     if dry_run:
+        keys = sorted((record.before.get("index") or {}).keys())
         return (
             f"Would restore settings for '{record.index_name}' "
-            f"from rollback {record.rollback_id}: {json.dumps(record.before)}"
+            f"from rollback {record.rollback_id} (keys={','.join(keys)})"
         )
 
     logger.info(
@@ -178,7 +187,17 @@ def apply_rollback(
         record.index_name,
         record.action_id,
     )
-    index_manager.update(record.index_name, record.before)
+    try:
+        index_manager.update(record.index_name, record.before)
+    except Exception as exc:
+        logger.error(
+            "Rollback apply failed rollback_id=%s index=%s: %s",
+            record.rollback_id,
+            record.index_name,
+            exc,
+            exc_info=True,
+        )
+        raise
     return (
         f"Restored settings for '{record.index_name}' "
         f"from rollback {record.rollback_id}"

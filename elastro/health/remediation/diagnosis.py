@@ -68,6 +68,7 @@ def diagnose_index(
     index_name: str,
     health: str,
     status: str = "unknown",
+    cat_entry: Optional[Dict[str, Any]] = None,
 ) -> IndexDiagnosis:
     """Explain allocation for an index and suggest a remediation action."""
     explain_result = index_manager.allocation_explain(index_name)
@@ -91,6 +92,10 @@ def diagnose_index(
         action_id or "none",
     )
 
+    metadata: Dict[str, Any] = {"explain": explain_result}
+    if cat_entry:
+        metadata["cat"] = cat_entry
+
     return IndexDiagnosis(
         index_name=index_name,
         health=health,
@@ -100,7 +105,7 @@ def diagnose_index(
         routing_filter_fault=routing_filter_fault,
         suggested_action_id=action_id,
         suggestion_text=suggestion,
-        metadata={"explain": explain_result},
+        metadata=metadata,
     )
 
 
@@ -132,6 +137,7 @@ def diagnose_unhealthy_indices(index_manager: IndexManager) -> List[IndexDiagnos
                     index_name=name,
                     health=health,
                     status=status,
+                    cat_entry=idx,
                 )
             )
         except Exception as exc:

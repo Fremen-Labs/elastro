@@ -637,17 +637,30 @@ def health_hotspots(ctx: click.Context, variance: float) -> None:
     "--category",
     "categories",
     multiple=True,
-    type=click.Choice(["settings", "mappings", "shards"]),
+    type=click.Choice(["settings", "mappings", "shards", "security"]),
     help="Lint category to run; repeatable (default: all)",
 )
-@click.option("--index", type=str, default=None, help="Limit shard lint to an index pattern")
+@click.option(
+    "--index",
+    type=str,
+    default=None,
+    help="Limit lint to an index pattern (settings, mappings, shards)",
+)
 @click.option("--timeout", type=str, default="30s", help="Per-request timeout")
+@click.option(
+    "--max-indices",
+    type=int,
+    default=50,
+    show_default=True,
+    help="Maximum user indices to scan for settings/mappings lint",
+)
 @click.pass_context
 def health_lint(
     ctx: click.Context,
     categories: Tuple[str, ...],
     index: Optional[str],
     timeout: str,
+    max_indices: int,
 ) -> None:
     """
     Lint index settings, mappings, and shard layout against best practices.
@@ -676,6 +689,7 @@ def health_lint(
             categories=selected,
             index_pattern=index,
             timeout=timeout,
+            max_indices=max_indices,
         )
         output_fmt = _output_format(ctx)
         if output_fmt == "table":
@@ -687,16 +701,65 @@ def health_lint(
             }
             click.echo(format_output(payload, output_format=output_fmt))
 
-        if any(item.status == FindingStatus.FAIL for item in findings):
+        actionable = [
+            item for item in findings if item.id != "lint.categories_skipped"
+        ]
+        if any(item.status == FindingStatus.FAIL for item in actionable):
             raise SystemExit(2)
-        if findings:
-            raise SystemExit(1)
+        if actionable:
+            raise SystemExit(2)
     except OperationError as exc:
         click.echo(f"Error running health lint: {exc}", err=True)
         raise SystemExit(1) from exc
 
 
-@health_group.command("rollback")
+@health_group.group("rollback")
+def health_rollback_group() -> None:
+    """Manage remediation rollback snapshots."""
+
+
+@health_rollback_group.command("list")
+@click.option(
+    "--last",
+    type=int,
+    default=20,
+    show_default=True,
+    help="Number of recent rollback records to show",
+)
+@click.pass_context
+def health_rollback_list(ctx: click.Context, last: int) -> None:
+    """
+    List saved remediation rollback snapshots.
+
+    Examples:
+
+    ```bash
+    elastro -o table health rollback list
+    elastro health rollback list --last 5 -o json
+    ```
+    """
+    from elastro.health.remediation.rollback import RollbackStore
+
+    logger.info("health rollback list invoked last=%s", last)
+    records = RollbackStore().list_records(limit=last)
+    output_fmt = _output_format(ctx)
+    if output_fmt == "table":
+        if not records:
+            click.echo("No rollback snapshots found.")
+            return
+        for record in records:
+            click.echo(
+                f"{record.rollback_id}  {record.index_name}  "
+                f"{record.action_id}  {record.applied_at.isoformat()}"
+            )
+    else:
+        payload = {
+            "rollbacks": [record.model_dump(mode="json") for record in records]
+        }
+        click.echo(format_output(payload, output_format=output_fmt))
+
+
+@health_rollback_group.command("apply")
 @click.option("--id", "rollback_id", required=True, help="Rollback snapshot id")
 @click.option(
     "--dry-run",
@@ -705,7 +768,7 @@ def health_lint(
     help="Preview restored settings without applying",
 )
 @click.pass_context
-def health_rollback(
+def health_rollback_apply(
     ctx: click.Context,
     rollback_id: str,
     dry_run: bool,
@@ -716,16 +779,25 @@ def health_rollback(
     Examples:
 
     ```bash
-    elastro health rollback --id rb-abc123 --dry-run
-    elastro health rollback --id rb-abc123
+    elastro health rollback apply --id rb-abc123 --dry-run
+    elastro health rollback apply --id rb-abc123
     ```
     """
+    _run_health_rollback(ctx, rollback_id=rollback_id, dry_run=dry_run)
+
+
+def _run_health_rollback(
+    ctx: click.Context,
+    *,
+    rollback_id: str,
+    dry_run: bool,
+) -> None:
     from elastro.health.audit import HealthAuditLogger
     from elastro.health.remediation.executor import RemediationExecutor
 
     client: ElasticsearchClient = ctx.obj
     logger.info(
-        "health rollback invoked rollback_id=%s dry_run=%s",
+        "health rollback apply invoked rollback_id=%s dry_run=%s",
         rollback_id,
         dry_run,
     )
@@ -737,7 +809,7 @@ def health_rollback(
     executor = RemediationExecutor(
         client,
         dry_run=dry_run,
-        interactive=False,
+        interactive=not dry_run,
         audit_logger=audit,
     )
     result = executor.rollback(rollback_id, dry_run=dry_run)

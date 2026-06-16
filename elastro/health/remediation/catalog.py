@@ -34,12 +34,15 @@ class RemediationCatalog:
     _ENTRIES: Dict[str, CatalogEntry] = {
         "reduce_replicas": CatalogEntry(
             id="reduce_replicas",
-            label="Reduce replicas to 0",
+            label="Reduce replicas to safe target",
             safety=RemediationSafety.DESTRUCTIVE,
-            command="elastro index fix",
+            command="elastro health assess --fix",
             planned=planned_reduce_replicas,
             execute=lambda mgr, index_name, **kwargs: reduce_replicas(
-                mgr, index_name, api_mode=kwargs.get("api_mode", False)
+                mgr,
+                index_name,
+                api_mode=kwargs.get("api_mode", False),
+                target_replicas=kwargs.get("target_replicas"),
             ),
         ),
         "reroute_failed": CatalogEntry(
@@ -72,19 +75,32 @@ class RemediationCatalog:
         return list(cls._ENTRIES.keys())
 
     @classmethod
+    def default_confirm(cls, action_id: str) -> bool:
+        """Return whether an action should default to confirmed execution."""
+        entry = cls.get(action_id)
+        if entry is None:
+            return False
+        return entry.safety in {RemediationSafety.OBSERVE, RemediationSafety.SUGGEST}
+
+    @classmethod
     def planned_call(
         cls,
         action_id: str,
         index_name: Optional[str] = None,
         *,
         api_mode: bool = False,
+        target_replicas: Optional[int] = None,
     ) -> str:
         entry = cls._ENTRIES[action_id]
         if entry.requires_index:
             if not index_name:
                 raise ValueError(f"Action {action_id} requires an index name")
             if action_id == "reduce_replicas":
-                return entry.planned(index_name, api_mode=api_mode)
+                return entry.planned(
+                    index_name,
+                    api_mode=api_mode,
+                    target_replicas=target_replicas,
+                )
             return entry.planned(index_name)
         return entry.planned(index_name)
 
@@ -96,13 +112,24 @@ class RemediationCatalog:
         index_name: Optional[str] = None,
         *,
         api_mode: bool = False,
+        target_replicas: Optional[int] = None,
     ) -> str:
         entry = cls._ENTRIES[action_id]
         if entry.requires_index:
             if not index_name:
                 raise ValueError(f"Action {action_id} requires an index name")
-            return entry.execute(index_manager, index_name, api_mode=api_mode)
-        return entry.execute(index_manager, index_name or "", api_mode=api_mode)
+            return entry.execute(
+                index_manager,
+                index_name,
+                api_mode=api_mode,
+                target_replicas=target_replicas,
+            )
+        return entry.execute(
+            index_manager,
+            index_name or "",
+            api_mode=api_mode,
+            target_replicas=target_replicas,
+        )
 
     @classmethod
     def triggers_remediation_scan(cls, command: Optional[str]) -> bool:

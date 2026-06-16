@@ -57,12 +57,13 @@ def render_remediation_summary(
             continue
 
         if result.executed and result.success:
-            click.echo(
-                click.style(
-                    f"  ✓ {diagnosis.index_name}: {result.message}",
-                    fg="green",
+            line = f"  ✓ {diagnosis.index_name}: {result.message}"
+            if result.rollback_id:
+                line += (
+                    f"\n    Rollback id: {result.rollback_id} "
+                    f"(undo: elastro health rollback --id {result.rollback_id})"
                 )
-            )
+            click.echo(click.style(line, fg="green"))
         elif not result.executed and result.success:
             click.echo(f"  - {diagnosis.index_name}: skipped")
         else:

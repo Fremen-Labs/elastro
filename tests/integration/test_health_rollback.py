@@ -27,12 +27,20 @@ class TestHealthRollbackCLI:
             success=True,
             executed=True,
             message="Restored settings for 'logs-2024'",
-            rollback_id="rb-test",
+            rollback_id="rb-550e8400-e29b-41d4-a716-446655440000",
         )
 
         result = runner.invoke(
             cli,
-            ["-h", "http://localhost:9205", "health", "rollback", "--id", "rb-test"],
+            [
+                "-h",
+                "http://localhost:9205",
+                "health",
+                "rollback",
+                "apply",
+                "--id",
+                "rb-550e8400-e29b-41d4-a716-446655440000",
+            ],
         )
 
         assert result.exit_code == 0, result.output

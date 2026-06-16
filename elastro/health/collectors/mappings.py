@@ -9,7 +9,7 @@ from elastro.core.index import IndexManager
 from elastro.core.logger import get_logger
 from elastro.health.collectors.base import CollectContext, CollectorResult
 from elastro.health.mappings import (
-    _MAX_INDICES,
+    DEFAULT_MAX_INDICES,
     is_system_index,
     summarize_index_mapping,
 )
@@ -24,11 +24,12 @@ class MappingsCollector:
 
     def collect(self, ctx: CollectContext) -> CollectorResult:
         index_manager = IndexManager(ctx.client)
-        max_indices = int(ctx.options.get("max_indices", _MAX_INDICES))
+        max_indices = int(ctx.options.get("max_indices", DEFAULT_MAX_INDICES))
+        index_pattern = ctx.options.get("index")
         logger.debug("Collecting mapping field counts max_indices=%s", max_indices)
 
         try:
-            indices = index_manager.list()
+            indices = index_manager.list(pattern=index_pattern or "*")
             summaries = self._summaries(index_manager, indices, max_indices=max_indices)
             logger.info(
                 "Mappings collector complete: scanned=%s indices",

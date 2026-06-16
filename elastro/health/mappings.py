@@ -10,7 +10,7 @@ logger = get_logger(__name__)
 
 DEFAULT_FIELD_LIMIT = 1000
 DEFAULT_FIELD_WARN_RATIO = 0.8
-_MAX_INDICES = 50
+DEFAULT_MAX_INDICES = 50
 
 
 def is_system_index(index_name: str) -> bool:
@@ -68,7 +68,11 @@ def summarize_index_mapping(
     }
 
 
-def select_user_indices(indices: List[Dict[str, Any]], *, limit: int = _MAX_INDICES) -> List[str]:
+def select_user_indices(
+    indices: List[Dict[str, Any]],
+    *,
+    limit: int = DEFAULT_MAX_INDICES,
+) -> List[str]:
     """Return non-system index names up to a scan limit."""
     names: List[str] = []
     for entry in indices:

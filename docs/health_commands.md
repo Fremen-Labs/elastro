@@ -82,22 +82,24 @@ elastro health score --history --last 5 -o table
 
 ### `elastro health rollback`
 
-Restores index settings from a snapshot taken immediately before a remediation ran.
+Manage remediation rollback snapshots.
 
 ```bash
-elastro health rollback --id ROLLBACK_ID [--dry-run]
+elastro health rollback list [--last 20]
+elastro health rollback apply --id ROLLBACK_ID [--dry-run]
 ```
 
-| Option | Description |
-|--------|-------------|
-| `--id` | Rollback snapshot id (e.g. `rb-abc123-...`) |
-| `--dry-run` | Preview restored settings without applying |
+| Subcommand | Description |
+|------------|-------------|
+| `list` | Show recent rollback snapshots (`--last` default 20) |
+| `apply` | Restore settings from a snapshot (`--dry-run` to preview) |
 
 **Examples:**
 
 ```bash
-elastro health rollback --id rb-abc123 --dry-run
-elastro health rollback --id rb-abc123
+elastro health rollback list -o table
+elastro health rollback apply --id rb-550e8400-e29b-41d4-a716-446655440000 --dry-run
+elastro health rollback apply --id rb-550e8400-e29b-41d4-a716-446655440000
 ```
 
 Rollback files are stored locally at `~/.elastic/health-rollbacks/` with `0600` permissions. Each successful remediation that modifies index settings returns a `rollback_id` in CLI JSON output and API fix responses.
@@ -161,13 +163,14 @@ elastro health hotspots [--variance 30]
 Best-practice linter for index settings, mapping field counts, and shard layout. Shipped in **v1.9.0**.
 
 ```bash
-elastro health lint [--category settings|mappings|shards] [--index PATTERN] [--timeout 30s]
+elastro health lint [--category settings|mappings|shards|security] [--index PATTERN] [--timeout 30s]
 ```
 
 | Option | Description |
 |--------|-------------|
-| `--category` | Category to lint; repeatable (default: all three) |
-| `--index` | Limit shard analysis to an index pattern |
+| `--category` | Category to lint; repeatable (default: all) |
+| `--index` | Limit settings/mappings/shard analysis to an index pattern |
+| `--max-indices` | Cap indices scanned for settings/mappings (default: 50) |
 | `--timeout` | Per-request timeout |
 
 **Examples:**
@@ -187,8 +190,9 @@ Lint checks include:
 | `settings` | Zero replicas, aggressive refresh on large indices, high primary shard counts on small indices |
 | `mappings` | Field counts approaching `index.mapping.total_fields.limit` |
 | `shards` | Unassigned, oversharded, and undersharded shards |
+| `security` | Plain HTTP connections, enabled `elastic` user, elevated RBAC roles |
 
-Security posture checks (plain HTTP, default `elastic` user, elevated roles) run during `health assess` via the security collector.
+Security posture checks also run during `health assess` via the security collector.
 
 ---
 

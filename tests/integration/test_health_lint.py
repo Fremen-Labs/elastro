@@ -36,7 +36,7 @@ class TestHealthLintCLI:
             ["-h", "http://localhost:9205", "-o", "table", "health", "lint"],
         )
 
-        assert result.exit_code == 1, result.output
+        assert result.exit_code == 2, result.output
         assert "zero replicas" in result.output.lower()
 
     @patch("elastro.cli.cli.ElasticsearchClient.connect")

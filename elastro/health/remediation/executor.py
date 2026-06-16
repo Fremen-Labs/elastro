@@ -11,6 +11,7 @@ from elastro.core.logger import get_logger
 
 if TYPE_CHECKING:
     from elastro.health.audit import HealthAuditLogger
+from elastro.health.remediation.actions.reduce_replicas import resolve_replica_target
 from elastro.health.remediation.catalog import RemediationCatalog
 from elastro.health.remediation.diagnosis import diagnose_unhealthy_indices
 from elastro.health.remediation.models import IndexDiagnosis, RemediationResult
@@ -73,7 +74,8 @@ class RemediationExecutor:
         index_name: Optional[str] = None,
         *,
         prompt: Optional[str] = None,
-        default_confirm: bool = True,
+        default_confirm: Optional[bool] = None,
+        target_replicas: Optional[int] = None,
     ) -> RemediationResult:
         """Execute or preview a single catalog action."""
         entry = RemediationCatalog.get(action_id)
@@ -88,10 +90,18 @@ class RemediationExecutor:
                 message=f"Unknown remediation action: {action_id}",
             )
 
+        resolved_target = target_replicas
+        if action_id == "reduce_replicas" and index_name and resolved_target is None:
+            resolved_target = resolve_replica_target(
+                self._index_manager,
+                index_name,
+            )
+
         planned = RemediationCatalog.planned_call(
             action_id,
             index_name,
             api_mode=self.api_mode,
+            target_replicas=resolved_target,
         )
 
         if self.dry_run:
@@ -112,7 +122,12 @@ class RemediationExecutor:
             )
 
         confirm_prompt = prompt or f"Apply {entry.label}?"
-        if not self._should_execute(confirm_prompt, default=default_confirm):
+        confirm_default = (
+            default_confirm
+            if default_confirm is not None
+            else RemediationCatalog.default_confirm(action_id)
+        )
+        if not self._should_execute(confirm_prompt, default=confirm_default):
             logger.info(
                 "Remediation skipped: action=%s index=%s",
                 action_id,
@@ -153,6 +168,7 @@ class RemediationExecutor:
                 self._index_manager,
                 index_name,
                 api_mode=self.api_mode,
+                target_replicas=resolved_target,
             )
             result = RemediationResult(
                 action_id=action_id,
@@ -198,6 +214,7 @@ class RemediationExecutor:
         """Restore settings from a saved rollback snapshot."""
         record = self._rollback_store.get(rollback_id)
         if record is None:
+            logger.warning("Rollback not found: rollback_id=%s", rollback_id)
             return RemediationResult(
                 action_id="rollback",
                 index_name=None,
@@ -206,6 +223,42 @@ class RemediationExecutor:
                 dry_run=dry_run,
                 message=f"Rollback '{rollback_id}' not found",
             )
+
+        if (
+            record.cluster_name
+            and self._cluster_name
+            and record.cluster_name != self._cluster_name
+        ):
+            message = (
+                f"Rollback cluster mismatch: snapshot={record.cluster_name} "
+                f"connected={self._cluster_name}"
+            )
+            logger.warning(message)
+            return RemediationResult(
+                action_id="rollback",
+                index_name=record.index_name,
+                success=False,
+                executed=False,
+                dry_run=dry_run,
+                message=message,
+                rollback_id=rollback_id,
+            )
+
+        if not dry_run and self.interactive:
+            prompt = (
+                f"Restore settings for '{record.index_name}' from "
+                f"rollback {rollback_id}?"
+            )
+            if not self._should_execute(prompt, default=False):
+                return RemediationResult(
+                    action_id="rollback",
+                    index_name=record.index_name,
+                    success=True,
+                    executed=False,
+                    dry_run=False,
+                    message="Rollback skipped by user",
+                    rollback_id=rollback_id,
+                )
 
         try:
             message = apply_rollback(
@@ -272,9 +325,19 @@ class RemediationExecutor:
         if prompt_builder is not None:
             prompt = prompt_builder(diagnosis, entry.label)
         elif action_id == "reduce_replicas":
+            target = resolve_replica_target(
+                self._index_manager,
+                diagnosis.index_name,
+            )
             prompt = (
-                f"Reduce replicas for '{diagnosis.index_name}' to 0 "
+                f"Reduce replicas for '{diagnosis.index_name}' to {target} "
                 f"to fix {diagnosis.health} state?"
+            )
+            return self.execute_action(
+                action_id,
+                diagnosis.index_name,
+                prompt=prompt,
+                target_replicas=target,
             )
         elif action_id == "reroute_failed":
             prompt = "Force retry allocation via cluster reroute?"
