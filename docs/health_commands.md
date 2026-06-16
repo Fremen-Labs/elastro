@@ -47,6 +47,8 @@ elastro health assess [OPTIONS]
 | `--target-replicas` | Explicit replica target for `reduce_replicas` |
 | `--history` / `--no-history` | Index report to `elastro-health-assessments` (default: off) |
 | `--history-index` | Override assessment history index name |
+| `--detail` | With table output, print expanded remediation guidance for findings |
+| `--detail-finding` | Limit `--detail` to one finding id (e.g. `shards.oversharded`) |
 | `--fail-on` | Exit `2` when health degrades past threshold (default: `fail`) |
 
 **Examples:**
@@ -57,6 +59,7 @@ elastro health assess --feature disk -o json
 elastro health assess --fix --dry-run -o table
 elastro health assess --plan -o table
 elastro health assess --history -o table
+elastro health assess -o table --detail shards.oversharded
 ```
 
 Exit code `2` when overall status is `fail` by default (`--fail-on fail`). Use `--fail-on warn` for stricter CI gates.

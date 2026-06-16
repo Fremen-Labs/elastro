@@ -82,6 +82,25 @@ class TestFormatters(unittest.TestCase):
         self.assertIn("88/100", render_assessment(report, "table"))
         self.assertIn('"overall_score": 88', render_assessment(report, "json"))
 
+    def test_render_assessment_detail_flag(self):
+        from elastro.health.models import Finding, FindingStatus, Severity
+
+        report = self._sample_report()
+        report.findings.append(
+            Finding(
+                id="shards.oversharded",
+                category="shards",
+                title="Oversharded indices detected",
+                status=FindingStatus.WARN,
+                severity=Severity.MEDIUM,
+                summary="29 shard(s) are smaller than 1.0 MB (OVERSHARDED).",
+                detail="Performance implications:\n  • Each shard runs on one thread.",
+            )
+        )
+        table = render_assessment(report, "table", show_detail=True)
+        self.assertIn("Finding details", table)
+        self.assertIn("Each shard runs on one thread", table)
+
 
 if __name__ == "__main__":
     unittest.main()

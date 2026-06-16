@@ -185,6 +185,18 @@ def health_group() -> None:
     default=None,
     help="Assessment history index name",
 )
+@click.option(
+    "--detail",
+    is_flag=True,
+    default=False,
+    help="With table output, show expanded remediation detail for findings",
+)
+@click.option(
+    "--detail-finding",
+    type=str,
+    default=None,
+    help="Limit --detail to a single finding id (e.g. shards.oversharded)",
+)
 @fail_on_option
 @click.pass_context
 def health_assess(
@@ -203,6 +215,8 @@ def health_assess(
     target_replicas: Optional[int],
     history: bool,
     history_index: Optional[str],
+    detail: bool,
+    detail_finding: Optional[str],
     fail_on: str,
 ) -> None:
     """
@@ -265,6 +279,8 @@ def health_assess(
             report,
             _output_format(ctx),
             include_raw=include_raw,
+            show_detail=detail,
+            detail_finding=detail_finding,
         )
         click.echo(output, nl=not output.endswith("\n"))
 

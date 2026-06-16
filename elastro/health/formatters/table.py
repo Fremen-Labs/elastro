@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from io import StringIO
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from rich import box
 from rich.console import Console
@@ -54,7 +54,45 @@ def _sort_findings(findings: List[Finding]) -> List[Finding]:
     )
 
 
-def format_assessment_table(report: AssessmentReport) -> str:
+def format_finding_details(
+    findings: List[Finding],
+    *,
+    finding_id: Optional[str] = None,
+) -> str:
+    """Render expanded remediation detail for actionable findings."""
+    buf = StringIO()
+    console = Console(file=buf, force_terminal=True, width=110)
+
+    targets = _sort_findings(findings)
+    if finding_id:
+        targets = [item for item in targets if item.id == finding_id]
+    targets = [
+        item
+        for item in targets
+        if item.detail and item.status.value not in {"pass", "skipped"}
+    ]
+    if not targets:
+        return ""
+
+    console.print("\n[bold]Finding details[/]\n")
+    for finding in targets:
+        console.print(
+            Panel(
+                finding.detail or "",
+                title=f"[bold]{finding.title}[/] [dim]({finding.id})[/]",
+                border_style="yellow" if finding.severity == Severity.MEDIUM else "red",
+            )
+        )
+    console.print()
+    return buf.getvalue()
+
+
+def format_assessment_table(
+    report: AssessmentReport,
+    *,
+    show_detail: bool = False,
+    detail_finding: Optional[str] = None,
+) -> str:
     """Render an assessment report as a Rich table."""
     buf = StringIO()
     console = Console(file=buf, force_terminal=True, width=100)
@@ -90,7 +128,7 @@ def format_assessment_table(report: AssessmentReport) -> str:
         if finding.remediation:
             action = finding.remediation.command
         elif finding.detail:
-            action = finding.detail.split("\n")[0][:60]
+            action = "elastro health assess --detail"
 
         finding_text = finding.title
         if finding.summary and finding.summary != finding.title:
@@ -111,5 +149,21 @@ def format_assessment_table(report: AssessmentReport) -> str:
             f"\n[dim]Collectors failed: {', '.join(report.collectors_failed)}[/]"
         )
 
-    console.print()
-    return buf.getvalue()
+    output = buf.getvalue()
+    if show_detail:
+        output += format_finding_details(
+            report.findings,
+            finding_id=detail_finding,
+        )
+    else:
+        detail_findings = [
+            item
+            for item in findings
+            if item.detail and item.status.value not in {"pass", "skipped"}
+        ]
+        if detail_findings:
+            output += (
+                "\n[dim]Tip: run with --detail (or --detail shards.oversharded) "
+                "for remediation guidance.[/]\n"
+            )
+    return output

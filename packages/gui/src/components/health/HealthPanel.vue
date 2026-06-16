@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
-import { RefreshCw, Wrench } from 'lucide-vue-next'
+import { ChevronDown, RefreshCw, Wrench } from 'lucide-vue-next'
+import FindingDetailPanel from './FindingDetailPanel.vue'
 import { state } from '../../store'
 import PageHeader from '../ui/PageHeader.vue'
 import AlertBanner from '../ui/AlertBanner.vue'
@@ -23,6 +24,7 @@ const trendPoints = ref<number[]>([])
 const trendDelta = ref<number | null>(null)
 const nodes = ref<NodeHealthSummary[]>([])
 const activeFix = ref<string | null>(null)
+const expandedFindings = ref<Record<string, boolean>>({})
 const awaitingToken = ref(false)
 
 const authHeaders = () => ({ Authorization: `Bearer ${state.token}` })
@@ -260,6 +262,16 @@ const applyFix = async (
   }
 }
 
+const hasExpandableDetail = (finding: HealthFinding): boolean =>
+  Boolean(finding.detail || finding.metadata?.detail_sections)
+
+const toggleFindingDetail = (findingId: string) => {
+  expandedFindings.value = {
+    ...expandedFindings.value,
+    [findingId]: !expandedFindings.value[findingId],
+  }
+}
+
 const suggestCatalogAction = (finding: HealthFinding): string | null => {
   const title = `${finding.title} ${finding.summary} ${finding.detail || ''}`.toLowerCase()
   if (title.includes('replica')) return 'reduce_replicas'
@@ -362,14 +374,41 @@ watch(
             v-for="finding in openFindings"
             :key="finding.id"
             class="finding-row"
-            :class="severityClass(finding.severity)"
+            :class="[severityClass(finding.severity), { expanded: expandedFindings[finding.id] }]"
           >
-            <div class="finding-header">
-              <span class="finding-severity label-caps">{{ finding.severity }}</span>
-              <span class="finding-status">{{ finding.status }}</span>
-            </div>
-            <h4>{{ finding.title }}</h4>
-            <p class="finding-summary">{{ finding.summary }}</p>
+            <button
+              v-if="hasExpandableDetail(finding)"
+              type="button"
+              class="finding-toggle"
+              :aria-expanded="expandedFindings[finding.id] ? 'true' : 'false'"
+              @click="toggleFindingDetail(finding.id)"
+            >
+              <div class="finding-header">
+                <span class="finding-severity label-caps">{{ finding.severity }}</span>
+                <span class="finding-status">{{ finding.status }}</span>
+              </div>
+              <div class="finding-title-row">
+                <h4>{{ finding.title }}</h4>
+                <ChevronDown
+                  :size="16"
+                  class="chevron"
+                  :class="{ open: expandedFindings[finding.id] }"
+                />
+              </div>
+              <p class="finding-summary">{{ finding.summary }}</p>
+            </button>
+            <template v-else>
+              <div class="finding-header">
+                <span class="finding-severity label-caps">{{ finding.severity }}</span>
+                <span class="finding-status">{{ finding.status }}</span>
+              </div>
+              <h4>{{ finding.title }}</h4>
+              <p class="finding-summary">{{ finding.summary }}</p>
+            </template>
+            <FindingDetailPanel
+              v-if="hasExpandableDetail(finding) && expandedFindings[finding.id]"
+              :finding="finding"
+            />
             <p v-if="finding.detail" class="finding-detail text-muted">{{ finding.detail }}</p>
             <p v-if="finding.remediation" class="finding-action text-muted">
               <Wrench :size="14" />
@@ -520,6 +559,38 @@ watch(
   border-radius: var(--radius);
   border: 1px solid hsl(var(--border));
   background: hsl(var(--muted) / 0.25);
+}
+
+.finding-row.expanded {
+  border-color: hsl(var(--primary) / 0.35);
+}
+
+.finding-toggle {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.finding-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.chevron {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  color: hsl(var(--muted-foreground));
+  transition: transform 0.2s ease;
+}
+
+.chevron.open {
+  transform: rotate(180deg);
 }
 
 .finding-row.severity-high {

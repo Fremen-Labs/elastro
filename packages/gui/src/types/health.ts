@@ -8,6 +8,25 @@ export interface RemediationAction {
   safety: 'observe' | 'suggest' | 'confirm' | 'destructive'
 }
 
+export interface FindingDetailSection {
+  title: string
+  body: string
+  commands?: string[]
+}
+
+export interface FindingDetailSections {
+  why?: string
+  implications?: string[]
+  resolution?: FindingDetailSection[]
+  cautions?: string[]
+  top_indices?: Array<{
+    index: string
+    oversharded_shard_count: number
+    smallest_human: string
+  }>
+  references?: string[]
+}
+
 export interface HealthFinding {
   id: string
   category: string
@@ -19,6 +38,10 @@ export interface HealthFinding {
   detail?: string
   affected_resources: string[]
   remediation?: RemediationAction
+  metadata?: {
+    detail_sections?: FindingDetailSections
+    [key: string]: unknown
+  }
 }
 
 export interface HealthScoreResponse {
