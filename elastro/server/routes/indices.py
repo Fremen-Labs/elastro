@@ -148,7 +148,10 @@ def index_routes(read_config: Any, verify_token: Any) -> APIRouter:
                 req.action,
                 req.dry_run,
             )
+            from elastro.health.audit import HealthAuditLogger
+
             client = build_es_client(target_c)
+            audit = HealthAuditLogger(client, host=str(target_c.get("host", "unknown")))
 
             from elastro.health.remediation.executor import RemediationExecutor
 
@@ -161,16 +164,23 @@ def index_routes(read_config: Any, verify_token: Any) -> APIRouter:
                 dry_run=req.dry_run,
                 interactive=False,
                 api_mode=True,
+                audit_logger=audit,
+                cluster_name=cluster_name,
             )
             result = executor.execute_action(action, index_name)
             if result.dry_run:
                 return {
                     "status": "dry_run",
                     "planned_api_call": result.planned_api_call,
+                    "rollback_id": result.rollback_id,
                 }
             if not result.success:
                 raise HTTPException(status_code=500, detail=result.message)
-            return {"status": "success", "message": result.message}
+            return {
+                "status": "success",
+                "message": result.message,
+                "rollback_id": result.rollback_id,
+            }
 
         except HTTPException:
             raise

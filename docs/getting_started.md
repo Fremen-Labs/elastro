@@ -261,6 +261,7 @@ elastic-cli index get products --format yaml
 
 ## Next Steps
 
+- Run a scored health assessment: `elastro health assess -o table` — see [Health Commands](./health_commands.md)
 - Read the [API Reference](https://github.com/Fremen-Labs/elastro/blob/main/docs/api_reference.md) for detailed information about all available methods
 - Explore [Advanced Features](https://github.com/Fremen-Labs/elastro/blob/main/docs/advanced_features.md) for more complex operations
 - Check the [Examples](https://github.com/Fremen-Labs/elastro/tree/main/examples) directory for more code samples

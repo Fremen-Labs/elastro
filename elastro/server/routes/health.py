@@ -311,12 +311,20 @@ def health_routes(read_config: Any, verify_token: Any) -> APIRouter:
                 index_name,
                 req.dry_run,
             )
+            from elastro.health.audit import HealthAuditLogger
+
             client = build_es_client(target)
+            cached_report = get_cached_report(cluster_name)
+            session_id = cached_report.session_id if cached_report else None
+            audit = HealthAuditLogger(client, host=str(target.get("host", "unknown")))
             executor = RemediationExecutor(
                 client,
                 dry_run=req.dry_run,
                 interactive=False,
                 api_mode=True,
+                session_id=session_id,
+                audit_logger=audit,
+                cluster_name=cluster_name,
             )
             result = executor.execute_action(action, index_name)
             if result.dry_run:
@@ -326,6 +334,7 @@ def health_routes(read_config: Any, verify_token: Any) -> APIRouter:
                     "index_name": index_name,
                     "planned_api_call": result.planned_api_call,
                     "message": result.message,
+                    "rollback_id": result.rollback_id,
                 }
             if not result.success:
                 raise HTTPException(status_code=500, detail=result.message)
@@ -334,6 +343,7 @@ def health_routes(read_config: Any, verify_token: Any) -> APIRouter:
                 "action": action,
                 "index_name": index_name,
                 "message": result.message,
+                "rollback_id": result.rollback_id,
             }
         except HTTPException:
             raise

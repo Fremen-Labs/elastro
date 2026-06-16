@@ -2,14 +2,24 @@
 
 from __future__ import annotations
 
-from typing import Callable, List, Optional
+from typing import TYPE_CHECKING, Callable, List, Optional
+from uuid import uuid4
 
 from elastro.core.client import ElasticsearchClient
 from elastro.core.index import IndexManager
 from elastro.core.logger import get_logger
+
+if TYPE_CHECKING:
+    from elastro.health.audit import HealthAuditLogger
 from elastro.health.remediation.catalog import RemediationCatalog
 from elastro.health.remediation.diagnosis import diagnose_unhealthy_indices
 from elastro.health.remediation.models import IndexDiagnosis, RemediationResult
+from elastro.health.remediation.rollback import (
+    RollbackStore,
+    apply_rollback,
+    capture_index_settings,
+    create_rollback_record,
+)
 
 
 ConfirmFn = Callable[[str, bool], bool]
@@ -29,12 +39,20 @@ class RemediationExecutor:
         interactive: bool = True,
         confirm: Optional[ConfirmFn] = None,
         api_mode: bool = False,
+        session_id: Optional[str] = None,
+        rollback_store: Optional[RollbackStore] = None,
+        audit_logger: Optional["HealthAuditLogger"] = None,
+        cluster_name: Optional[str] = None,
     ) -> None:
         self._index_manager = IndexManager(client)
         self.dry_run = dry_run
         self.interactive = interactive
         self._confirm = confirm
         self.api_mode = api_mode
+        self._session_id = session_id or str(uuid4())
+        self._rollback_store = rollback_store or RollbackStore()
+        self._audit = audit_logger
+        self._cluster_name = cluster_name
 
     @property
     def index_manager(self) -> IndexManager:
@@ -110,11 +128,25 @@ class RemediationExecutor:
                 planned_api_call=planned,
             )
 
+        rollback_id: Optional[str] = None
+        if entry.requires_index and index_name:
+            before = capture_index_settings(self._index_manager, index_name)
+            if before:
+                record = create_rollback_record(
+                    session_id=self._session_id,
+                    action_id=action_id,
+                    index_name=index_name,
+                    before=before,
+                    cluster_name=self._cluster_name,
+                )
+                rollback_id = self._rollback_store.save(record)
+
         try:
             logger.info(
-                "Executing remediation %s for index=%s",
+                "Executing remediation %s for index=%s rollback_id=%s",
                 action_id,
                 index_name,
+                rollback_id,
             )
             message = RemediationCatalog.execute(
                 action_id,
@@ -122,7 +154,7 @@ class RemediationExecutor:
                 index_name,
                 api_mode=self.api_mode,
             )
-            return RemediationResult(
+            result = RemediationResult(
                 action_id=action_id,
                 index_name=index_name,
                 success=True,
@@ -130,7 +162,11 @@ class RemediationExecutor:
                 dry_run=False,
                 message=message,
                 planned_api_call=planned,
+                rollback_id=rollback_id,
             )
+            if self._audit is not None:
+                self._audit.log_fix(result, session_id=self._session_id)
+            return result
         except Exception as exc:
             logger.error(
                 "Remediation failed: action=%s index=%s error=%s",
@@ -139,7 +175,7 @@ class RemediationExecutor:
                 exc,
                 exc_info=True,
             )
-            return RemediationResult(
+            result = RemediationResult(
                 action_id=action_id,
                 index_name=index_name,
                 success=False,
@@ -147,6 +183,75 @@ class RemediationExecutor:
                 dry_run=False,
                 message=str(exc),
                 planned_api_call=planned,
+                rollback_id=rollback_id,
+            )
+            if self._audit is not None:
+                self._audit.log_fix(result, session_id=self._session_id)
+            return result
+
+    def rollback(
+        self,
+        rollback_id: str,
+        *,
+        dry_run: bool = False,
+    ) -> RemediationResult:
+        """Restore settings from a saved rollback snapshot."""
+        record = self._rollback_store.get(rollback_id)
+        if record is None:
+            return RemediationResult(
+                action_id="rollback",
+                index_name=None,
+                success=False,
+                executed=False,
+                dry_run=dry_run,
+                message=f"Rollback '{rollback_id}' not found",
+            )
+
+        try:
+            message = apply_rollback(
+                self._index_manager,
+                record,
+                dry_run=dry_run,
+            )
+            result = RemediationResult(
+                action_id="rollback",
+                index_name=record.index_name,
+                success=True,
+                executed=not dry_run,
+                dry_run=dry_run,
+                message=message,
+                rollback_id=rollback_id,
+            )
+            if self._audit is not None:
+                self._audit.log_rollback(
+                    record,
+                    dry_run=dry_run,
+                    success=True,
+                    message=message,
+                )
+            return result
+        except Exception as exc:
+            logger.error(
+                "Rollback failed rollback_id=%s: %s",
+                rollback_id,
+                exc,
+                exc_info=True,
+            )
+            if self._audit is not None:
+                self._audit.log_rollback(
+                    record,
+                    dry_run=dry_run,
+                    success=False,
+                    message=str(exc),
+                )
+            return RemediationResult(
+                action_id="rollback",
+                index_name=record.index_name,
+                success=False,
+                executed=False,
+                dry_run=dry_run,
+                message=str(exc),
+                rollback_id=rollback_id,
             )
 
     def remediate_diagnosis(

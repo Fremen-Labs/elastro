@@ -46,6 +46,16 @@ DEFAULT_CONFIG = {
     "document": {"default_refresh": DEFAULT_DOCUMENT_REFRESH},
     "datastream": {"default_settings": DEFAULT_DATASTREAM_SETTINGS},
     "cli": {"output_format": DEFAULT_CLI_OUTPUT_FORMAT, "verbose": DEFAULT_CLI_VERBOSE},
+    "health": {
+        "assessment": {
+            "timeout": "30s",
+            "verbose_report": True,
+            "cache_ttl_seconds": 60,
+            "history_index": "elastro-health-assessments",
+            "audit_index": "elastro-health-audit",
+            "enable_history": False,
+        }
+    },
     "logging": {
         "level": "INFO",
         "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",

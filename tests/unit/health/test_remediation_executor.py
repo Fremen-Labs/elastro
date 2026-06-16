@@ -83,3 +83,29 @@ class TestRemediationExecutor:
             suggested_action_id=None,
         )
         assert executor.remediate_diagnosis(diagnosis) is None
+
+    def test_rollback_restores_replica_count(self, client, tmp_path):
+        from elastro.health.remediation.rollback import (
+            RollbackRecord,
+            RollbackStore,
+        )
+
+        store = RollbackStore(root=tmp_path)
+        record = RollbackRecord(
+            rollback_id="rb-test",
+            session_id="sess-1",
+            action_id="reduce_replicas",
+            index_name="logs-2024",
+            before={"index": {"number_of_replicas": 1}},
+        )
+        store.save(record)
+
+        executor = RemediationExecutor(
+            client,
+            interactive=False,
+            rollback_store=store,
+        )
+        result = executor.rollback("rb-test", dry_run=False)
+        assert result.success is True
+        assert result.executed is True
+        assert "Restored settings" in result.message

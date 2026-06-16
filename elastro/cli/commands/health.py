@@ -40,19 +40,44 @@ def _render_cluster_health(result: dict) -> None:
     click.echo(format_output(result, output_format="json"))
 
 
+def _client_host(client: ElasticsearchClient) -> str:
+    hosts = getattr(client, "hosts", None)
+    if isinstance(hosts, list) and hosts:
+        return str(hosts[0])
+    if isinstance(hosts, str):
+        return hosts
+    return "unknown"
+
+
+def _cli_profile(ctx: click.Context) -> str:
+    root = ctx
+    while root.parent is not None:
+        root = root.parent
+    return str(root.params.get("profile") or "default")
+
+
 def _run_assessment(
     client: ElasticsearchClient,
+    ctx: click.Context,
     *,
     timeout: str,
     verbose_report: bool,
     feature: Optional[Tuple[str, ...]],
+    enable_history: bool = False,
+    history_index: Optional[str] = None,
 ) -> AssessmentReport:
+    from elastro.health.config import DEFAULT_HISTORY_INDEX
+
     assessor = HealthAssessor(client)
     feature_name = feature[0] if feature else None
     return assessor.run(
         timeout=timeout,
         verbose_report=verbose_report,
         feature=feature_name,
+        enable_history=enable_history,
+        history_index=history_index or DEFAULT_HISTORY_INDEX,
+        profile=_cli_profile(ctx),
+        host=_client_host(client),
     )
 
 
@@ -92,6 +117,17 @@ def health_group() -> None:
     default=False,
     help="With --fix, show planned API calls without executing",
 )
+@click.option(
+    "--history/--no-history",
+    default=False,
+    help="Index assessment report to elastro-health-assessments",
+)
+@click.option(
+    "--history-index",
+    type=str,
+    default=None,
+    help="Assessment history index name",
+)
 @click.pass_context
 def health_assess(
     ctx: click.Context,
@@ -101,6 +137,8 @@ def health_assess(
     include_raw: bool,
     fix: bool,
     dry_run: bool,
+    history: bool,
+    history_index: Optional[str],
 ) -> None:
     """
     Run a full cluster health assessment with score and findings.
@@ -136,17 +174,21 @@ def health_assess(
 
     client: ElasticsearchClient = ctx.obj
     logger.info(
-        "health assess invoked fix=%s dry_run=%s verbose_report=%s",
+        "health assess invoked fix=%s dry_run=%s verbose_report=%s history=%s",
         fix,
         dry_run,
         verbose_report,
+        history,
     )
     try:
         report = _run_assessment(
             client,
+            ctx,
             timeout=timeout,
             verbose_report=verbose_report,
             feature=features,
+            enable_history=history,
+            history_index=history_index,
         )
         output = render_assessment(
             report,
@@ -166,11 +208,21 @@ def health_assess(
             from elastro.health.remediation.display import render_remediation_summary
             from elastro.health.remediation.executor import RemediationExecutor
 
+            from elastro.health.audit import HealthAuditLogger
+
+            audit = HealthAuditLogger(
+                client,
+                profile=_cli_profile(ctx),
+                host=_client_host(client),
+            )
             executor = RemediationExecutor(
                 client,
                 dry_run=dry_run,
                 interactive=fix and not dry_run,
                 confirm=lambda prompt, default: Confirm.ask(prompt, default=default),
+                session_id=report.session_id,
+                audit_logger=audit,
+                cluster_name=report.cluster_name,
             )
             diagnoses = diagnose_unhealthy_indices(executor.index_manager)
             results = []
@@ -189,10 +241,32 @@ def health_assess(
 
 @health_group.command("score")
 @click.option("--timeout", type=str, default="30s", help="Per-collector timeout")
+@click.option(
+    "--history",
+    is_flag=True,
+    default=False,
+    help="Read scores from assessment history index instead of re-assessing",
+)
+@click.option(
+    "--last",
+    type=int,
+    default=10,
+    show_default=True,
+    help="Number of historical assessments to show with --history",
+)
+@click.option(
+    "--history-index",
+    type=str,
+    default=None,
+    help="Assessment history index name",
+)
 @click.pass_context
 def health_score(
     ctx: click.Context,
     timeout: str,
+    history: bool,
+    last: int,
+    history_index: Optional[str],
 ) -> None:
     """
     Print the current cluster health score (0-100).
@@ -202,18 +276,52 @@ def health_score(
     ```bash
     elastro health score
     elastro health score -o json
+    elastro health score --history --last 5 -o table
     ```
     """
+    from elastro.health.config import DEFAULT_HISTORY_INDEX
+    from elastro.health.history import query_assessment_history
+
     client: ElasticsearchClient = ctx.obj
-    logger.info("health score invoked timeout=%s", timeout)
+    logger.info(
+        "health score invoked timeout=%s history=%s last=%s",
+        timeout,
+        history,
+        last,
+    )
     try:
+        output_fmt = _output_format(ctx)
+        if history:
+            records = query_assessment_history(
+                client,
+                history_index=history_index or DEFAULT_HISTORY_INDEX,
+                limit=last,
+            )
+            if output_fmt == "table":
+                for record in records:
+                    cluster = record.get("cluster_name", "unknown")
+                    score = record.get("overall_score", 0)
+                    status = record.get("overall_status", "unknown")
+                    assessed_at = record.get("assessed_at", "")
+                    click.echo(
+                        f"{cluster}: {score}/100 ({status}) @ {assessed_at}"
+                    )
+            else:
+                click.echo(
+                    format_output(
+                        {"assessments": records},
+                        output_format=output_fmt,
+                    )
+                )
+            return
+
         report = _run_assessment(
             client,
+            ctx,
             timeout=timeout,
             verbose_report=False,
             feature=None,
         )
-        output_fmt = _output_format(ctx)
         if output_fmt == "json":
             click.echo(
                 format_output(
@@ -522,6 +630,63 @@ def health_hotspots(ctx: click.Context, variance: float) -> None:
         click.echo(format_hotspots_table(hotspots), nl=False)
     else:
         click.echo(format_output({"hotspots": hotspots}, output_format=output_fmt))
+
+
+@health_group.command("rollback")
+@click.option("--id", "rollback_id", required=True, help="Rollback snapshot id")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="Preview restored settings without applying",
+)
+@click.pass_context
+def health_rollback(
+    ctx: click.Context,
+    rollback_id: str,
+    dry_run: bool,
+) -> None:
+    """
+    Restore index settings from a saved remediation rollback snapshot.
+
+    Examples:
+
+    ```bash
+    elastro health rollback --id rb-abc123 --dry-run
+    elastro health rollback --id rb-abc123
+    ```
+    """
+    from elastro.health.audit import HealthAuditLogger
+    from elastro.health.remediation.executor import RemediationExecutor
+
+    client: ElasticsearchClient = ctx.obj
+    logger.info(
+        "health rollback invoked rollback_id=%s dry_run=%s",
+        rollback_id,
+        dry_run,
+    )
+    audit = HealthAuditLogger(
+        client,
+        profile=_cli_profile(ctx),
+        host=_client_host(client),
+    )
+    executor = RemediationExecutor(
+        client,
+        dry_run=dry_run,
+        interactive=False,
+        audit_logger=audit,
+    )
+    result = executor.rollback(rollback_id, dry_run=dry_run)
+    output_fmt = _output_format(ctx)
+    payload = result.model_dump(mode="json")
+    if output_fmt == "table":
+        click.echo(result.message)
+        if result.rollback_id:
+            click.echo(f"Rollback id: {result.rollback_id}")
+    else:
+        click.echo(format_output(payload, output_format=output_fmt))
+    if not result.success:
+        raise SystemExit(1)
 
 
 @health_group.command("status")

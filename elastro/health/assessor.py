@@ -29,6 +29,9 @@ from elastro.health.models import (
     Severity,
     score_to_status,
 )
+from elastro.health.audit import HealthAuditLogger
+from elastro.health.config import DEFAULT_HISTORY_INDEX
+from elastro.health.history import index_assessment
 from elastro.health.scoring import compute_fallback_score, compute_weighted_score
 
 logger = get_logger(__name__)
@@ -64,6 +67,11 @@ class HealthAssessor:
         verbose_report: bool = True,
         feature: Optional[str] = None,
         assessment_history: Optional[List[Dict[str, Any]]] = None,
+        enable_history: bool = False,
+        history_index: str = DEFAULT_HISTORY_INDEX,
+        profile: str = "default",
+        host: Optional[str] = None,
+        audit_logger: Optional[HealthAuditLogger] = None,
     ) -> AssessmentReport:
         """Run registered collectors and build an assessment report."""
         start = time.monotonic()
@@ -234,7 +242,34 @@ class HealthAssessor:
             report.overall_status.value,
             len(report.findings),
         )
+
+        resolved_host = host or _resolve_client_host(self._client)
+        auditor = audit_logger or HealthAuditLogger(
+            self._client,
+            profile=profile,
+            host=resolved_host,
+        )
+        auditor.log_assess(report)
+
+        if enable_history:
+            index_assessment(
+                self._client,
+                report,
+                history_index=history_index,
+                profile=profile,
+                host=resolved_host,
+            )
+
         return report
+
+
+def _resolve_client_host(client: ElasticsearchClient) -> str:
+    hosts = getattr(client, "hosts", None)
+    if isinstance(hosts, list) and hosts:
+        return str(hosts[0])
+    if isinstance(hosts, str):
+        return hosts
+    return "unknown"
 
 
 def _build_default_registry() -> CollectorRegistry:

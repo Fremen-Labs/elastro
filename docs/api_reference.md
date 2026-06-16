@@ -9,6 +9,7 @@ This document provides detailed documentation for Elastro's core components and 
 - [DocumentManager](#documentmanager)
 - [IngestEngine](#ingestengine)
 - [DatastreamManager](#datastreammanager)
+- [Health Assessment](#health-assessment)
 - [Advanced Components](#advanced-components)
   - [QueryBuilder](#querybuilder)
   - [AggregationBuilder](#aggregationbuilder)
@@ -225,6 +226,54 @@ result = ingest_engine.ingest(
 )
 # Returns: IngestResult with operation statistics (total_read, total_indexed, total_failed)
 ```
+
+## Health Assessment
+
+Health assessment components live in `elastro.health`. See [Health Commands](./health_commands.md) for CLI usage.
+
+### HealthAssessor
+
+Orchestrates collectors and rules to produce an `AssessmentReport`.
+
+```python
+from elastro import ElasticsearchClient
+from elastro.health.assessor import HealthAssessor
+
+client = ElasticsearchClient()
+client.connect()
+report = HealthAssessor(client).run(
+    enable_history=True,  # index to elastro-health-assessments
+)
+print(report.overall_score, report.overall_status)
+```
+
+### RemediationExecutor
+
+Executes catalog remediations with dry-run, confirmation, rollback snapshots, and audit hooks.
+
+```python
+from elastro.health.remediation.executor import RemediationExecutor
+
+executor = RemediationExecutor(client, dry_run=False, interactive=False)
+result = executor.execute_action("reduce_replicas", "logs-2024")
+print(result.rollback_id)  # set when settings were snapshotted
+
+# Restore prior settings
+executor.rollback(result.rollback_id)
+```
+
+### HealthAuditLogger
+
+Emits assess/fix/rollback events to logs and optionally to the `elastro-health-audit` index.
+
+```python
+from elastro.health.audit import HealthAuditLogger
+
+audit = HealthAuditLogger(client, profile="default", host="http://localhost:9200")
+audit.log_assess(report)
+```
+
+---
 
 ## Advanced Components
 

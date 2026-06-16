@@ -102,7 +102,24 @@ The Elastro CLI provides a robust feature set for managing your Elasticsearch cl
 
 ---
 
-## 10. `ingest`
+## 10. `health`
+**Purpose**: Cluster health assessment, scoring, diagnostics, and safe remediation.
+**Why it's important**: Elasticsearch exposes rich health signals via `_health_report`, node stats, and shard allocation, but they are scattered across APIs. The `health` group combines these into a single scored assessment with actionable findings, optional remediation, rollback, and audit trails—without requiring Kibana or Elastic Cloud.
+
+See [Health Commands](./health_commands.md) for full option reference.
+
+- **`assess`**: Run a full health assessment (score 0–100, findings table). Supports `--fix`, `--dry-run`, and `--history` to index reports to `elastro-health-assessments`.
+- **`score`**: Print the current score quickly, or `--history --last N` to read past assessments from the history index.
+- **`rollback`**: Restore index settings from a saved remediation snapshot (`--id rb-...`, optional `--dry-run`).
+- **`status`**: Cluster/indices/shard health check with optional `--wait` (replaces `utils health`).
+- **`report`**: Formatted `_health_report` passthrough.
+- **`nodes`**: Per-node JVM, disk, and breaker metrics; `--hotspots` for variance detection.
+- **`shards`**: Shard allocation view; `--analyze` for oversharding/undersharding detection.
+- **`hotspots`**: Shortcut for node hotspot variance analysis.
+
+---
+
+## 11. `ingest`
 **Purpose**: Client-side data preparation, formatting, and AI-driven pipeline operations.
 **Why it's important**: Elasticsearch ingest pipelines are powerful but run server-side. The `ingest` commands let you process, sanitize, validate, and format data (like CSV, SQL, Parquet, or NDJSON) locally *before* it reaches your cluster, and provides smart AI tools to rapidly author complex ingest logic.
 

@@ -1,7 +1,7 @@
 # Elastro Health Assessment — Technical Implementation Plan
 
-**Status:** Draft  
-**Version target:** 1.4.x → 1.6.x  
+**Status:** Active — PR-3c shipped (v1.8.0)  
+**Version target:** 1.4.x → 1.8.0 (PR-4a next)  
 **Author:** Engineering (derived from strategic health assessment report)  
 **Last updated:** 2026-06-15
 
@@ -332,8 +332,8 @@ class RemediationExecutor:
 
 ### 5.2 Rollback store
 
-**File:** `~/.elastic/health-rollbacks/{session_id}.json` (local)  
-Optional index: `elastro-health-rollbacks` for team visibility.
+**File:** `~/.elastic/health-rollbacks/{rollback_id}.json` (local, mode `0600`)  
+Optional index: `elastro-health-rollbacks` for team visibility (deferred).
 
 ```json
 {
@@ -796,7 +796,7 @@ Avg size: 2.3 GB
 
 ---
 
-### PR-3c: Rollback & audit index
+### PR-3c: Rollback & audit index ✅ Shipped (v1.8.0)
 
 **Estimate:** 4 days  
 **Depends on:** PR-1c
@@ -806,8 +806,18 @@ Avg size: 2.3 GB
 | Rollback store | `health/remediation/rollback.py` |
 | `elastro health rollback` | `cli/commands/health.py` |
 | Audit logger + LogLoom instrumentation | `health/audit.py` |
-| `--history` flag + index template | `health/assessor.py` |
+| `--history` flag + index template | `health/assessor.py`, `health/config.py`, `health/history.py` |
 | `elastro health score --history` | `cli/commands/health.py` |
+| `rollback_id` on fix API responses | `server/routes/health.py`, `server/routes/indices.py` |
+| User documentation | `docs/health_commands.md`, `docs/cli_usage.md`, `docs/commands_reference.md` |
+
+**Acceptance criteria:**
+- `elastro health assess --history` indexes to `elastro-health-assessments`
+- `elastro health score --history --last N` reads historical scores
+- `elastro health rollback --id rb-...` restores captured settings
+- Assess/fix/rollback events logged and optionally indexed to `elastro-health-audit`
+- Rollback files at `~/.elastic/health-rollbacks/` with `0600` permissions
+- `pytest tests/unit/health/` and rollback integration tests pass
 
 ---
 
@@ -946,14 +956,14 @@ elastro config get health.assessment.timeout
 
 ## 14. Documentation deliverables
 
-| Document | PR |
-|----------|-----|
-| `docs/health_assessment_implementation_plan.md` | (this doc) |
-| `docs/health_commands.md` | PR-1b |
-| Update `docs/commands_reference.md` | PR-4a |
-| Update `README.md` health section | PR-2b |
-| Fix `cluster health` README typo | PR-1b |
-| GUI health tab screenshot | PR-2b |
+| Document | PR | Status |
+|----------|-----|--------|
+| `docs/health_assessment_implementation_plan.md` | (this doc) | Current |
+| `docs/health_commands.md` | PR-1b, PR-3c | ✅ Shipped |
+| `docs/cli_usage.md` (health section) | PR-3c | ✅ Shipped |
+| `docs/commands_reference.md` (health section) | PR-3c | ✅ Shipped |
+| `README.md` health section | PR-2b, PR-3c | ✅ Shipped |
+| GUI health tab screenshot | PR-2b | Pending |
 
 ---
 

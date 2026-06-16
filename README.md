@@ -184,9 +184,17 @@ elastro doc index products --id 1 --file ./product.json
 # Search documents
 elastro doc search products --term category=laptop
 
-# View cluster health and routing allocation
-elastro cluster health
-elastro cluster allocation
+# Health assessment (scored findings, remediation, rollback)
+elastro health assess -o table
+elastro health score
+elastro health assess --fix --dry-run -o table
+elastro health assess --history -o table
+elastro health rollback --id rb-abc123 --dry-run
+elastro health shards --analyze
+elastro health hotspots
+
+# Classic cluster status (prefer over utils health)
+elastro health status
 
 # Data Ingest & Processing (Client-Side)
 elastro ingest import data.csv --index customers --format csv
@@ -267,8 +275,10 @@ elastro snapshot restore my_backup snapshot_1 --indices "logs-*"
 
 For full details, refer to the guides in the `docs/` directory:
 - 📖 [Getting Started](https://github.com/Fremen-Labs/elastro/blob/main/docs/getting_started.md)
-- ⚙️ [API Reference](https://github.com/Fremen-Labs/elastro/blob/main/docs/api_reference.md)
+- 🩺 [Health Commands](https://github.com/Fremen-Labs/elastro/blob/main/docs/health_commands.md)
 - 💻 [CLI Usage](https://github.com/Fremen-Labs/elastro/blob/main/docs/cli_usage.md)
+- 📋 [Commands Reference](https://github.com/Fremen-Labs/elastro/blob/main/docs/commands_reference.md)
+- ⚙️ [API Reference](https://github.com/Fremen-Labs/elastro/blob/main/docs/api_reference.md)
 - 🚀 [Advanced Features](https://github.com/Fremen-Labs/elastro/blob/main/docs/advanced_features.md)
 - 🛠️ [Troubleshooting](https://github.com/Fremen-Labs/elastro/blob/main/docs/troubleshooting.md)
 

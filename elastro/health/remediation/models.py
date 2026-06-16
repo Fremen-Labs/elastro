@@ -30,5 +30,6 @@ class RemediationResult(BaseModel):
     dry_run: bool = False
     message: str
     planned_api_call: Optional[str] = None
+    rollback_id: Optional[str] = None
 
 
