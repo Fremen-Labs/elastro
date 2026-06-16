@@ -27,7 +27,7 @@ def generate_data():
                     i,
                     f"User_{i}",
                     random.random() * 100,
-                    f"2026-05-12T10:00:{i%60:02d}Z",
+                    f"2026-05-12T10:00:{i % 60:02d}Z",
                     random.choice(["true", "false"]),
                 ]
             )
@@ -70,7 +70,7 @@ def generate_data():
                     [
                         i,
                         f"user{i}@example.com",
-                        f"123-45-{1000+i}",
+                        f"123-45-{1000 + i}",
                         random.randint(20, 60),
                     ]
                 )
@@ -215,11 +215,13 @@ def stress_test():
 
         ret, out, err, elapsed = run_cmd(cmd, input_data)
         print(f"[{name}] Code: {ret}, Time: {elapsed:.2f}s")
-        
+
         # Expected failure for wizard due to TTY guard
         if "wizard" in name:
             if ret != 1 or "interactive terminal" not in out + err:
-                issues.append(f"{name} did not abort correctly as a non-TTY process. Exit code: {ret}")
+                issues.append(
+                    f"{name} did not abort correctly as a non-TTY process. Exit code: {ret}"
+                )
             continue
 
         if ret != 0:

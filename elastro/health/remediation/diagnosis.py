@@ -16,7 +16,10 @@ def detect_routing_filter_fault(explain_result: Dict[str, Any]) -> bool:
     for node_decision in explain_result.get("node_allocation_decisions", []):
         for decider in node_decision.get("deciders", []):
             explanation = decider.get("explanation", "")
-            if decider.get("decider") == "filter" and "index.routing.allocation" in explanation:
+            if (
+                decider.get("decider") == "filter"
+                and "index.routing.allocation" in explanation
+            ):
                 return True
     return False
 
@@ -113,9 +116,7 @@ def list_unhealthy_indices(index_manager: IndexManager) -> List[Dict[str, Any]]:
     """Return cat indices entries that are yellow or red."""
     indices = index_manager.list()
     unhealthy = [
-        idx
-        for idx in indices
-        if idx.get("health", "green") in {"yellow", "red"}
+        idx for idx in indices if idx.get("health", "green") in {"yellow", "red"}
     ]
     logger.info("Found %s unhealthy index(es)", len(unhealthy))
     return unhealthy

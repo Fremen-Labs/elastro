@@ -38,9 +38,11 @@ def _count_kibana_objects(es: Any, object_type: str) -> Optional[int]:
             index=",".join(index_names),
             query={"term": {"type": object_type}},
         )
-        count = response.get("count") if isinstance(response, dict) else getattr(
-            response, "body", {}
-        ).get("count")
+        count = (
+            response.get("count")
+            if isinstance(response, dict)
+            else getattr(response, "body", {}).get("count")
+        )
         return int(count or 0)
     except Exception as exc:
         logger.debug(
@@ -96,7 +98,9 @@ def fetch_cluster_inventory(es: Any) -> Dict[str, Any]:
             unassigned_shards += 1
 
     cluster_stats = es.cluster.stats()
-    indices_stats = cluster_stats.get("indices", {}) if isinstance(cluster_stats, dict) else {}
+    indices_stats = (
+        cluster_stats.get("indices", {}) if isinstance(cluster_stats, dict) else {}
+    )
     docs = indices_stats.get("docs", {}) if isinstance(indices_stats, dict) else {}
     store = indices_stats.get("store", {}) if isinstance(indices_stats, dict) else {}
     total_docs = int(docs.get("count", 0) or 0)
@@ -121,7 +125,11 @@ def fetch_cluster_inventory(es: Any) -> Dict[str, Any]:
     template_count = 0
     try:
         composable = es.indices.get_index_template(name="*")
-        templates = composable.get("index_templates", []) if isinstance(composable, dict) else []
+        templates = (
+            composable.get("index_templates", [])
+            if isinstance(composable, dict)
+            else []
+        )
         template_count += len(templates)
     except Exception as exc:
         logger.debug("Composable index templates unavailable: %s", exc)

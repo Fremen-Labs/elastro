@@ -119,7 +119,8 @@ class HealthAssessor:
                             title="Health report unavailable",
                             status=FindingStatus.SKIPPED,
                             severity=Severity.LOW,
-                            summary=result.error or "Health report collector was skipped.",
+                            summary=result.error
+                            or "Health report collector was skipped.",
                             source="collector",
                         )
                     )
@@ -131,7 +132,9 @@ class HealthAssessor:
             if result.name == "health_report":
                 report_data = result.data
                 raw_health_report = report_data.get("report")
-                cluster_name = report_data.get("cluster_name", cluster_name) or cluster_name
+                cluster_name = (
+                    report_data.get("cluster_name", cluster_name) or cluster_name
+                )
                 indicators = report_data.get("indicators", {})
                 overall_score = compute_weighted_score(indicators)
                 findings.extend(non_passing_findings(report_data.get("findings", [])))
@@ -225,9 +228,7 @@ class HealthAssessor:
                     overall_score = max(0, overall_score - deduction)
 
         collector_data = {
-            result.name: result.data
-            for result in results
-            if result.status == "ok"
+            result.name: result.data for result in results if result.status == "ok"
         }
         disk_data = collector_data.get("disk") or {}
         if isinstance(disk_data, dict) and disk_data.get("cluster_settings"):

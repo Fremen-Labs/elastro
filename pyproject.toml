@@ -53,10 +53,8 @@ dev = [
     "pytest>=7.0.0",
     "pytest-cov>=3.0.0",
     "httpx2>=0.1.0",
-    "black>=22.0.0",
-    "isort>=5.0.0",
+    "ruff>=0.9.0",
     "mypy>=0.9.0",
-    "flake8>=4.0.0",
 ]
 ingest-sql = [
     "sqlalchemy>=2.0.0",
@@ -72,18 +70,16 @@ exclude = ["tests*", "examples*"]
 [tool.setuptools.package-data]
 "elastro" = ["gui/**/*"]
 
-[tool.black]
+[tool.ruff]
 line-length = 88
-target-version = ["py39"]
-extend-exclude = '''
-/(
-  .*daemon\.py
-)/
-'''
+target-version = "py39"
+extend-exclude = ["elastro/core/daemon.py"]
 
-[tool.isort]
-profile = "black"
-line_length = 88
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["elastro"]
 
 [tool.mypy]
 python_version = "3.10"

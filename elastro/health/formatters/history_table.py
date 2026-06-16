@@ -139,11 +139,7 @@ def format_fleet_summary_table(rows: List[Dict[str, Any]], *, window: str) -> st
 
     for row in rows:
         latest_score = row.get("latest_score")
-        score_text = (
-            f"{int(latest_score)}/100"
-            if latest_score is not None
-            else "—"
-        )
+        score_text = f"{int(latest_score)}/100" if latest_score is not None else "—"
         table.add_row(
             str(row.get("cluster_name", "unknown")),
             score_text,

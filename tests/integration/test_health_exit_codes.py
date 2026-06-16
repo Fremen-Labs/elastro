@@ -85,9 +85,7 @@ class TestHealthExitCodesCLI:
 
     @patch("elastro.cli.cli.ElasticsearchClient.connect")
     @patch("elastro.cli.commands.health._run_assessment")
-    def test_score_fail_on_yellow_exits_two(
-        self, mock_assess, mock_connect, runner
-    ):
+    def test_score_fail_on_yellow_exits_two(self, mock_assess, mock_connect, runner):
         mock_connect.return_value = None
         mock_assess.return_value = _warn_report()
 
@@ -275,7 +273,16 @@ class TestHealthExitCodesCLI:
         ):
             result = runner.invoke(
                 cli,
-                ["-h", "http://localhost:9205", "-o", "json", "health", "fix", "--yes", "--force"],
+                [
+                    "-h",
+                    "http://localhost:9205",
+                    "-o",
+                    "json",
+                    "health",
+                    "fix",
+                    "--yes",
+                    "--force",
+                ],
             )
 
         assert result.exit_code == 3, result.output

@@ -38,7 +38,15 @@ class TestHealthShardsCLI:
 
         result = runner.invoke(
             cli,
-            ["-h", "http://localhost:9205", "-o", "table", "health", "shards", "--analyze"],
+            [
+                "-h",
+                "http://localhost:9205",
+                "-o",
+                "table",
+                "health",
+                "shards",
+                "--analyze",
+            ],
         )
 
         assert result.exit_code == 0, result.output

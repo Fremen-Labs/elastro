@@ -181,7 +181,7 @@ def index_documents_to_datastream(client, datastream_name, count=10):
         # Create a log entry
         log_entry = {
             "@timestamp": timestamp_str,
-            "message": f"Sample log message #{i+1}",
+            "message": f"Sample log message #{i + 1}",
             "level": log_levels[i % len(log_levels)],
             "service": services[i % len(services)],
             "host": hosts[i % len(hosts)],

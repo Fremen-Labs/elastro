@@ -52,7 +52,7 @@ class TestSQLDumpReader:
         """NULL and boolean literals should be coerced correctly."""
         sql_file = tmp_path / "dump.sql"
         sql_file.write_text(
-            "INSERT INTO flags (id, active, notes) VALUES " "(1, TRUE, NULL);\n"
+            "INSERT INTO flags (id, active, notes) VALUES (1, TRUE, NULL);\n"
         )
 
         docs = list(SQLDumpReader(sql_file).read())
@@ -82,7 +82,7 @@ class TestSQLDumpReader:
         """Strings containing commas should be parsed correctly."""
         sql_file = tmp_path / "dump.sql"
         sql_file.write_text(
-            "INSERT INTO addresses (id, addr) VALUES " "(1, '123 Main St, Suite 4');\n"
+            "INSERT INTO addresses (id, addr) VALUES (1, '123 Main St, Suite 4');\n"
         )
 
         docs = list(SQLDumpReader(sql_file).read())

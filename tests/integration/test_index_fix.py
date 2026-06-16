@@ -76,7 +76,9 @@ class TestIndexFixCLI:
 
     @patch("elastro.cli.cli.ElasticsearchClient.connect")
     @patch("elastro.health.remediation.diagnosis.list_unhealthy_indices")
-    def test_fix_reports_healthy_cluster(self, mock_list_unhealthy, mock_connect, runner):
+    def test_fix_reports_healthy_cluster(
+        self, mock_list_unhealthy, mock_connect, runner
+    ):
         mock_connect.return_value = None
         mock_list_unhealthy.return_value = []
 
@@ -177,7 +179,9 @@ class TestIndexFixCLI:
 
     @patch("elastro.cli.cli.ElasticsearchClient.connect")
     @patch("elastro.health.remediation.diagnosis.list_unhealthy_indices")
-    def test_fix_reports_operation_error(self, mock_list_unhealthy, mock_connect, runner):
+    def test_fix_reports_operation_error(
+        self, mock_list_unhealthy, mock_connect, runner
+    ):
         from elastro.core.errors import OperationError
 
         mock_connect.return_value = None

@@ -13,7 +13,12 @@ from elastro.health.remediation.dry_run import (
     summarize_fix_run,
 )
 from elastro.health.remediation.executor import RemediationExecutor
-from elastro.health.remediation.models import FixRunResult, IndexDiagnosis, PlannedAction, RemediationResult
+from elastro.health.remediation.models import (
+    FixRunResult,
+    IndexDiagnosis,
+    PlannedAction,
+    RemediationResult,
+)
 from elastro.health.models import RemediationSafety
 
 

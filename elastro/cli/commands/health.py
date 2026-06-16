@@ -158,14 +158,25 @@ def health_group() -> None:
     default=False,
     help="With --fix, show planned API calls without executing",
 )
-@click.option("--yes", is_flag=True, default=False, help="With --fix, auto-confirm CONFIRM actions")
+@click.option(
+    "--yes",
+    is_flag=True,
+    default=False,
+    help="With --fix, auto-confirm CONFIRM actions",
+)
 @click.option(
     "--force",
     is_flag=True,
     default=False,
     help="With --fix and --yes, allow DESTRUCTIVE actions in non-interactive mode",
 )
-@click.option("--index", "index_pattern", type=str, default=None, help="Limit fixes to an index pattern")
+@click.option(
+    "--index",
+    "index_pattern",
+    type=str,
+    default=None,
+    help="Limit fixes to an index pattern",
+)
 @click.option(
     "--action",
     "action_filter",
@@ -173,7 +184,12 @@ def health_group() -> None:
     default=None,
     help="Limit fixes to a single remediation action",
 )
-@click.option("--target-replicas", type=int, default=None, help="Explicit replica target for reduce_replicas")
+@click.option(
+    "--target-replicas",
+    type=int,
+    default=None,
+    help="Explicit replica target for reduce_replicas",
+)
 @click.option(
     "--history/--no-history",
     default=False,
@@ -386,7 +402,13 @@ def _render_health_fix(
     default=False,
     help="With --yes, allow DESTRUCTIVE actions in non-interactive mode",
 )
-@click.option("--index", "index_pattern", type=str, default=None, help="Limit fixes to an index pattern")
+@click.option(
+    "--index",
+    "index_pattern",
+    type=str,
+    default=None,
+    help="Limit fixes to an index pattern",
+)
 @click.option(
     "--action",
     "action_filter",
@@ -846,7 +868,9 @@ def health_nodes(
 
 
 @health_group.command("shards")
-@click.option("--index", type=str, default=None, help="Limit to a specific index pattern")
+@click.option(
+    "--index", type=str, default=None, help="Limit to a specific index pattern"
+)
 @click.option(
     "--analyze",
     is_flag=True,
@@ -977,7 +1001,9 @@ def health_shards(
     default=False,
     help="Show only indices with failed or stuck ILM lifecycle steps",
 )
-@click.option("--index", "index_pattern", type=str, default=None, help="Limit to an index pattern")
+@click.option(
+    "--index", "index_pattern", type=str, default=None, help="Limit to an index pattern"
+)
 @click.pass_context
 def health_ilm(
     ctx: click.Context,
@@ -1203,9 +1229,7 @@ def health_rollback_list(ctx: click.Context, last: int) -> None:
                 f"{record.action_id}  {record.applied_at.isoformat()}"
             )
     else:
-        payload = {
-            "rollbacks": [record.model_dump(mode="json") for record in records]
-        }
+        payload = {"rollbacks": [record.model_dump(mode="json") for record in records]}
         click.echo(format_output(payload, output_format=output_fmt))
 
 
@@ -1251,10 +1275,14 @@ def _run_health_rollback(
         rollback_id,
         dry_run,
     )
-    audit = None if dry_run else HealthAuditLogger(
-        client,
-        profile=_cli_profile(ctx),
-        host=_client_host(client),
+    audit = (
+        None
+        if dry_run
+        else HealthAuditLogger(
+            client,
+            profile=_cli_profile(ctx),
+            host=_client_host(client),
+        )
     )
     executor = RemediationExecutor(
         client,

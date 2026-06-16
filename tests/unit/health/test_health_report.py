@@ -141,9 +141,7 @@ class TestHealthReportCollector(unittest.TestCase):
         ctx.options["feature"] = "disk"
         result = self.collector.collect(ctx)
         self.assertEqual(result.status, "ok")
-        self.mock_es.health_report.assert_called_once_with(
-            feature="disk", verbose=True
-        )
+        self.mock_es.health_report.assert_called_once_with(feature="disk", verbose=True)
 
 
 if __name__ == "__main__":

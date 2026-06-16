@@ -14,10 +14,20 @@ from elastro.health.collectors.mappings import MappingsCollector
 from elastro.health.collectors.security import SecurityCollector
 from elastro.health.collectors.shards import ShardsCollector
 from elastro.health.mappings import is_system_index
-from elastro.health.models import Finding, FindingStatus, RemediationAction, RemediationSafety, Severity
+from elastro.health.models import (
+    Finding,
+    FindingStatus,
+    RemediationAction,
+    RemediationSafety,
+    Severity,
+)
 from elastro.health.rules.mapping_explosion import mapping_explosion_findings
 from elastro.health.rules.engine import RuleContext
-from elastro.health.shards import DEFAULT_OVERSHARD_THRESHOLD_MB, DEFAULT_UNDERSHARD_THRESHOLD_GB, format_bytes
+from elastro.health.shards import (
+    DEFAULT_OVERSHARD_THRESHOLD_MB,
+    DEFAULT_UNDERSHARD_THRESHOLD_GB,
+    format_bytes,
+)
 
 logger = get_logger(__name__)
 
@@ -330,9 +340,7 @@ def _lint_shards(shard_data: dict) -> List[Finding]:
                 status=FindingStatus.WARN,
                 severity=Severity.MEDIUM,
                 score_impact=min(undersharded * 2, 10),
-                summary=(
-                    f"{undersharded} shard(s) exceed {format_bytes(threshold)}."
-                ),
+                summary=(f"{undersharded} shard(s) exceed {format_bytes(threshold)}."),
                 source="lint",
                 remediation=RemediationAction(
                     id="analyze_shards",

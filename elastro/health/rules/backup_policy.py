@@ -43,7 +43,9 @@ def backup_policy_findings(ctx: RuleContext) -> List[Finding]:
                 "  3. Verify with: elastro snapshot list (or GET _snapshot)\n"
                 "  4. Test restore on a non-production cluster quarterly"
             ),
-            affected_resources=[ctx.cluster_name] if ctx.cluster_name != "unknown" else [],
+            affected_resources=[ctx.cluster_name]
+            if ctx.cluster_name != "unknown"
+            else [],
             source="rule",
             metadata={"repository_count": 0},
         )

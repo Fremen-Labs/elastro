@@ -35,9 +35,7 @@ class TestHealthNodesCLI:
                 }
             }
         }
-        mock_manager.node_info.return_value = {
-            "nodes": {"n1": {"roles": ["data"]}}
-        }
+        mock_manager.node_info.return_value = {"nodes": {"n1": {"roles": ["data"]}}}
 
         result = runner.invoke(
             cli,

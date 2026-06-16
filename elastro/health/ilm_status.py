@@ -52,11 +52,7 @@ def list_ilm_indices(
     if index_pattern:
         import fnmatch
 
-        targets = {
-            name
-            for name in targets
-            if fnmatch.fnmatchcase(name, index_pattern)
-        }
+        targets = {name for name in targets if fnmatch.fnmatchcase(name, index_pattern)}
 
     health_by_index = {
         str(entry.get("index", "")): str(entry.get("health", "unknown")).lower()
@@ -103,11 +99,7 @@ def list_stuck_ilm_indices(
     if index_pattern:
         import fnmatch
 
-        targets = {
-            name
-            for name in targets
-            if fnmatch.fnmatchcase(name, index_pattern)
-        }
+        targets = {name for name in targets if fnmatch.fnmatchcase(name, index_pattern)}
 
     health_by_index = {
         str(entry.get("index", "")): str(entry.get("health", "unknown")).lower()
@@ -137,5 +129,7 @@ def list_stuck_ilm_indices(
             )
         )
 
-    logger.info("ILM stuck scan complete: targets=%s stuck=%s", len(targets), len(stuck))
+    logger.info(
+        "ILM stuck scan complete: targets=%s stuck=%s", len(targets), len(stuck)
+    )
     return stuck

@@ -6,9 +6,19 @@ from typing import List
 
 from elastro.core.logger import get_logger
 from elastro.health.finding_guides.oversharding import build_oversharding_guide
-from elastro.health.models import Finding, FindingStatus, RemediationAction, RemediationSafety, Severity
+from elastro.health.models import (
+    Finding,
+    FindingStatus,
+    RemediationAction,
+    RemediationSafety,
+    Severity,
+)
 from elastro.health.rules.engine import RuleContext
-from elastro.health.shards import DEFAULT_OVERSHARD_THRESHOLD_MB, DEFAULT_UNDERSHARD_THRESHOLD_GB, format_bytes
+from elastro.health.shards import (
+    DEFAULT_OVERSHARD_THRESHOLD_MB,
+    DEFAULT_UNDERSHARD_THRESHOLD_GB,
+    format_bytes,
+)
 
 logger = get_logger(__name__)
 

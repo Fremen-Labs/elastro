@@ -90,8 +90,12 @@ def shard_limit_findings(
                 f"{open_shards:,} shards open ({pct}% of estimated "
                 f"{cluster_limit:,} limit = {max_per_node:,}/node × {data_nodes} data nodes)."
             ),
-            detail=_shard_limit_detail(open_shards, cluster_limit, max_per_node, data_nodes),
-            affected_resources=[ctx.cluster_name] if ctx.cluster_name != "unknown" else [],
+            detail=_shard_limit_detail(
+                open_shards, cluster_limit, max_per_node, data_nodes
+            ),
+            affected_resources=[ctx.cluster_name]
+            if ctx.cluster_name != "unknown"
+            else [],
             source="rule",
             metadata={
                 "open_shards": open_shards,

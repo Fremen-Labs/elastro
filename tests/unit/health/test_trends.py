@@ -96,7 +96,9 @@ class TestTrendHelpers:
         )
         assert report.sample_count == 2
         assert report.cluster_name == "docker-cluster"
-        body = client.client.search.call_args.kwargs.get("body") or client.client.search.call_args[1].get("body")
+        body = client.client.search.call_args.kwargs.get(
+            "body"
+        ) or client.client.search.call_args[1].get("body")
         assert body["query"]["bool"]["filter"][0] == {
             "term": {"cluster_name": "docker-cluster"}
         }

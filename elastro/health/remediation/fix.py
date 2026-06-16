@@ -12,7 +12,11 @@ if TYPE_CHECKING:
     from elastro.health.audit import HealthAuditLogger
 from elastro.health.remediation.diagnosis import diagnose_unhealthy_indices
 from elastro.health.remediation.executor import RemediationExecutor
-from elastro.health.remediation.models import FixRunResult, PlannedAction, RemediationResult
+from elastro.health.remediation.models import (
+    FixRunResult,
+    PlannedAction,
+    RemediationResult,
+)
 from elastro.health.remediation.catalog import CATALOG_ACTION_IDS
 from elastro.health.remediation.planner import RemediationPlanner
 from elastro.health.remediation.dry_run import is_preview_mode
@@ -117,10 +121,7 @@ def run_health_fix(
     executed_cluster: set[str] = set()
 
     for planned_action in planned:
-        if (
-            planned_action.dedupe_key
-            and planned_action.dedupe_key in executed_cluster
-        ):
+        if planned_action.dedupe_key and planned_action.dedupe_key in executed_cluster:
             logger.info(
                 "Skipping duplicate cluster action %s",
                 planned_action.action_id,

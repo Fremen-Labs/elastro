@@ -60,5 +60,3 @@ class FixRunResult(BaseModel):
     dry_run: bool = False
     plan_only: bool = False
     session_id: Optional[str] = None
-
-

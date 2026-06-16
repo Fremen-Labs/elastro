@@ -30,9 +30,13 @@ class TestRemediationCatalog:
 
     def test_triggers_remediation_scan(self):
         assert RemediationCatalog.triggers_remediation_scan("elastro health fix")
-        assert RemediationCatalog.triggers_remediation_scan("elastro health assess --fix")
+        assert RemediationCatalog.triggers_remediation_scan(
+            "elastro health assess --fix"
+        )
         assert RemediationCatalog.triggers_remediation_scan("elastro index fix")
-        assert RemediationCatalog.triggers_remediation_scan("elastro cluster allocation")
+        assert RemediationCatalog.triggers_remediation_scan(
+            "elastro cluster allocation"
+        )
         assert not RemediationCatalog.triggers_remediation_scan("elastro health report")
 
 

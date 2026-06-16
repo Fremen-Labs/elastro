@@ -61,9 +61,7 @@ class AssessmentReport(BaseModel):
     session_id: str = Field(default_factory=lambda: str(uuid4()))
     cluster_name: str = "unknown"
     elasticsearch_version: str = "unknown"
-    assessed_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    assessed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     duration_ms: int = 0
     overall_score: int = 0
     overall_status: FindingStatus = FindingStatus.UNKNOWN

@@ -27,7 +27,7 @@ jobs:
     - name: Install build dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install build twine black mypy pip-audit types-requests types-PyYAML types-setuptools
+        pip install build twine ruff mypy pip-audit types-requests types-PyYAML types-setuptools
 
     - name: Set up Node.js
       uses: actions/setup-node@v4
@@ -40,8 +40,8 @@ jobs:
         npm ci
         npm run build
 
-    - name: Code Quality - Black Formatter
-      run: black --check .
+    - name: Code Quality - Ruff Formatter
+      run: ruff format --check .
 
     - name: Code Quality - Type Safety (Mypy)
       run: mypy .

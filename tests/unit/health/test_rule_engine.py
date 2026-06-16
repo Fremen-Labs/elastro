@@ -48,8 +48,7 @@ class TestRuleEngine(unittest.TestCase):
 
     def test_default_rules_include_jvm_replica_and_persistent_yellow(self):
         rule_names = {
-            getattr(rule, "__name__", repr(rule))
-            for rule in RuleEngine.default_rules()
+            getattr(rule, "__name__", repr(rule)) for rule in RuleEngine.default_rules()
         }
         self.assertIn("jvm_rule", rule_names)
         self.assertIn("replica_misconfig_findings", rule_names)

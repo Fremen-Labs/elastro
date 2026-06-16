@@ -21,7 +21,9 @@ def planned_clear_read_only(index_name: str) -> str:
     )
 
 
-def clear_read_only(index_manager: IndexManager, index_name: str, **kwargs: object) -> str:
+def clear_read_only(
+    index_manager: IndexManager, index_name: str, **kwargs: object
+) -> str:
     """Allow writes and deletes again on a flood-stage blocked index."""
     logger.info("Clearing read_only_allow_delete block for index %s", index_name)
     index_manager.update(index_name, _CLEAR_READ_ONLY_SETTINGS)

@@ -7,7 +7,10 @@ from typing import Iterable, List, Optional
 import rich_click as click
 
 from elastro.health.models import RemediationSafety
-from elastro.health.remediation.dry_run import fix_run_payload, remediation_result_payload
+from elastro.health.remediation.dry_run import (
+    fix_run_payload,
+    remediation_result_payload,
+)
 from elastro.health.remediation.models import (
     FixRunResult,
     IndexDiagnosis,
@@ -150,17 +153,11 @@ def render_remediation_summary(
         )
         return
 
-    heading = (
-        "Planned remediations (dry-run)"
-        if dry_run
-        else "Remediation results"
-    )
+    heading = "Planned remediations (dry-run)" if dry_run else "Remediation results"
     click.echo(f"\n{heading}:")
     for diagnosis in diagnoses:
         if not diagnosis.suggested_action_id:
-            click.echo(
-                f"  - {diagnosis.index_name}: no automated quick fix available"
-            )
+            click.echo(f"  - {diagnosis.index_name}: no automated quick fix available")
             continue
 
         matching = [
@@ -194,9 +191,7 @@ def _render_single_result(
     label = planned.label if planned else result.action_id
     scope = result.index_name or "cluster"
     if dry_run:
-        click.echo(
-            f"  - {scope} [{result.action_id}]: {result.planned_api_call}"
-        )
+        click.echo(f"  - {scope} [{result.action_id}]: {result.planned_api_call}")
         return
 
     if result.executed and result.success:

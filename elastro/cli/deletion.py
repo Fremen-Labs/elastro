@@ -79,10 +79,15 @@ def emit_delete_preview(preview: DeletePreview) -> None:
             click.echo(f"  {key}: {value}")
         return
 
-    click.echo(format_output(delete_preview_payload(preview), output_format=output_fmt), nl=False)
+    click.echo(
+        format_output(delete_preview_payload(preview), output_format=output_fmt),
+        nl=False,
+    )
 
 
-def should_prompt_for_delete(*, dry_run: bool, force: bool = False, yes: bool = False) -> bool:
+def should_prompt_for_delete(
+    *, dry_run: bool, force: bool = False, yes: bool = False
+) -> bool:
     """Return True when interactive confirmation is required."""
     if dry_run:
         return False
@@ -325,7 +330,9 @@ def preview_script_delete(client: ElasticsearchClient, script_id: str) -> Delete
     )
 
 
-def preview_pipeline_delete(client: ElasticsearchClient, pipeline_id: str) -> DeletePreview:
+def preview_pipeline_delete(
+    client: ElasticsearchClient, pipeline_id: str
+) -> DeletePreview:
     exists = False
     try:
         client._ensure_connected()

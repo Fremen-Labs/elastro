@@ -98,9 +98,7 @@ class RollbackStore:
         for path in self._root.glob("*.json"):
             try:
                 records.append(
-                    RollbackRecord.model_validate_json(
-                        path.read_text(encoding="utf-8")
-                    )
+                    RollbackRecord.model_validate_json(path.read_text(encoding="utf-8"))
                 )
             except Exception as exc:
                 logger.warning(

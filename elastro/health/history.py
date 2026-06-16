@@ -69,7 +69,9 @@ def parse_window(window: str) -> timedelta:
     """Parse a duration string such as ``7d``, ``24h``, or ``30m``."""
     match = _WINDOW_PATTERN.match(str(window).strip())
     if not match:
-        raise ValueError(f"Invalid window '{window}'. Use formats like 7d, 24h, or 30m.")
+        raise ValueError(
+            f"Invalid window '{window}'. Use formats like 7d, 24h, or 30m."
+        )
     amount = int(match.group(1))
     unit = match.group(2).lower()
     return timedelta(**{_WINDOW_UNITS[unit]: amount})
@@ -302,11 +304,7 @@ def history_cluster_summary(
             f"Failed to query fleet history summary index={history_index}: {exc}"
         ) from exc
 
-    buckets = (
-        response.get("aggregations", {})
-        .get("by_cluster", {})
-        .get("buckets", [])
-    )
+    buckets = response.get("aggregations", {}).get("by_cluster", {}).get("buckets", [])
     summary: List[Dict[str, Any]] = []
     for bucket in buckets:
         if not isinstance(bucket, dict):
