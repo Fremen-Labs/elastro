@@ -35,6 +35,10 @@ def index_routes(read_config: Any, verify_token: Any) -> APIRouter:
         target_c = _find_cluster(cluster_name)
 
         try:
+            logger.info(
+                "GUI unhealthy indices requested for cluster=%s",
+                cluster_name,
+            )
             client = build_es_client(target_c)
 
             from elastro.core.index import IndexManager
@@ -96,7 +100,12 @@ def index_routes(read_config: Any, verify_token: Any) -> APIRouter:
                         }
                     )
                 except Exception as e:
-                    logger.error(f"Failed to explain {name}: {e}")
+                    logger.error(
+                        "Failed to explain allocation for index=%s: %s",
+                        name,
+                        e,
+                        exc_info=True,
+                    )
                     results.append(
                         {
                             "index": name,
@@ -107,9 +116,20 @@ def index_routes(read_config: Any, verify_token: Any) -> APIRouter:
                             "routing_filter_fault": False,
                         }
                     )
+            logger.info(
+                "Unhealthy indices complete cluster=%s count=%s",
+                cluster_name,
+                len(results),
+            )
             return {"indices": results}
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            logger.error(
+                "Unhealthy indices failed for cluster=%s: %s",
+                cluster_name,
+                e,
+                exc_info=True,
+            )
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     @router.post("/clusters/{cluster_name}/indices/{index_name}/fix")
     def fix_index(
@@ -121,6 +141,13 @@ def index_routes(read_config: Any, verify_token: Any) -> APIRouter:
         target_c = _find_cluster(cluster_name)
 
         try:
+            logger.info(
+                "GUI index fix requested cluster=%s index=%s action=%s dry_run=%s",
+                cluster_name,
+                index_name,
+                req.action,
+                req.dry_run,
+            )
             client = build_es_client(target_c)
 
             from elastro.health.remediation.executor import RemediationExecutor
@@ -148,6 +175,14 @@ def index_routes(read_config: Any, verify_token: Any) -> APIRouter:
         except HTTPException:
             raise
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            logger.error(
+                "Index fix failed cluster=%s index=%s action=%s: %s",
+                cluster_name,
+                index_name,
+                req.action,
+                e,
+                exc_info=True,
+            )
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     return router

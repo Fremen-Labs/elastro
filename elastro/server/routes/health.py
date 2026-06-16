@@ -304,6 +304,13 @@ def health_routes(read_config: Any, verify_token: Any) -> APIRouter:
             )
 
         try:
+            logger.info(
+                "GUI health fix requested cluster=%s action=%s index=%s dry_run=%s",
+                cluster_name,
+                action,
+                index_name,
+                req.dry_run,
+            )
             client = build_es_client(target)
             executor = RemediationExecutor(
                 client,

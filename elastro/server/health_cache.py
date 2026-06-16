@@ -7,7 +7,10 @@ from collections import deque
 from dataclasses import dataclass
 from typing import Any, Deque, Dict, List, Optional
 
+from elastro.core.logger import get_logger
 from elastro.health.models import AssessmentReport
+
+logger = get_logger(__name__)
 
 DEFAULT_TTL_SECONDS = 60
 MAX_HISTORY = 20
@@ -49,6 +52,12 @@ def store_report(
     payload.pop("raw_health_report", None)
     history = _history.setdefault(cluster_name, deque(maxlen=MAX_HISTORY))
     history.appendleft(payload)
+    logger.debug(
+        "Cached assessment cluster=%s score=%s history_len=%s",
+        cluster_name,
+        report.overall_score,
+        len(history),
+    )
 
 
 def get_history(cluster_name: str, *, limit: int = 10) -> List[Dict[str, Any]]:

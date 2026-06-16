@@ -272,7 +272,12 @@ def _run_collectors(
         try:
             result = collector.collect(ctx)
         except Exception as exc:
-            logger.warning("Collector %s failed: %s", name, exc)
+            logger.warning(
+                "Collector %s failed: %s",
+                name,
+                exc,
+                exc_info=True,
+            )
             result = CollectorResult(
                 name=name,
                 status="error",

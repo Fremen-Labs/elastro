@@ -48,7 +48,7 @@ class IlmCollector:
                 },
             )
         except OperationError as exc:
-            logger.error("ILM collector failed: %s", exc)
+            logger.error("ILM collector failed: %s", exc, exc_info=True)
             return CollectorResult(name=self.name, status="error", error=str(exc))
 
     def _ilm_findings(

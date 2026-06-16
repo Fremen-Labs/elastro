@@ -62,7 +62,7 @@ class ShardsCollector:
                 },
             )
         except OperationError as exc:
-            logger.error("Shards collector failed: %s", exc)
+            logger.error("Shards collector failed: %s", exc, exc_info=True)
             return CollectorResult(name=self.name, status="error", error=str(exc))
 
 
@@ -83,6 +83,7 @@ def _fetch_cat_shards(
     try:
         response = client.cat.shards(**params)
     except Exception as exc:
+        logger.error("cat.shards request failed: %s", exc, exc_info=True)
         raise OperationError(f"Failed to list shards: {exc}") from exc
 
     if isinstance(response, list):
@@ -105,6 +106,7 @@ def explain_allocation(
     try:
         return dict(ctx.client.client.cluster.allocation_explain())
     except Exception as exc:
+        logger.error("cluster.allocation_explain failed: %s", exc, exc_info=True)
         raise OperationError(f"Failed to explain allocation: {exc}") from exc
 
 

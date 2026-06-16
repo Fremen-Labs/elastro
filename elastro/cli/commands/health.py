@@ -205,6 +205,7 @@ def health_score(
     ```
     """
     client: ElasticsearchClient = ctx.obj
+    logger.info("health score invoked timeout=%s", timeout)
     try:
         report = _run_assessment(
             client,
@@ -298,9 +299,10 @@ def health_nodes(
 
     client: ElasticsearchClient = ctx.obj
     logger.info(
-        "health nodes invoked node_id=%s metrics=%s",
+        "health nodes invoked node_id=%s metrics=%s hotspots=%s",
         node_id,
         metrics,
+        hotspots,
     )
     collector = NodesCollector()
     result = collector.collect(
@@ -422,6 +424,12 @@ def health_shards(
     )
 
     client: ElasticsearchClient = ctx.obj
+    logger.info(
+        "health shards invoked index=%s analyze=%s explain=%s",
+        index,
+        analyze,
+        explain,
+    )
     output_fmt = _output_format(ctx)
     collect_ctx = CollectContext(
         client=client,
@@ -499,6 +507,7 @@ def health_hotspots(ctx: click.Context, variance: float) -> None:
     from elastro.health.rules.hotspots import hotspot_variance
 
     client: ElasticsearchClient = ctx.obj
+    logger.info("health hotspots invoked variance=%s", variance)
     output_fmt = _output_format(ctx)
     result = NodesCollector().collect(CollectContext(client=client))
     if result.status != "ok":
@@ -554,6 +563,12 @@ def health_status(
     ```
     """
     health_manager = HealthManager(client)
+    logger.info(
+        "health status invoked level=%s wait=%s timeout=%s",
+        level,
+        wait,
+        timeout,
+    )
 
     try:
         result = health_manager.cluster_health(
@@ -601,6 +616,11 @@ def health_report(
     ```
     """
     health_manager = HealthManager(client)
+    logger.info(
+        "health report invoked feature=%s verbose=%s",
+        feature,
+        verbose,
+    )
 
     try:
         result = health_manager.health_report(verbose=verbose, feature=feature)
