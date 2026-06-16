@@ -7,7 +7,12 @@ import { state } from '../../store'
 import PageHeader from '../ui/PageHeader.vue'
 import AlertBanner from '../ui/AlertBanner.vue'
 import HealthScore from './HealthScore.vue'
-import type { HealthAssessment, HealthFinding, NodeHealthSummary } from '../../types/health'
+import type {
+  ClusterInventorySummary,
+  HealthAssessment,
+  HealthFinding,
+  NodeHealthSummary,
+} from '../../types/health'
 import { severityClass } from '../../types/health'
 
 const props = defineProps<{
@@ -23,6 +28,8 @@ const assessment = ref<HealthAssessment | null>(null)
 const trendPoints = ref<number[]>([])
 const trendDelta = ref<number | null>(null)
 const nodes = ref<NodeHealthSummary[]>([])
+const clusterSummary = ref<ClusterInventorySummary | null>(null)
+const summaryLoading = ref(false)
 const activeFix = ref<string | null>(null)
 const expandedFindings = ref<Record<string, boolean>>({})
 const awaitingToken = ref(false)
@@ -44,6 +51,70 @@ const displayScore = computed(() => {
 const isBusy = computed(() => loading.value || assessing.value || awaitingToken.value)
 
 const clusterLabel = computed(() => props.clusterName || 'cluster')
+
+const formatCount = (value: number | null | undefined): string => {
+  if (value == null || !Number.isFinite(value)) return '—'
+  return new Intl.NumberFormat().format(value)
+}
+
+const inventoryRows = computed(() => {
+  const summary = clusterSummary.value
+  if (!summary) return []
+
+  const indexDetail =
+    summary.indices.yellow > 0 || summary.indices.red > 0
+      ? `${summary.indices.green}G / ${summary.indices.yellow}Y / ${summary.indices.red}R`
+      : undefined
+
+  const shardDetail =
+    summary.shards.unassigned > 0
+      ? `${summary.shards.unassigned} unassigned`
+      : undefined
+
+  const rows: Array<{ label: string; value: string; detail?: string; warn?: boolean }> = [
+    { label: 'Cluster status', value: summary.health.toUpperCase() },
+    { label: 'Nodes', value: formatCount(summary.nodes.total) },
+    {
+      label: 'Indices',
+      value: formatCount(summary.indices.total),
+      detail: indexDetail,
+      warn: summary.indices.red > 0 || summary.indices.yellow > 0,
+    },
+    {
+      label: 'Shards',
+      value: formatCount(summary.shards.total),
+      detail: shardDetail,
+      warn: summary.shards.unassigned > 0,
+    },
+    { label: 'Data streams', value: formatCount(summary.data_streams.total) },
+    { label: 'ILM policies', value: formatCount(summary.ilm.policy_count) },
+    { label: 'Index templates', value: formatCount(summary.index_templates.total) },
+    {
+      label: 'Dashboards',
+      value: summary.kibana.available ? formatCount(summary.kibana.dashboards ?? 0) : '—',
+      detail: summary.kibana.available ? 'from .kibana* indices' : 'no Kibana indices',
+    },
+    { label: 'Documents', value: formatCount(summary.documents.total) },
+    { label: 'Store size', value: summary.storage.total_human || '—' },
+    {
+      label: 'Snapshots',
+      value: summary.backups.configured
+        ? `${summary.backups.repository_count} repo(s)`
+        : 'Not configured',
+      warn: !summary.backups.configured,
+    },
+  ]
+
+  if (hasLoaded.value) {
+    rows.push({
+      label: 'Open findings',
+      value: formatCount(openFindings.value.length),
+      warn: openFindings.value.length > 0,
+    })
+  }
+
+  return rows
+})
 
 const isHtmlResponse = (data: unknown): boolean =>
   typeof data === 'string' && data.trim().toLowerCase().startsWith('<!doctype html')
@@ -104,15 +175,32 @@ const sparkline = computed(() => {
   const scores = trendPoints.value
   const low = Math.min(...scores)
   const high = Math.max(...scores)
-  if (low === high) return blocks[4].repeat(scores.length)
+  const midBlock = blocks.charAt(4) || blocks.charAt(0)
+  if (low === high) return midBlock.repeat(scores.length)
   return scores
     .map((score) => {
       const normalized = (score - low) / (high - low)
       const index = Math.min(blocks.length - 1, Math.round(normalized * (blocks.length - 1)))
-      return blocks[index]
+      return blocks.charAt(index) || midBlock
     })
     .join('')
 })
+
+const fetchClusterSummary = async () => {
+  if (!state.token || !props.clusterName) return
+  summaryLoading.value = true
+  try {
+    const res = await axios.get(
+      `${apiBase}/api/cluster/${encodeURIComponent(props.clusterName)}`,
+      { headers: authHeaders(), timeout: 30000 }
+    )
+    clusterSummary.value = res.data as ClusterInventorySummary
+  } catch {
+    clusterSummary.value = null
+  } finally {
+    summaryLoading.value = false
+  }
+}
 
 const fetchTrends = async () => {
   if (!state.token || !props.clusterName) return
@@ -212,7 +300,7 @@ const loadAssessment = async (forceRefresh = false) => {
         'The GUI server is outdated or returned an invalid response. Stop it and run `elastro gui` again to launch a fresh server with health API support.'
       return
     }
-    await Promise.all([fetchNodes(), fetchTrends()])
+    await Promise.all([fetchNodes(), fetchTrends(), fetchClusterSummary()])
   } catch (err: any) {
     hasLoaded.value = false
     assessment.value = null
@@ -332,11 +420,13 @@ watch(
 
     <div class="health-layout">
       <div class="card health-summary-card">
-        <HealthScore
-          :score="displayScore"
-          :status="hasLoaded ? assessment?.overall_status : undefined"
-          :loading="isBusy"
-        />
+        <div class="score-wrap">
+          <HealthScore
+            :score="displayScore"
+            :status="hasLoaded ? assessment?.overall_status : undefined"
+            :loading="isBusy"
+          />
+        </div>
         <div v-if="sparkline" class="health-trend">
           <span class="label-caps">7d Trend</span>
           <span class="sparkline" aria-hidden="true">{{ sparkline }}</span>
@@ -345,6 +435,7 @@ watch(
           </span>
         </div>
         <div v-if="hasLoaded && assessment" class="health-meta">
+          <h4 class="summary-heading">Assessment</h4>
           <p>
             <span class="label-caps">Version</span>
             <span class="value-chip">{{ assessment.elasticsearch_version }}</span>
@@ -357,6 +448,30 @@ watch(
             <span class="label-caps">Duration</span>
             <span class="value-chip">{{ assessment.duration_ms }}ms</span>
           </p>
+        </div>
+
+        <div class="health-meta inventory-meta">
+          <h4 class="summary-heading">Cluster inventory</h4>
+          <div v-if="summaryLoading" class="inventory-skeleton">
+            <div v-for="i in 6" :key="i" class="skeleton skeleton-text w-full mb-2"></div>
+          </div>
+          <template v-else-if="clusterSummary">
+            <div class="inventory-grid">
+              <div
+                v-for="row in inventoryRows"
+                :key="row.label"
+                class="inventory-row"
+                :class="{ 'inventory-row--warn': row.warn }"
+              >
+                <span class="label-caps">{{ row.label }}</span>
+                <div class="inventory-values">
+                  <span class="value-chip">{{ row.value }}</span>
+                  <span v-if="row.detail" class="inventory-detail">{{ row.detail }}</span>
+                </div>
+              </div>
+            </div>
+          </template>
+          <p v-else class="text-muted inventory-empty">Cluster inventory unavailable.</p>
         </div>
       </div>
 
@@ -486,7 +601,7 @@ watch(
 
 .health-layout {
   display: grid;
-  grid-template-columns: minmax(220px, 280px) 1fr;
+  grid-template-columns: minmax(260px, 320px) 1fr;
   gap: 1.5rem;
 }
 
@@ -499,8 +614,67 @@ watch(
 .health-summary-card {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1.25rem;
+  align-items: stretch;
+  gap: 1rem;
+}
+
+.score-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.summary-heading {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+.inventory-meta {
+  border-top: 1px solid hsl(var(--border) / 0.6);
+  padding-top: 0.75rem;
+}
+
+.inventory-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.inventory-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+  align-items: start;
+}
+
+.inventory-row--warn .value-chip {
+  color: hsl(var(--health-yellow));
+}
+
+.inventory-values {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+}
+
+.inventory-detail {
+  font-size: 0.68rem;
+  color: hsl(var(--muted-foreground));
+  font-family: var(--font-mono);
+}
+
+.inventory-empty {
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.inventory-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
 .health-trend {

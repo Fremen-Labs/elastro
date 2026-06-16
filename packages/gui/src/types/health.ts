@@ -67,6 +67,28 @@ export interface HealthAssessment {
   collectors_failed: string[]
 }
 
+export interface ClusterInventorySummary {
+  health: string
+  nodes: { total: number; roles: Record<string, number> }
+  indices: { total: number; green: number; yellow: number; red: number }
+  shards: { total: number; unassigned: number }
+  data_streams: { total: number }
+  documents: { total: number }
+  storage: { total_bytes: number; total_human: string }
+  ilm: { policy_count: number }
+  index_templates: { total: number }
+  kibana: {
+    available: boolean
+    dashboards: number | null
+    visualizations: number | null
+  }
+  backups: {
+    configured: boolean
+    repository_count: number
+    repositories: Array<{ name: string; type: string }>
+  }
+}
+
 export interface NodeHealthSummary {
   id: string
   name: string

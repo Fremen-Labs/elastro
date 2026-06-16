@@ -6,6 +6,7 @@ from typing import Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException
 
 from elastro.core.logger import get_logger
+from elastro.server.cluster_inventory import fetch_cluster_inventory
 from elastro.server.services import build_es_client, parse_index_size
 
 logger = get_logger(__name__)
@@ -105,66 +106,22 @@ def cluster_routes(read_config: Any, verify_token: Any) -> APIRouter:
 
         try:
             client = build_es_client(target_c)
-            es = client.client
-
-            # Fetch detailed metrics
-            health = es.cluster.health()
-
-            # Node stats
-            nodes_info = es.nodes.info()
-            node_count = nodes_info.get("_nodes", {}).get("total", 0)
-
-            node_roles: Dict[str, int] = {}
-            for node_id, node_data in nodes_info.get("nodes", {}).items():
-                roles = node_data.get("roles", ["unknown"])
-                for r in roles:
-                    node_roles[r] = node_roles.get(r, 0) + 1
-
-            # ILM Policies
-            try:
-                ilm_policies = es.ilm.get_lifecycle()
-                ilm_count = len(ilm_policies)
-            except Exception as e:
-                logger.warning(f"Could not fetch ILM for {cluster_name}: {e}")
-                ilm_count = 0
-
-            # Snapshots / Backups
-            repos = []
-            try:
-                repo_res = es.snapshot.get_repository()
-                for r_name, r_data in repo_res.items():
-                    repos.append(
-                        {"name": r_name, "type": r_data.get("type", "unknown")}
-                    )
-            except Exception as e:
-                logger.warning(f"Could not fetch Repos for {cluster_name}: {e}")
-
-            # Indices detailed summary
-            idx_res = es.cat.indices(format="json")
-            red_indices = 0
-            yellow_indices = 0
-            total_indices = len(idx_res)
-
-            for idx in idx_res:
-                if not isinstance(idx, dict):
-                    continue
-                if idx.get("health") == "red":
-                    red_indices += 1
-                elif idx.get("health") == "yellow":
-                    yellow_indices += 1
+            inventory = fetch_cluster_inventory(client.client)
 
             return {
                 "name": target_c["name"],
                 "host": target_c["host"],
-                "health": health["status"],
-                "nodes": {"total": node_count, "roles": node_roles},
-                "indices": {
-                    "total": total_indices,
-                    "yellow": yellow_indices,
-                    "red": red_indices,
-                },
-                "ilm": {"policy_count": ilm_count},
-                "backups": {"configured": len(repos) > 0, "repositories": repos},
+                "health": inventory["health"],
+                "nodes": inventory["nodes"],
+                "indices": inventory["indices"],
+                "shards": inventory["shards"],
+                "data_streams": inventory["data_streams"],
+                "documents": inventory["documents"],
+                "storage": inventory["storage"],
+                "ilm": inventory["ilm"],
+                "index_templates": inventory["index_templates"],
+                "kibana": inventory["kibana"],
+                "backups": inventory["backups"],
             }
 
         except Exception as e:
