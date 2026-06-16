@@ -56,6 +56,10 @@ class TestRuleEngine(unittest.TestCase):
         self.assertIn("persistent_yellow_findings", rule_names)
         self.assertIn("oversharding_findings", rule_names)
         self.assertIn("hotspot_findings", rule_names)
+        self.assertIn("unassigned_shard_findings", rule_names)
+        self.assertIn("circuit_breaker_rule", rule_names)
+        self.assertIn("thread_pool_rule", rule_names)
+        self.assertIn("backup_policy_findings", rule_names)
 
 
 if __name__ == "__main__":

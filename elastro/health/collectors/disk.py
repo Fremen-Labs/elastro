@@ -74,6 +74,7 @@ class DiskCollector:
                     "watermarks": watermarks,
                     "nodes": node_usages,
                     "findings": findings,
+                    "cluster_settings": settings,
                 },
             )
         except OperationError as exc:

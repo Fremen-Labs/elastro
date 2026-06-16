@@ -19,6 +19,13 @@ class ClusterHealthCollector:
         manager = HealthManager(ctx.client)
         try:
             data: Dict[str, Any] = manager.cluster_health(timeout=ctx.timeout)
+            try:
+                state = manager.cluster_state(metric="blocks")
+                blocks = state.get("blocks", {}) if isinstance(state, dict) else {}
+                if isinstance(blocks, dict):
+                    data["blocks"] = blocks
+            except Exception as exc:
+                logger.debug("Cluster blocks unavailable: %s", exc)
             return CollectorResult(name=self.name, status="ok", data=data)
         except OperationError as exc:
             logger.error("Cluster health collector failed: %s", exc)

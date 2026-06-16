@@ -229,6 +229,9 @@ class HealthAssessor:
             for result in results
             if result.status == "ok"
         }
+        disk_data = collector_data.get("disk") or {}
+        if isinstance(disk_data, dict) and disk_data.get("cluster_settings"):
+            collector_data["cluster_settings"] = disk_data["cluster_settings"]
 
         assessment_history = ctx.options.get("assessment_history")
         if assessment_history is None:

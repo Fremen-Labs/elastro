@@ -288,7 +288,8 @@ class TestHealthAssessLive:
             ],
             env={"ELASTRO_LOG_LEVEL": "ERROR"},
         )
-        assert result.exit_code == 0, result.output
+        # Exit 2 is expected when --fail-on fail (default) and the dev cluster is degraded.
+        assert result.exit_code in (0, 2), result.output
         assert "docker-cluster" in result.output
         assert "/100" in result.output
 
@@ -306,7 +307,7 @@ class TestHealthAssessLive:
             ],
             env={"ELASTRO_LOG_LEVEL": "ERROR"},
         )
-        assert result.exit_code == 0, result.output
+        assert result.exit_code in (0, 2), result.output
         payload = json.loads(result.output.strip())
         report = AssessmentReport.model_validate(payload)
         assert report.elasticsearch_version.startswith("8.")
