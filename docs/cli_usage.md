@@ -349,8 +349,8 @@ elastro health score --history --last 5 -o table
 When a fix captures settings before applying, the result includes a `rollback_id`:
 
 ```bash
-elastro health rollback --id rb-abc123 --dry-run
-elastro health rollback --id rb-abc123
+elastro health rollback apply --id rb-abc123 --dry-run
+elastro health rollback apply --id rb-abc123
 ```
 
 Snapshots are stored under `~/.elastic/health-rollbacks/`.

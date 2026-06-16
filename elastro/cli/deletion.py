@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from elastro.cli.output import format_output
 from elastro.core.client import ElasticsearchClient
+from elastro.core.logger import get_logger
 from elastro.core.datastream import DatastreamManager
 from elastro.core.errors import OperationError
 from elastro.core.ilm import IlmManager
@@ -16,6 +17,8 @@ from elastro.core.index import IndexManager
 from elastro.core.snapshot import SnapshotManager
 from elastro.utils.aliases import AliasManager
 from elastro.utils.templates import TemplateManager
+
+logger = get_logger(__name__)
 
 
 class DeletePreview(BaseModel):
@@ -56,6 +59,13 @@ def delete_preview_payload(preview: DeletePreview) -> Dict[str, Any]:
 
 def emit_delete_preview(preview: DeletePreview) -> None:
     """Print a delete preview for table or JSON/YAML output."""
+    logger.info(
+        "delete preview action=%s resource=%s/%s exists=%s",
+        preview.action,
+        preview.resource_type,
+        preview.resource_id,
+        preview.exists,
+    )
     output_fmt = resolve_output_format()
     if output_fmt == "table":
         click.echo("Delete preview (dry-run):")

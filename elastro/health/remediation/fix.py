@@ -107,6 +107,16 @@ def run_health_fix(
                 "Skipping duplicate cluster action %s",
                 planned_action.action_id,
             )
+            results.append(
+                RemediationResult(
+                    action_id=planned_action.action_id,
+                    index_name=planned_action.index_name,
+                    success=True,
+                    executed=False,
+                    dry_run=dry_run,
+                    message="Skipped duplicate cluster action",
+                )
+            )
             continue
 
         decision = gate.decide(planned_action)

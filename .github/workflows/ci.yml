@@ -26,7 +26,7 @@ jobs:
 
       - name: Run health test suite
         run: |
-          pytest tests/unit/health/ tests/integration/test_health_lint.py -q
+          pytest tests/unit/health/ tests/integration/test_health_*.py -q
 
       - name: LogLoom logging coverage gate (optional)
         run: |

@@ -135,8 +135,8 @@ This guide helps you diagnose and resolve common issues encountered while using 
 
 **Solutions:**
 1. Note the `rollback_id` returned in CLI JSON output or the GUI fix API response.
-2. Preview the restore: `elastro health rollback --id <rollback_id> --dry-run`
-3. Apply the rollback: `elastro health rollback --id <rollback_id>`
+2. Preview the restore: `elastro health rollback apply --id <rollback_id> --dry-run`
+3. Apply the rollback: `elastro health rollback apply --id <rollback_id>`
 4. If the id was lost, list recent snapshots under `~/.elastic/health-rollbacks/`.
 
 ### Assessment history not appearing

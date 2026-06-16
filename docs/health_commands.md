@@ -1,6 +1,6 @@
 # Health Assessment Commands
 
-Elastro's `health` command group provides scored cluster assessments, actionable findings, safe remediation, rollback, and optional audit/history indexing. Available since v1.4.x; rollback and audit indexing shipped in **v1.8.0**; unified remediation workflow (`health fix`, `assess --plan`) shipped in **v1.10.0**.
+Elastro's `health` command group provides scored cluster assessments, actionable findings, safe remediation, rollback, and optional audit/history indexing. Available since v1.4.x; rollback and audit indexing shipped in **v1.8.0**; unified remediation workflow (`health fix`, `assess --plan`) shipped in **v1.10.0**; monitoring exit codes and `--fail-on` shipped in **v1.11.0**.
 
 For the full implementation plan and PR history, see [health_assessment_implementation_plan.md](./health_assessment_implementation_plan.md).
 
@@ -47,6 +47,7 @@ elastro health assess [OPTIONS]
 | `--target-replicas` | Explicit replica target for `reduce_replicas` |
 | `--history` / `--no-history` | Index report to `elastro-health-assessments` (default: off) |
 | `--history-index` | Override assessment history index name |
+| `--fail-on` | Exit `2` when health degrades past threshold (default: `fail`) |
 
 **Examples:**
 
@@ -58,7 +59,7 @@ elastro health assess --plan -o table
 elastro health assess --history -o table
 ```
 
-Exit code `2` when overall status is `fail` (score band red).
+Exit code `2` when overall status is `fail` by default (`--fail-on fail`). Use `--fail-on warn` for stricter CI gates.
 
 ---
 
@@ -78,6 +79,8 @@ elastro health fix [OPTIONS]
 | `--index` | Limit fixes to an index pattern |
 | `--action` | Limit to one remediation action |
 | `--target-replicas` | Explicit replica target for `reduce_replicas` |
+
+Remediation failures exit `3` when any executed action fails.
 
 **Safety behavior:**
 
@@ -113,6 +116,7 @@ elastro health score [OPTIONS]
 | `--history` | Read scores from the assessment history index instead of re-assessing |
 | `--last` | Number of historical records to show with `--history` (default: `10`) |
 | `--history-index` | Override assessment history index name |
+| `--fail-on` | Exit `2` when score/status/findings exceed threshold (default: `fail`) |
 
 **Examples:**
 
@@ -155,8 +159,10 @@ Rollback files are stored locally at `~/.elastic/health-rollbacks/` with `0600` 
 Replacement for `elastro utils health`. Checks cluster, indices, or shard-level health.
 
 ```bash
-elastro health status [--level cluster|indices|shards] [--wait green|yellow|red] [--timeout 30s]
+elastro health status [--level cluster|indices|shards] [--wait green|yellow|red] [--timeout 30s] [--fail-on fail]
 ```
+
+`--wait` exits `2` on timeout or if the cluster never reaches the requested status.
 
 ---
 
@@ -190,6 +196,8 @@ elastro health shards [--index NAME] [--analyze] [--explain]
 
 `--analyze` reports oversharded (`< 1 MB`) and undersharded (`> 50 GB`) shard counts.
 
+`--fail-on warn` (default `fail`) exits `2` when `unassigned_shards > 0`.
+
 ---
 
 ### `elastro health hotspots`
@@ -216,6 +224,7 @@ elastro health lint [--category settings|mappings|shards|security] [--index PATT
 | `--index` | Limit settings/mappings/shard analysis to an index pattern |
 | `--max-indices` | Cap indices scanned for settings/mappings (default: 50) |
 | `--timeout` | Per-request timeout |
+| `--fail-on` | Exit `2` on lint findings past threshold (default: `fail` = fail-level only) |
 
 **Examples:**
 
@@ -225,7 +234,7 @@ elastro health lint --category mappings --category shards -o json
 elastro health lint --category shards --index logs-* -o table
 ```
 
-Exit codes: `0` when clean, `1` when warnings are found, `2` when fail-level issues exist (e.g. unassigned shards).
+Exit codes: `0` when clean (or only warnings with default `--fail-on fail`), `1` on operational errors, `2` when findings exceed `--fail-on` (use `--fail-on warn` to fail on warnings).
 
 Lint checks include:
 
@@ -240,12 +249,50 @@ Security posture checks also run during `health assess` via the security collect
 
 ---
 
+## Exit codes (v1.11.0+)
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success; health meets `--fail-on` threshold |
+| `1` | Operational error (connection failure, collector error) |
+| `2` | Health degraded per `--fail-on` |
+| `3` | Remediation partial failure (`health fix` / `assess --fix` only) |
+
+When both health degradation (`2`) and remediation failure (`3`) apply (e.g. `assess --fix`), exit `2` takes precedence so health gates still fail.
+
+### `--fail-on` thresholds
+
+| Value | Exits `2` when |
+|-------|----------------|
+| `fail` (default) | Overall status `fail`, fail-level findings, cluster `red`, or score &lt; 50 |
+| `warn` | Any `warn`/`fail` finding, unassigned shards, or stricter than `fail` |
+| `yellow` | Score &lt; 90, cluster `yellow`/`red`, or stricter than `warn` |
+| `green` | Score &lt; 90, any warn/fail finding, cluster not `green`, or unassigned shards |
+
+**CI examples:**
+
+```bash
+# Fail the job on warnings (paging threshold)
+elastro health assess --fail-on warn -o json
+
+# Lint gate: fail-level issues only (default)
+elastro health lint -o json
+
+# Stricter lint gate
+elastro health lint --fail-on warn -o json
+
+# Wait for green or fail
+elastro health status --wait green --timeout 120s
+```
+
+---
+
 ## Remediation and rollback workflow
 
 1. Run `elastro health fix` (or `elastro health assess --plan` to preview, `elastro health assess --fix` to fix after assessment).
 2. Before applying, Elastro captures relevant index settings (replicas, routing filters, etc.).
 3. The remediation executes; the result includes a `rollback_id` when a snapshot was saved.
-4. If the fix was incorrect, run `elastro health rollback --id <rollback_id>`.
+4. If the fix was incorrect, run `elastro health rollback apply --id <rollback_id>`.
 
 Supported automated actions (via `RemediationCatalog`):
 

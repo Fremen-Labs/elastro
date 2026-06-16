@@ -33,7 +33,16 @@ class TestHealthLintCLI:
 
         result = runner.invoke(
             cli,
-            ["-h", "http://localhost:9205", "-o", "table", "health", "lint"],
+            [
+                "-h",
+                "http://localhost:9205",
+                "-o",
+                "table",
+                "health",
+                "lint",
+                "--fail-on",
+                "warn",
+            ],
         )
 
         assert result.exit_code == 2, result.output
