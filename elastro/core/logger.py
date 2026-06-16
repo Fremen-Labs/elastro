@@ -32,7 +32,7 @@ _CONFIGURED = False
 # ── LogLoom integration ──────────────────────────────────────────────────────
 _logloom_handler = None
 try:
-    from logloom.otel.bridge import LogLoomOTELHandler
+    from logloom.otel.bridge import LogLoomOTELHandler  # type: ignore[import-not-found]
 
     _logloom_handler = LogLoomOTELHandler()
     _logloom_handler.install()

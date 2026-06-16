@@ -215,7 +215,7 @@ def _settings_findings(
         )
 
     refresh = str(settings.get("refresh_interval", "")).strip().lower()
-    docs_count = _parse_int(cat_entry.get("docs.count"), default=0)
+    docs_count = _parse_int(cat_entry.get("docs.count"), default=0) or 0
     if refresh in {"1s", "500ms", "100ms"} and docs_count >= 1_000_000:
         findings.append(
             Finding(

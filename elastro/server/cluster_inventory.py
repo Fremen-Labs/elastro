@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from elastro.core.logger import get_logger
 from elastro.health.shards import format_bytes
@@ -10,9 +10,11 @@ from elastro.health.shards import format_bytes
 logger = get_logger(__name__)
 
 
-def _safe_count(callable_obj, *, label: str, default: int = 0) -> int:
+def _safe_count(
+    callable_obj: Callable[[], int], *, label: str, default: int = 0
+) -> int:
     try:
-        return int(callable_obj())
+        return callable_obj()
     except Exception as exc:
         logger.debug("Cluster inventory %s unavailable: %s", label, exc)
         return default

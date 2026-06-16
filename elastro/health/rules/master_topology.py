@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from elastro.core.logger import get_logger
 from elastro.health.models import Finding, FindingStatus, Severity
@@ -13,7 +13,7 @@ logger = get_logger(__name__)
 RECOMMENDED_MIN_MASTER_ELIGIBLE = 3
 
 
-def _master_eligible_count(nodes_data: Dict[str, object]) -> int:
+def _master_eligible_count(nodes_data: Dict[str, Any]) -> int:
     nodes = nodes_data.get("nodes") or {}
     count = 0
     for node in nodes.values():

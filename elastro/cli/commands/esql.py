@@ -9,7 +9,7 @@ Provides:
 import json
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import rich_click as click
 from rich.console import Console
@@ -137,11 +137,12 @@ def esql_query(
 
     # Execute
     try:
-        body = {"query": query_text}
+        body: Dict[str, Any] = {"query": query_text}
         if columnar:
-            body["columnar"] = True
+            body["columnar"] = columnar
 
-        response = client._client.esql.query(body=body)
+        es_client = client.get_client()
+        response = es_client.esql.query(body=body)
 
         # Handle ObjectApiResponse
         if hasattr(response, "body"):
@@ -154,12 +155,17 @@ def esql_query(
     except AttributeError:
         # Fallback for older elasticsearch-py without esql namespace
         try:
-            response = client._client.perform_request(
+            fallback_response = es_client.perform_request(
                 "POST",
                 "/_query",
                 body={"query": query_text, **({"columnar": True} if columnar else {})},
             )
-            result = response if isinstance(response, dict) else json.loads(response)
+            if isinstance(fallback_response, dict):
+                result = fallback_response
+            elif hasattr(fallback_response, "body"):
+                result = fallback_response.body
+            else:
+                result = json.loads(str(fallback_response))
         except Exception as e:
             console.print(
                 f"[bold red]Error:[/bold red] ES|QL requires Elasticsearch 8.11+. {e}"
@@ -315,6 +321,9 @@ def esql_build(
     if execute:
         # Re-invoke query execution
         ctx = click.get_current_context()
+        if ctx is None:
+            console.print("[bold red]Error:[/bold red] No CLI context available.")
+            raise SystemExit(1)
         ctx.invoke(
             esql_query,
             query_string=query_text,

@@ -102,10 +102,12 @@ def ensure_index(
     """Create an index with mappings when it does not exist."""
     es = client.client
     try:
-        exists = es.indices.exists(index=index_name)
-        if hasattr(exists, "body"):
-            exists = bool(exists.body)
-        if exists:
+        exists_response = es.indices.exists(index=index_name)
+        if hasattr(exists_response, "body"):
+            index_exists = bool(exists_response.body)
+        else:
+            index_exists = bool(exists_response)
+        if index_exists:
             return
         es.indices.create(index=index_name, body=mappings)
         logger.info("Created health index=%s", index_name)

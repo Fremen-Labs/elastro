@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from elastro.core.client import ElasticsearchClient
 from elastro.core.logger import get_logger
-from elastro.health.collectors.base import CollectContext, CollectorRegistry
+from elastro.health.collectors.base import CollectContext, Collector, CollectorRegistry
 from elastro.health.collectors.cluster import (
     ClusterHealthCollector,
     PendingTasksCollector,
@@ -38,7 +38,7 @@ from elastro.health.scoring import compute_fallback_score, compute_weighted_scor
 
 logger = get_logger(__name__)
 
-_DEFAULT_COLLECTORS = [
+_DEFAULT_COLLECTORS: List[Collector] = [
     HealthReportCollector(),
     ClusterHealthCollector(),
     PendingTasksCollector(),
