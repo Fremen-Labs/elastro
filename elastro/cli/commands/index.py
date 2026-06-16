@@ -180,8 +180,13 @@ def update_index(client: ElasticsearchClient, name: str, settings: Any) -> None:
 @click.command("delete", no_args_is_help=True)
 @click.argument("name", type=str, shell_complete=complete_indices)
 @click.option("--force", is_flag=True, help="Force deletion without confirmation")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview deletion without executing (scriptable with -o json)",
+)
 @click.pass_obj
-def delete_index(client: ElasticsearchClient, name: str, force: bool) -> None:
+def delete_index(client: ElasticsearchClient, name: str, force: bool, dry_run: bool) -> None:
     """
     Delete an index.
 
@@ -195,15 +200,25 @@ def delete_index(client: ElasticsearchClient, name: str, force: bool) -> None:
     elastro index delete my-logs
     ```
 
+    Preview deletion:
+    ```bash
+    elastro -o json index delete my-logs --dry-run
+    ```
+
     Force delete without confirmation:
     ```bash
     elastro index delete my-logs --force
     ```
     """
+    from elastro.cli.deletion import emit_delete_preview, preview_index_delete, should_prompt_for_delete
+
+    if dry_run:
+        emit_delete_preview(preview_index_delete(client, name))
+        return
+
     index_manager = IndexManager(client)
 
-    # Confirm deletion unless --force is provided
-    if not force:
+    if should_prompt_for_delete(dry_run=dry_run, force=force):
         confirm = click.confirm(f"Are you sure you want to delete index '{name}'?")
         if not confirm:
             click.echo("Operation cancelled.")

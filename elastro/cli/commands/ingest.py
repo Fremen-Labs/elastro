@@ -1047,11 +1047,17 @@ def pipeline_create(
 @pipeline_group.command(name="delete", no_args_is_help=True)
 @click.argument("pipeline_id", type=str)
 @click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompt")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview deletion without executing (scriptable with -o json)",
+)
 @click.pass_obj
 def pipeline_delete(
     client: ElasticsearchClient,
     pipeline_id: str,
     yes: bool,
+    dry_run: bool,
 ) -> None:
     """Delete an ingest pipeline.
 
@@ -1059,11 +1065,18 @@ def pipeline_delete(
 
     ```bash
     elastro ingest pipeline delete web-logs
+    elastro -o json ingest pipeline delete web-logs --dry-run
     ```
     """
     from rich.prompt import Confirm
 
+    from elastro.cli.deletion import emit_delete_preview, preview_pipeline_delete
+
     console = Console()
+
+    if dry_run:
+        emit_delete_preview(preview_pipeline_delete(client, pipeline_id))
+        return
 
     if not yes:
         if not Confirm.ask(

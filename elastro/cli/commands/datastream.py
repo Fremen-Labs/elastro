@@ -106,8 +106,18 @@ def get_datastream(client: ElasticsearchClient, name: str) -> None:
 @click.command("delete", no_args_is_help=True)
 @click.argument("name", type=str, shell_complete=complete_datastreams)
 @click.option("--force", is_flag=True, help="Force deletion without confirmation")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview deletion without executing (scriptable with -o json)",
+)
 @click.pass_obj
-def delete_datastream(client: ElasticsearchClient, name: str, force: bool) -> None:
+def delete_datastream(
+    client: ElasticsearchClient,
+    name: str,
+    force: bool,
+    dry_run: bool,
+) -> None:
     """
     Delete a datastream.
 
@@ -118,12 +128,22 @@ def delete_datastream(client: ElasticsearchClient, name: str, force: bool) -> No
     Delete a datastream and its backing indices:
     ```bash
     elastro datastream delete logs-my-app-debug
+    elastro -o json datastream delete logs-my-app-debug --dry-run
     ```
     """
+    from elastro.cli.deletion import (
+        emit_delete_preview,
+        preview_datastream_delete,
+        should_prompt_for_delete,
+    )
+
+    if dry_run:
+        emit_delete_preview(preview_datastream_delete(client, name))
+        return
+
     datastream_manager = DatastreamManager(client)
 
-    # Confirm deletion unless --force is provided
-    if not force:
+    if should_prompt_for_delete(dry_run=dry_run, force=force):
         confirm = click.confirm(f"Are you sure you want to delete datastream '{name}'?")
         if not confirm:
             click.echo("Operation cancelled.")
