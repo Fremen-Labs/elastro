@@ -28,6 +28,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install build twine ruff mypy pip-audit types-requests types-PyYAML types-setuptools
+        pip install -e .
 
     - name: Set up Node.js
       uses: actions/setup-node@v4
@@ -46,8 +47,12 @@ jobs:
     - name: Code Quality - Type Safety (Mypy)
       run: mypy .
 
-    - name: Security - Dependency Audit
-      run: pip-audit
+    - name: Install Trivy
+      run: |
+        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+    - name: Security - Dependency and Trivy audit
+      run: bash scripts/security-audit.sh
 
     - name: Set up Go
       uses: actions/setup-go@v5

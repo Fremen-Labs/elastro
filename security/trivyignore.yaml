@@ -1,0 +1,17 @@
+# Documented, time-boxed suppressions for ReleaseFlow/Trivy scans.
+# Runtime dependencies are patched in PR-SEC-1/2; entries here are dev-only toolchain.
+vulnerabilities:
+  - id: GHSA-gv7w-rqvm-qjhr
+    paths:
+      - "packages/gui/package-lock.json"
+    statement: >-
+      Dev-only esbuild via vite build toolchain; not shipped in elastro-client wheel
+      or GUI production bundle. Mitigation: CI uses npm audit --omit=dev for runtime gate.
+    expired_at: 2026-12-31
+  - id: GHSA-g7r4-m6w7-qqqr
+    paths:
+      - "packages/gui/package-lock.json"
+    statement: >-
+      Dev-only esbuild/vite local dev server issue on Windows; Elastro GUI build uses
+      production vite build only in CI/release. Upgrade path: vite@8 when stable.
+    expired_at: 2026-12-31
