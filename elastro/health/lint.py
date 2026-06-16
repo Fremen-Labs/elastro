@@ -277,12 +277,15 @@ def _lint_shards(shard_data: dict) -> List[Finding]:
         )
 
     if oversharded > 0:
+        from elastro.health.finding_guides.oversharding import build_oversharding_guide
+
         threshold = int(
             analysis.get(
                 "overshard_threshold_bytes",
                 int(DEFAULT_OVERSHARD_THRESHOLD_MB * 1024 * 1024),
             )
         )
+        detail, guide_metadata, affected = build_oversharding_guide(analysis)
         findings.append(
             Finding(
                 id="shards.oversharded",
@@ -295,13 +298,20 @@ def _lint_shards(shard_data: dict) -> List[Finding]:
                     f"{oversharded} shard(s) are smaller than "
                     f"{format_bytes(threshold)}."
                 ),
+                detail=detail,
+                affected_resources=affected,
                 source="lint",
                 remediation=RemediationAction(
                     id="analyze_shards",
                     label="Analyze shard sizes",
-                    command="elastro health shards --analyze",
+                    command="elastro health shards --analyze -o table",
                     safety=RemediationSafety.OBSERVE,
                 ),
+                metadata={
+                    "oversharded_count": oversharded,
+                    "threshold_bytes": threshold,
+                    **guide_metadata,
+                },
             )
         )
 

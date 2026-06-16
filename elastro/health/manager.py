@@ -143,6 +143,17 @@ class HealthManager:
             logger.error("Allocation explain request failed: %s", e, exc_info=True)
             raise OperationError(f"Failed to explain allocation: {str(e)}")
 
+    def cluster_state(self, *, metric: Optional[str] = None) -> Dict[str, Any]:
+        logger.debug("Fetching cluster state metric=%s", metric)
+        try:
+            params: Dict[str, Any] = {}
+            if metric:
+                params["metric"] = metric
+            return dict(self._es.cluster.state(**params))
+        except Exception as e:
+            logger.error("Cluster state request failed: %s", e, exc_info=True)
+            raise OperationError(f"Failed to get cluster state: {str(e)}") from e
+
     def cluster_settings(self, include_defaults: bool = False) -> Dict[str, Any]:
         logger.debug("Fetching cluster settings include_defaults=%s", include_defaults)
         try:

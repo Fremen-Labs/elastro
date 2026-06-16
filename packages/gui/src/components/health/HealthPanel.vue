@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
-import { RefreshCw, Wrench } from 'lucide-vue-next'
+import { ChevronDown, RefreshCw, Wrench } from 'lucide-vue-next'
+import FindingDetailPanel from './FindingDetailPanel.vue'
 import { state } from '../../store'
 import PageHeader from '../ui/PageHeader.vue'
 import AlertBanner from '../ui/AlertBanner.vue'
 import HealthScore from './HealthScore.vue'
-import type { HealthAssessment, HealthFinding, NodeHealthSummary } from '../../types/health'
+import type {
+  ClusterInventorySummary,
+  HealthAssessment,
+  HealthFinding,
+  NodeHealthSummary,
+} from '../../types/health'
 import { severityClass } from '../../types/health'
 
 const props = defineProps<{
@@ -19,8 +25,13 @@ const assessing = ref(false)
 const hasLoaded = ref(false)
 const error = ref<string | null>(null)
 const assessment = ref<HealthAssessment | null>(null)
+const trendPoints = ref<number[]>([])
+const trendDelta = ref<number | null>(null)
 const nodes = ref<NodeHealthSummary[]>([])
+const clusterSummary = ref<ClusterInventorySummary | null>(null)
+const summaryLoading = ref(false)
 const activeFix = ref<string | null>(null)
+const expandedFindings = ref<Record<string, boolean>>({})
 const awaitingToken = ref(false)
 
 const authHeaders = () => ({ Authorization: `Bearer ${state.token}` })
@@ -40,6 +51,70 @@ const displayScore = computed(() => {
 const isBusy = computed(() => loading.value || assessing.value || awaitingToken.value)
 
 const clusterLabel = computed(() => props.clusterName || 'cluster')
+
+const formatCount = (value: number | null | undefined): string => {
+  if (value == null || !Number.isFinite(value)) return '—'
+  return new Intl.NumberFormat().format(value)
+}
+
+const inventoryRows = computed(() => {
+  const summary = clusterSummary.value
+  if (!summary) return []
+
+  const indexDetail =
+    summary.indices.yellow > 0 || summary.indices.red > 0
+      ? `${summary.indices.green}G / ${summary.indices.yellow}Y / ${summary.indices.red}R`
+      : undefined
+
+  const shardDetail =
+    summary.shards.unassigned > 0
+      ? `${summary.shards.unassigned} unassigned`
+      : undefined
+
+  const rows: Array<{ label: string; value: string; detail?: string; warn?: boolean }> = [
+    { label: 'Cluster status', value: summary.health.toUpperCase() },
+    { label: 'Nodes', value: formatCount(summary.nodes.total) },
+    {
+      label: 'Indices',
+      value: formatCount(summary.indices.total),
+      detail: indexDetail,
+      warn: summary.indices.red > 0 || summary.indices.yellow > 0,
+    },
+    {
+      label: 'Shards',
+      value: formatCount(summary.shards.total),
+      detail: shardDetail,
+      warn: summary.shards.unassigned > 0,
+    },
+    { label: 'Data streams', value: formatCount(summary.data_streams.total) },
+    { label: 'ILM policies', value: formatCount(summary.ilm.policy_count) },
+    { label: 'Index templates', value: formatCount(summary.index_templates.total) },
+    {
+      label: 'Dashboards',
+      value: summary.kibana.available ? formatCount(summary.kibana.dashboards ?? 0) : '—',
+      detail: summary.kibana.available ? 'from .kibana* indices' : 'no Kibana indices',
+    },
+    { label: 'Documents', value: formatCount(summary.documents.total) },
+    { label: 'Store size', value: summary.storage.total_human || '—' },
+    {
+      label: 'Snapshots',
+      value: summary.backups.configured
+        ? `${summary.backups.repository_count} repo(s)`
+        : 'Not configured',
+      warn: !summary.backups.configured,
+    },
+  ]
+
+  if (hasLoaded.value) {
+    rows.push({
+      label: 'Open findings',
+      value: formatCount(openFindings.value.length),
+      warn: openFindings.value.length > 0,
+    })
+  }
+
+  return rows
+})
 
 const isHtmlResponse = (data: unknown): boolean =>
   typeof data === 'string' && data.trim().toLowerCase().startsWith('<!doctype html')
@@ -91,6 +166,58 @@ const toAssessment = (raw: Record<string, unknown> | null): HealthAssessment | n
     collectors_failed: Array.isArray(source.collectors_failed)
       ? (source.collectors_failed as string[])
       : [],
+  }
+}
+
+const sparkline = computed(() => {
+  if (!trendPoints.value.length) return ''
+  const blocks = '▁▂▃▄▅▆▇█'
+  const scores = trendPoints.value
+  const low = Math.min(...scores)
+  const high = Math.max(...scores)
+  const midBlock = blocks.charAt(4) || blocks.charAt(0)
+  if (low === high) return midBlock.repeat(scores.length)
+  return scores
+    .map((score) => {
+      const normalized = (score - low) / (high - low)
+      const index = Math.min(blocks.length - 1, Math.round(normalized * (blocks.length - 1)))
+      return blocks.charAt(index) || midBlock
+    })
+    .join('')
+})
+
+const fetchClusterSummary = async () => {
+  if (!state.token || !props.clusterName) return
+  summaryLoading.value = true
+  try {
+    const res = await axios.get(
+      `${apiBase}/api/cluster/${encodeURIComponent(props.clusterName)}`,
+      { headers: authHeaders(), timeout: 30000 }
+    )
+    clusterSummary.value = res.data as ClusterInventorySummary
+  } catch {
+    clusterSummary.value = null
+  } finally {
+    summaryLoading.value = false
+  }
+}
+
+const fetchTrends = async () => {
+  if (!state.token || !props.clusterName) return
+  try {
+    const res = await axios.get(
+      `${apiBase}/api/clusters/${encodeURIComponent(props.clusterName)}/health/trends`,
+      { headers: authHeaders(), timeout: 30000, params: { window: '7d', limit: 30 } }
+    )
+    const points = Array.isArray(res.data?.points) ? res.data.points : []
+    trendPoints.value = points
+      .map((point: { overall_score?: number }) => Number(point?.overall_score))
+      .filter((score: number) => Number.isFinite(score))
+    const delta = res.data?.score_delta_7d
+    trendDelta.value = typeof delta === 'number' && Number.isFinite(delta) ? delta : null
+  } catch {
+    trendPoints.value = []
+    trendDelta.value = null
   }
 }
 
@@ -173,7 +300,7 @@ const loadAssessment = async (forceRefresh = false) => {
         'The GUI server is outdated or returned an invalid response. Stop it and run `elastro gui` again to launch a fresh server with health API support.'
       return
     }
-    await fetchNodes()
+    await Promise.all([fetchNodes(), fetchTrends(), fetchClusterSummary()])
   } catch (err: any) {
     hasLoaded.value = false
     assessment.value = null
@@ -220,6 +347,16 @@ const applyFix = async (
     alert(typeof detail === 'string' ? detail : 'Fix failed.')
   } finally {
     activeFix.value = null
+  }
+}
+
+const hasExpandableDetail = (finding: HealthFinding): boolean =>
+  Boolean(finding.detail || finding.metadata?.detail_sections)
+
+const toggleFindingDetail = (findingId: string) => {
+  expandedFindings.value = {
+    ...expandedFindings.value,
+    [findingId]: !expandedFindings.value[findingId],
   }
 }
 
@@ -283,12 +420,22 @@ watch(
 
     <div class="health-layout">
       <div class="card health-summary-card">
-        <HealthScore
-          :score="displayScore"
-          :status="hasLoaded ? assessment?.overall_status : undefined"
-          :loading="isBusy"
-        />
+        <div class="score-wrap">
+          <HealthScore
+            :score="displayScore"
+            :status="hasLoaded ? assessment?.overall_status : undefined"
+            :loading="isBusy"
+          />
+        </div>
+        <div v-if="sparkline" class="health-trend">
+          <span class="label-caps">7d Trend</span>
+          <span class="sparkline" aria-hidden="true">{{ sparkline }}</span>
+          <span v-if="trendDelta !== null" class="trend-delta">
+            {{ trendDelta > 0 ? '+' : '' }}{{ trendDelta }}
+          </span>
+        </div>
         <div v-if="hasLoaded && assessment" class="health-meta">
+          <h4 class="summary-heading">Assessment</h4>
           <p>
             <span class="label-caps">Version</span>
             <span class="value-chip">{{ assessment.elasticsearch_version }}</span>
@@ -301,6 +448,30 @@ watch(
             <span class="label-caps">Duration</span>
             <span class="value-chip">{{ assessment.duration_ms }}ms</span>
           </p>
+        </div>
+
+        <div class="health-meta inventory-meta">
+          <h4 class="summary-heading">Cluster inventory</h4>
+          <div v-if="summaryLoading" class="inventory-skeleton">
+            <div v-for="i in 6" :key="i" class="skeleton skeleton-text w-full mb-2"></div>
+          </div>
+          <template v-else-if="clusterSummary">
+            <div class="inventory-grid">
+              <div
+                v-for="row in inventoryRows"
+                :key="row.label"
+                class="inventory-row"
+                :class="{ 'inventory-row--warn': row.warn }"
+              >
+                <span class="label-caps">{{ row.label }}</span>
+                <div class="inventory-values">
+                  <span class="value-chip">{{ row.value }}</span>
+                  <span v-if="row.detail" class="inventory-detail">{{ row.detail }}</span>
+                </div>
+              </div>
+            </div>
+          </template>
+          <p v-else class="text-muted inventory-empty">Cluster inventory unavailable.</p>
         </div>
       </div>
 
@@ -318,14 +489,41 @@ watch(
             v-for="finding in openFindings"
             :key="finding.id"
             class="finding-row"
-            :class="severityClass(finding.severity)"
+            :class="[severityClass(finding.severity), { expanded: expandedFindings[finding.id] }]"
           >
-            <div class="finding-header">
-              <span class="finding-severity label-caps">{{ finding.severity }}</span>
-              <span class="finding-status">{{ finding.status }}</span>
-            </div>
-            <h4>{{ finding.title }}</h4>
-            <p class="finding-summary">{{ finding.summary }}</p>
+            <button
+              v-if="hasExpandableDetail(finding)"
+              type="button"
+              class="finding-toggle"
+              :aria-expanded="expandedFindings[finding.id] ? 'true' : 'false'"
+              @click="toggleFindingDetail(finding.id)"
+            >
+              <div class="finding-header">
+                <span class="finding-severity label-caps">{{ finding.severity }}</span>
+                <span class="finding-status">{{ finding.status }}</span>
+              </div>
+              <div class="finding-title-row">
+                <h4>{{ finding.title }}</h4>
+                <ChevronDown
+                  :size="16"
+                  class="chevron"
+                  :class="{ open: expandedFindings[finding.id] }"
+                />
+              </div>
+              <p class="finding-summary">{{ finding.summary }}</p>
+            </button>
+            <template v-else>
+              <div class="finding-header">
+                <span class="finding-severity label-caps">{{ finding.severity }}</span>
+                <span class="finding-status">{{ finding.status }}</span>
+              </div>
+              <h4>{{ finding.title }}</h4>
+              <p class="finding-summary">{{ finding.summary }}</p>
+            </template>
+            <FindingDetailPanel
+              v-if="hasExpandableDetail(finding) && expandedFindings[finding.id]"
+              :finding="finding"
+            />
             <p v-if="finding.detail" class="finding-detail text-muted">{{ finding.detail }}</p>
             <p v-if="finding.remediation" class="finding-action text-muted">
               <Wrench :size="14" />
@@ -403,7 +601,7 @@ watch(
 
 .health-layout {
   display: grid;
-  grid-template-columns: minmax(220px, 280px) 1fr;
+  grid-template-columns: minmax(260px, 320px) 1fr;
   gap: 1.5rem;
 }
 
@@ -416,8 +614,86 @@ watch(
 .health-summary-card {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
+  gap: 1rem;
+}
+
+.score-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.summary-heading {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+.inventory-meta {
+  border-top: 1px solid hsl(var(--border) / 0.6);
+  padding-top: 0.75rem;
+}
+
+.inventory-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.inventory-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+  align-items: start;
+}
+
+.inventory-row--warn .value-chip {
+  color: hsl(var(--health-yellow));
+}
+
+.inventory-values {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+}
+
+.inventory-detail {
+  font-size: 0.68rem;
+  color: hsl(var(--muted-foreground));
+  font-family: var(--font-mono);
+}
+
+.inventory-empty {
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.inventory-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.health-trend {
+  width: 100%;
+  display: flex;
   align-items: center;
-  gap: 1.25rem;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.sparkline {
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  color: hsl(var(--primary));
+}
+
+.trend-delta {
+  font-family: var(--font-mono);
+  color: hsl(var(--muted-foreground));
 }
 
 .health-meta {
@@ -457,6 +733,38 @@ watch(
   border-radius: var(--radius);
   border: 1px solid hsl(var(--border));
   background: hsl(var(--muted) / 0.25);
+}
+
+.finding-row.expanded {
+  border-color: hsl(var(--primary) / 0.35);
+}
+
+.finding-toggle {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.finding-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.chevron {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  color: hsl(var(--muted-foreground));
+  transition: transform 0.2s ease;
+}
+
+.chevron.open {
+  transform: rotate(180deg);
 }
 
 .finding-row.severity-high {

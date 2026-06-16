@@ -43,11 +43,24 @@ class TestIndexFixCLI:
         ]
 
         with patch(
-            "elastro.health.remediation.executor.RemediationExecutor.remediate_diagnosis",
+            "elastro.health.remediation.fix.run_health_fix",
             return_value=MagicMock(
-                executed=False,
-                success=True,
-                message="Skipped by user",
+                diagnoses=mock_diagnose.return_value,
+                planned_actions=[],
+                results=[
+                    MagicMock(
+                        action_id="reduce_replicas",
+                        index_name="logs-2024",
+                        executed=False,
+                        success=True,
+                        message="Skipped by user",
+                        planned_api_call="PUT /logs-2024/_settings",
+                        dry_run=False,
+                    )
+                ],
+                blocked=[],
+                dry_run=False,
+                plan_only=False,
             ),
         ):
             result = runner.invoke(
@@ -58,7 +71,7 @@ class TestIndexFixCLI:
 
         assert result.exit_code == 0, result.output
         assert "Unhealthy Indices Found" in result.output
-        assert "reduce_replicas" not in result.output
+        assert "Deprecation" in result.stderr
         assert "Reduce replicas" in result.output or "Suggestion" in result.output
 
     @patch("elastro.cli.cli.ElasticsearchClient.connect")
@@ -100,11 +113,25 @@ class TestIndexFixCLI:
         ]
 
         with patch(
-            "elastro.health.remediation.executor.RemediationExecutor.remediate_diagnosis",
+            "elastro.health.remediation.fix.run_health_fix",
             return_value=MagicMock(
-                executed=True,
-                success=True,
-                message="Replicas reduced to 0",
+                diagnoses=mock_diagnose.return_value,
+                planned_actions=[],
+                results=[
+                    MagicMock(
+                        action_id="reduce_replicas",
+                        index_name="logs-2024",
+                        executed=True,
+                        success=True,
+                        message="Replicas reduced to 0",
+                        planned_api_call=None,
+                        dry_run=False,
+                        rollback_id=None,
+                    )
+                ],
+                blocked=[],
+                dry_run=False,
+                plan_only=False,
             ),
         ):
             result = runner.invoke(

@@ -94,9 +94,18 @@ def get_template(client: ElasticsearchClient, name: str, type: str) -> None:
     help="Template type",
 )
 @click.option("--force", is_flag=True, help="Force deletion")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview deletion without executing (scriptable with -o json)",
+)
 @click.pass_obj
 def delete_template(
-    client: ElasticsearchClient, name: str, type: str, force: bool
+    client: ElasticsearchClient,
+    name: str,
+    type: str,
+    force: bool,
+    dry_run: bool,
 ) -> None:
     """
     Delete a template.
@@ -108,10 +117,23 @@ def delete_template(
     Delete a template:
     ```bash
     elastro template delete my-template
+    elastro -o json template delete my-template --dry-run
     ```
     """
+    from elastro.cli.deletion import (
+        emit_delete_preview,
+        preview_template_delete,
+        should_prompt_for_delete,
+    )
+
+    if dry_run:
+        emit_delete_preview(preview_template_delete(client, name, template_type=type))
+        return
+
     manager = TemplateManager(client)
-    if not force and not click.confirm(f"Delete {type} template '{name}'?"):
+    if should_prompt_for_delete(dry_run=dry_run, force=force) and not click.confirm(
+        f"Delete {type} template '{name}'?"
+    ):
         return
 
     try:

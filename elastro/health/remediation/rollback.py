@@ -25,6 +25,7 @@ _ROLLBACK_SETTINGS_KEYS = (
     "routing.allocation.require",
     "routing.allocation.include",
     "routing.allocation.exclude",
+    "blocks",
 )
 
 
@@ -167,6 +168,13 @@ def create_rollback_record(
     )
 
 
+def describe_rollback_restore(record: RollbackRecord) -> str:
+    """Return the API call that would restore a rollback snapshot."""
+    from elastro.health.remediation.dry_run import planned_rollback_call
+
+    return planned_rollback_call(record.index_name, record.before)
+
+
 def apply_rollback(
     index_manager: IndexManager,
     record: RollbackRecord,
@@ -176,9 +184,11 @@ def apply_rollback(
     """Restore index settings captured in a rollback record."""
     if dry_run:
         keys = sorted((record.before.get("index") or {}).keys())
+        planned = describe_rollback_restore(record)
         return (
             f"Would restore settings for '{record.index_name}' "
-            f"from rollback {record.rollback_id} (keys={','.join(keys)})"
+            f"from rollback {record.rollback_id} (keys={','.join(keys)}). "
+            f"Planned: {planned}"
         )
 
     logger.info(

@@ -290,8 +290,18 @@ def update_document(
 @click.command("delete", no_args_is_help=True)
 @click.argument("index", type=str, shell_complete=complete_indices)
 @click.argument("id", type=str)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview deletion without executing (scriptable with -o json)",
+)
 @click.pass_obj
-def delete_document(client: ElasticsearchClient, index: str, id: str) -> None:
+def delete_document(
+    client: ElasticsearchClient,
+    index: str,
+    id: str,
+    dry_run: bool,
+) -> None:
     """
     Delete a document.
 
@@ -302,8 +312,15 @@ def delete_document(client: ElasticsearchClient, index: str, id: str) -> None:
     Delete a document by ID:
     ```bash
     elastro doc delete my-logs 123
+    elastro -o json doc delete my-logs 123 --dry-run
     ```
     """
+    from elastro.cli.deletion import emit_delete_preview, preview_document_delete
+
+    if dry_run:
+        emit_delete_preview(preview_document_delete(client, index, id))
+        return
+
     document_manager = DocumentManager(client)
 
     try:
@@ -324,8 +341,18 @@ def delete_document(client: ElasticsearchClient, index: str, id: str) -> None:
     required=True,
     help="Path to IDs file (use '-' for stdin)",
 )
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview bulk deletion without executing (scriptable with -o json)",
+)
 @click.pass_obj
-def bulk_delete(client: ElasticsearchClient, index: str, file: Any) -> None:
+def bulk_delete(
+    client: ElasticsearchClient,
+    index: str,
+    file: Any,
+    dry_run: bool,
+) -> None:
     """
     Bulk delete documents.
 
@@ -336,11 +363,11 @@ def bulk_delete(client: ElasticsearchClient, index: str, file: Any) -> None:
     Bulk delete using a list of IDs:
     ```bash
     elastro doc bulk-delete my-logs --file ./ids_to_delete.json
+    elastro -o json doc bulk-delete my-logs --file ./ids.json --dry-run
     ```
     """
-    document_manager = DocumentManager(client)
+    from elastro.cli.deletion import emit_delete_preview, preview_bulk_document_delete
 
-    # Load document IDs
     ids = json.load(file)
 
     if not isinstance(ids, list):
@@ -348,6 +375,12 @@ def bulk_delete(client: ElasticsearchClient, index: str, file: Any) -> None:
             "Error: IDs file must contain a JSON array of document IDs", err=True
         )
         exit(1)
+
+    if dry_run:
+        emit_delete_preview(preview_bulk_document_delete(client, index, ids))
+        return
+
+    document_manager = DocumentManager(client)
 
     try:
         result = document_manager.bulk_delete(index, ids)

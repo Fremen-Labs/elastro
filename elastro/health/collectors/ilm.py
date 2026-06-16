@@ -91,7 +91,10 @@ class IlmCollector:
                     remediation=RemediationAction(
                         id="ilm_retry",
                         label="Retry ILM step",
-                        command=f"elastro ilm explain {index_name}",
+                        command=(
+                            "elastro health fix --action ilm_retry "
+                            f"--index {index_name}"
+                        ),
                         safety=RemediationSafety.CONFIRM,
                     ),
                     metadata={"explain": explain},

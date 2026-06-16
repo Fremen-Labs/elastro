@@ -8,6 +8,25 @@ export interface RemediationAction {
   safety: 'observe' | 'suggest' | 'confirm' | 'destructive'
 }
 
+export interface FindingDetailSection {
+  title: string
+  body: string
+  commands?: string[]
+}
+
+export interface FindingDetailSections {
+  why?: string
+  implications?: string[]
+  resolution?: FindingDetailSection[]
+  cautions?: string[]
+  top_indices?: Array<{
+    index: string
+    oversharded_shard_count: number
+    smallest_human: string
+  }>
+  references?: string[]
+}
+
 export interface HealthFinding {
   id: string
   category: string
@@ -19,6 +38,10 @@ export interface HealthFinding {
   detail?: string
   affected_resources: string[]
   remediation?: RemediationAction
+  metadata?: {
+    detail_sections?: FindingDetailSections
+    [key: string]: unknown
+  }
 }
 
 export interface HealthScoreResponse {
@@ -42,6 +65,28 @@ export interface HealthAssessment {
   findings: HealthFinding[]
   collectors_run: string[]
   collectors_failed: string[]
+}
+
+export interface ClusterInventorySummary {
+  health: string
+  nodes: { total: number; roles: Record<string, number> }
+  indices: { total: number; green: number; yellow: number; red: number }
+  shards: { total: number; unassigned: number }
+  data_streams: { total: number }
+  documents: { total: number }
+  storage: { total_bytes: number; total_human: string }
+  ilm: { policy_count: number }
+  index_templates: { total: number }
+  kibana: {
+    available: boolean
+    dashboards: number | null
+    visualizations: number | null
+  }
+  backups: {
+    configured: boolean
+    repository_count: number
+    repositories: Array<{ name: string; type: string }>
+  }
 }
 
 export interface NodeHealthSummary {

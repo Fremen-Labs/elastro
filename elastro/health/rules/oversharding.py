@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import List
 
 from elastro.core.logger import get_logger
-from elastro.health.models import Finding, FindingStatus, Severity
+from elastro.health.finding_guides.oversharding import build_oversharding_guide
+from elastro.health.models import Finding, FindingStatus, RemediationAction, RemediationSafety, Severity
 from elastro.health.rules.engine import RuleContext
 from elastro.health.shards import DEFAULT_OVERSHARD_THRESHOLD_MB, DEFAULT_UNDERSHARD_THRESHOLD_GB, format_bytes
 
@@ -31,6 +32,10 @@ def oversharding_findings(ctx: RuleContext) -> List[Finding]:
             )
         )
         logger.debug("Oversharding rule: count=%s threshold=%s", oversharded, threshold)
+        detail, guide_metadata, affected = build_oversharding_guide(
+            analysis,
+            es_version=ctx.es_version,
+        )
         findings.append(
             Finding(
                 id="shards.oversharded",
@@ -43,11 +48,20 @@ def oversharding_findings(ctx: RuleContext) -> List[Finding]:
                     f"{oversharded} shard(s) are smaller than "
                     f"{format_bytes(threshold)} (OVERSHARDED)."
                 ),
+                detail=detail,
+                affected_resources=affected,
                 source="rule",
+                remediation=RemediationAction(
+                    id="analyze_shards",
+                    label="Analyze oversharded shards",
+                    command="elastro health shards --analyze -o table",
+                    safety=RemediationSafety.OBSERVE,
+                ),
                 metadata={
                     "oversharded_count": oversharded,
                     "threshold_bytes": threshold,
                     "avg_bytes": avg_bytes,
+                    **guide_metadata,
                 },
             )
         )

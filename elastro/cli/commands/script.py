@@ -65,11 +65,22 @@ def get_script(client: ElasticsearchClient, id: str) -> None:
 
 @script_group.command("delete")
 @click.argument("id", type=str)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview deletion without executing (scriptable with -o json)",
+)
 @click.pass_obj
-def delete_script(client: ElasticsearchClient, id: str) -> None:
+def delete_script(client: ElasticsearchClient, id: str, dry_run: bool) -> None:
     """
     Delete a stored Painless script.
     """
+    from elastro.cli.deletion import emit_delete_preview, preview_script_delete
+
+    if dry_run:
+        emit_delete_preview(preview_script_delete(client, id))
+        return
+
     if Confirm.ask(f"Are you sure you want to delete script '{id}'?"):
         try:
             response = client.client.delete_script(id=id)

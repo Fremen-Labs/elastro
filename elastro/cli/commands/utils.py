@@ -165,15 +165,33 @@ def create_template(
     help="Template type",
 )
 @click.option("--force", is_flag=True, help="Force deletion without confirmation")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview deletion without executing (scriptable with -o json)",
+)
 @click.pass_obj
 def delete_template(
-    client: ElasticsearchClient, name: str, type: str, force: bool
+    client: ElasticsearchClient,
+    name: str,
+    type: str,
+    force: bool,
+    dry_run: bool,
 ) -> None:
     """Delete an index template."""
+    from elastro.cli.deletion import (
+        emit_delete_preview,
+        preview_template_delete,
+        should_prompt_for_delete,
+    )
+
+    if dry_run:
+        emit_delete_preview(preview_template_delete(client, name, template_type=type))
+        return
+
     template_manager = TemplateManager(client)
 
-    # Confirm deletion unless --force is provided
-    if not force:
+    if should_prompt_for_delete(dry_run=dry_run, force=force):
         confirm = click.confirm(f"Are you sure you want to delete template '{name}'?")
         if not confirm:
             click.echo("Operation cancelled.")
@@ -288,9 +306,18 @@ def create_alias(
 @click.argument("name", type=str)
 @click.argument("index", type=str)
 @click.option("--force", is_flag=True, help="Force deletion without confirmation")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview deletion without executing (scriptable with -o json)",
+)
 @click.pass_obj
 def delete_alias(
-    client: ElasticsearchClient, name: str, index: str, force: bool
+    client: ElasticsearchClient,
+    name: str,
+    index: str,
+    force: bool,
+    dry_run: bool,
 ) -> None:
     """
     Delete an index alias.
@@ -302,12 +329,22 @@ def delete_alias(
     Delete an alias:
     ```bash
     elastro utils aliases delete my-alias my-index
+    elastro -o json utils aliases delete my-alias my-index --dry-run
     ```
     """
+    from elastro.cli.deletion import (
+        emit_delete_preview,
+        preview_alias_delete,
+        should_prompt_for_delete,
+    )
+
+    if dry_run:
+        emit_delete_preview(preview_alias_delete(client, name, index))
+        return
+
     alias_manager = AliasManager(client)
 
-    # Confirm deletion unless --force is provided
-    if not force:
+    if should_prompt_for_delete(dry_run=dry_run, force=force):
         confirm = click.confirm(
             f"Are you sure you want to delete alias '{name}' from index '{index}'?"
         )

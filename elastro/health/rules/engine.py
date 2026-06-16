@@ -31,15 +31,31 @@ class RuleEngine:
 
     @classmethod
     def default_rules(cls) -> List[RuleFn]:
+        from elastro.health.rules.backup_policy import backup_policy_findings
+        from elastro.health.rules.circuit_breaker import circuit_breaker_rule
+        from elastro.health.rules.cluster_blocks import cluster_block_findings
+        from elastro.health.rules.cluster_capacity import shard_limit_rule
+        from elastro.health.rules.cpu_pressure import cpu_pressure_rule
         from elastro.health.rules.hotspots import hotspot_findings
         from elastro.health.rules.jvm import jvm_rule
         from elastro.health.rules.mapping_explosion import mapping_explosion_findings
+        from elastro.health.rules.master_topology import master_topology_findings
         from elastro.health.rules.oversharding import oversharding_findings
         from elastro.health.rules.persistent_yellow import persistent_yellow_findings
         from elastro.health.rules.replica import replica_misconfig_findings
+        from elastro.health.rules.shards_unassigned import unassigned_shard_findings
+        from elastro.health.rules.thread_pool import thread_pool_rule
 
         return [
+            cluster_block_findings,
+            master_topology_findings,
+            unassigned_shard_findings,
+            shard_limit_rule,
+            backup_policy_findings,
             jvm_rule,
+            circuit_breaker_rule,
+            cpu_pressure_rule,
+            thread_pool_rule,
             replica_misconfig_findings,
             persistent_yellow_findings,
             oversharding_findings,

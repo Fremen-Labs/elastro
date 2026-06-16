@@ -248,8 +248,18 @@ def run_ilm_wizard(name: str) -> Optional[Dict[str, Any]]:
 @ilm_group.command("delete", no_args_is_help=True)
 @click.argument("name", type=str, shell_complete=complete_policies)
 @click.option("--force", is_flag=True, help="Force deletion")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview deletion without executing (scriptable with -o json)",
+)
 @click.pass_obj
-def delete_policy(client: ElasticsearchClient, name: str, force: bool) -> None:
+def delete_policy(
+    client: ElasticsearchClient,
+    name: str,
+    force: bool,
+    dry_run: bool,
+) -> None:
     """
     Delete an ILM policy.
 
@@ -260,10 +270,23 @@ def delete_policy(client: ElasticsearchClient, name: str, force: bool) -> None:
     Delete a policy:
     ```bash
     elastro ilm delete my-old-policy
+    elastro -o json ilm delete my-old-policy --dry-run
     ```
     """
+    from elastro.cli.deletion import (
+        emit_delete_preview,
+        preview_ilm_policy_delete,
+        should_prompt_for_delete,
+    )
+
+    if dry_run:
+        emit_delete_preview(preview_ilm_policy_delete(client, name))
+        return
+
     manager = IlmManager(client)
-    if not force and not click.confirm(f"Delete policy '{name}'?"):
+    if should_prompt_for_delete(dry_run=dry_run, force=force) and not click.confirm(
+        f"Delete policy '{name}'?"
+    ):
         return
 
     try:

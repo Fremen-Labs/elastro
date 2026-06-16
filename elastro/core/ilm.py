@@ -168,3 +168,18 @@ class IlmManager(BaseManager):
             return body.get("acknowledged", False)
         except Exception as e:
             raise OperationError(f"Failed to stop ILM: {e}")
+
+    def retry_lifecycle(self, index: str) -> bool:
+        """Retry ILM lifecycle execution for an index."""
+        if not index:
+            raise ValidationError("Index name is required")
+
+        try:
+            logger.info("Retrying ILM lifecycle for index '%s'", index)
+            self._ensure_connected()
+            response = self._client.get_client().ilm.retry(index=index)
+            self._handle_response(response)
+            return True
+        except Exception as e:
+            logger.error("Failed to retry ILM lifecycle for '%s': %s", index, e)
+            raise OperationError(f"Failed to retry ILM lifecycle for '{index}': {e}") from e

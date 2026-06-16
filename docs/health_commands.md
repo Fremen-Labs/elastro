@@ -1,6 +1,6 @@
 # Health Assessment Commands
 
-Elastro's `health` command group provides scored cluster assessments, actionable findings, safe remediation, rollback, and optional audit/history indexing. Available since v1.4.x; rollback and audit indexing shipped in **v1.8.0**.
+Elastro's `health` command group provides scored cluster assessments, actionable findings, safe remediation, rollback, and optional audit/history indexing. Available since v1.4.x; rollback and audit indexing shipped in **v1.8.0**; unified remediation workflow (`health fix`, `assess --plan`) shipped in **v1.10.0**; monitoring exit codes and `--fail-on` shipped in **v1.11.0**; disk + ILM catalog remediations shipped in **v1.12.0**; fleet history trends and ES-backed GUI history shipped in **v1.13.0**.
 
 For the full implementation plan and PR history, see [health_assessment_implementation_plan.md](./health_assessment_implementation_plan.md).
 
@@ -37,10 +37,19 @@ elastro health assess [OPTIONS]
 | `--feature` | Limit `_health_report` to one indicator; repeatable |
 | `--verbose-report` / `--no-verbose-report` | Request verbose root-cause analysis (default: on) |
 | `--include-raw` | Include raw `_health_report` in JSON/YAML output |
-| `--fix` | After assessment, offer interactive index remediations |
+| `--fix` | After assessment, run the unified remediation workflow |
+| `--plan` | After assessment, show remediation runbook only (no mutations) |
 | `--dry-run` | With `--fix`, preview API calls without executing |
+| `--yes` | With `--fix`, auto-confirm CONFIRM-level actions |
+| `--force` | With `--fix` and `--yes`, allow DESTRUCTIVE actions |
+| `--index` | Limit fixes to an index pattern (with `--fix` / `--plan`) |
+| `--action` | Limit fixes to one action: `reduce_replicas`, `reroute_failed`, `clear_routing_filters`, `ilm_retry`, `clear_read_only` |
+| `--target-replicas` | Explicit replica target for `reduce_replicas` |
 | `--history` / `--no-history` | Index report to `elastro-health-assessments` (default: off) |
 | `--history-index` | Override assessment history index name |
+| `--detail` | With table output, print expanded remediation guidance for findings |
+| `--detail-finding` | Limit `--detail` to one finding id (e.g. `shards.oversharded`) |
+| `--fail-on` | Exit `2` when health degrades past threshold (default: `fail`) |
 
 **Examples:**
 
@@ -48,10 +57,77 @@ elastro health assess [OPTIONS]
 elastro health assess -o table
 elastro health assess --feature disk -o json
 elastro health assess --fix --dry-run -o table
+elastro health assess --plan -o table
 elastro health assess --history -o table
+elastro health assess -o table --detail shards.oversharded
 ```
 
-Exit code `2` when overall status is `fail` (score band red).
+Exit code `2` when overall status is `fail` by default (`--fail-on fail`). Use `--fail-on warn` for stricter CI gates.
+
+---
+
+### `elastro health fix`
+
+Unified remediation workflow for yellow/red indices. Diagnoses allocation issues, builds an ordered runbook, shows impact before each action, and captures rollback snapshots for index-setting changes.
+
+```bash
+elastro health fix [OPTIONS]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--dry-run` | Preview planned API calls without executing |
+| `--yes` | Auto-confirm CONFIRM-level actions (non-interactive) |
+| `--force` | With `--yes`, allow DESTRUCTIVE actions |
+| `--index` | Limit fixes to an index pattern |
+| `--action` | Limit to one remediation action (`reduce_replicas`, `reroute_failed`, `clear_routing_filters`, `ilm_retry`, `clear_read_only`) |
+| `--target-replicas` | Explicit replica target for `reduce_replicas` |
+
+Remediation failures exit `3` when any executed action fails.
+
+**Safety behavior:**
+
+| Safety level | Interactive default | Non-interactive automation |
+|--------------|---------------------|----------------------------|
+| `CONFIRM` | Prompt (default No) | Requires `--yes` |
+| `DESTRUCTIVE` | Prompt + type index name (default No) | Requires `--yes --force` |
+
+**Examples:**
+
+```bash
+elastro health fix -o table
+elastro health fix --dry-run -o table
+elastro health fix --yes --action reroute_failed
+elastro health fix --yes --force --index logs-*
+elastro health fix --dry-run --action ilm_retry --index logs-000042
+elastro health fix --yes --force --action clear_read_only --index logs-flood-*
+```
+
+`elastro index fix` remains available but prints a deprecation notice and delegates to this workflow.
+
+---
+
+### `elastro health ilm`
+
+List indices with stuck or failed ILM lifecycle steps.
+
+```bash
+elastro health ilm [--stuck-only] [--index PATTERN]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--stuck-only` | Focus output on ERROR or blocked ILM steps |
+| `--index` | Limit to an index pattern |
+
+**Examples:**
+
+```bash
+elastro -o table health ilm --stuck-only
+elastro health ilm --index logs-* --stuck-only -o json
+```
+
+Pair with `elastro health fix --action ilm_retry --index <name>` to retry a failed step.
 
 ---
 
@@ -69,14 +145,45 @@ elastro health score [OPTIONS]
 | `--history` | Read scores from the assessment history index instead of re-assessing |
 | `--last` | Number of historical records to show with `--history` (default: `10`) |
 | `--history-index` | Override assessment history index name |
+| `--fail-on` | Exit `2` when score/status/findings exceed threshold (default: `fail`) |
 
 **Examples:**
 
 ```bash
 elastro health score
 elastro health score -o json
-elastro health score --history --last 5 -o table
+elastro health score --history --last 30 -o table
 ```
+
+With `--history` and table output, Elastro renders a sparkline-friendly history table including a Unicode trend line across samples.
+
+---
+
+### `elastro health trends`
+
+Analyze assessment history for score deltas, recurring findings, and persistent yellow signals.
+
+```bash
+elastro health trends [OPTIONS]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--window` | History window such as `7d`, `24h`, or `30d` (default: `7d`) |
+| `--cluster` | Limit to one cluster; omit for a fleet summary table |
+| `--finding` | Filter recurring findings to a specific finding id |
+| `--limit` | Maximum assessment samples to analyze (default: `50`) |
+| `--history-index` | Override assessment history index name |
+
+**Examples:**
+
+```bash
+elastro health trends -o table
+elastro health trends --cluster docker-cluster --window 30d
+elastro health trends --finding shards.oversharded --window 30d -o json
+```
+
+When no history index documents exist, the command returns guidance to run `elastro health assess --history` first.
 
 ---
 
@@ -111,8 +218,10 @@ Rollback files are stored locally at `~/.elastic/health-rollbacks/` with `0600` 
 Replacement for `elastro utils health`. Checks cluster, indices, or shard-level health.
 
 ```bash
-elastro health status [--level cluster|indices|shards] [--wait green|yellow|red] [--timeout 30s]
+elastro health status [--level cluster|indices|shards] [--wait green|yellow|red] [--timeout 30s] [--fail-on fail]
 ```
+
+`--wait` exits `2` on timeout or if the cluster never reaches the requested status.
 
 ---
 
@@ -146,6 +255,8 @@ elastro health shards [--index NAME] [--analyze] [--explain]
 
 `--analyze` reports oversharded (`< 1 MB`) and undersharded (`> 50 GB`) shard counts.
 
+`--fail-on warn` (default `fail`) exits `2` when `unassigned_shards > 0`.
+
 ---
 
 ### `elastro health hotspots`
@@ -172,6 +283,7 @@ elastro health lint [--category settings|mappings|shards|security] [--index PATT
 | `--index` | Limit settings/mappings/shard analysis to an index pattern |
 | `--max-indices` | Cap indices scanned for settings/mappings (default: 50) |
 | `--timeout` | Per-request timeout |
+| `--fail-on` | Exit `2` on lint findings past threshold (default: `fail` = fail-level only) |
 
 **Examples:**
 
@@ -181,7 +293,7 @@ elastro health lint --category mappings --category shards -o json
 elastro health lint --category shards --index logs-* -o table
 ```
 
-Exit codes: `0` when clean, `1` when warnings are found, `2` when fail-level issues exist (e.g. unassigned shards).
+Exit codes: `0` when clean (or only warnings with default `--fail-on fail`), `1` on operational errors, `2` when findings exceed `--fail-on` (use `--fail-on warn` to fail on warnings).
 
 Lint checks include:
 
@@ -196,12 +308,50 @@ Security posture checks also run during `health assess` via the security collect
 
 ---
 
+## Exit codes (v1.11.0+)
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success; health meets `--fail-on` threshold |
+| `1` | Operational error (connection failure, collector error) |
+| `2` | Health degraded per `--fail-on` |
+| `3` | Remediation partial failure (`health fix` / `assess --fix` only) |
+
+When both health degradation (`2`) and remediation failure (`3`) apply (e.g. `assess --fix`), exit `2` takes precedence so health gates still fail.
+
+### `--fail-on` thresholds
+
+| Value | Exits `2` when |
+|-------|----------------|
+| `fail` (default) | Overall status `fail`, fail-level findings, cluster `red`, or score &lt; 50 |
+| `warn` | Any `warn`/`fail` finding, unassigned shards, or stricter than `fail` |
+| `yellow` | Score &lt; 90, cluster `yellow`/`red`, or stricter than `warn` |
+| `green` | Score &lt; 90, any warn/fail finding, cluster not `green`, or unassigned shards |
+
+**CI examples:**
+
+```bash
+# Fail the job on warnings (paging threshold)
+elastro health assess --fail-on warn -o json
+
+# Lint gate: fail-level issues only (default)
+elastro health lint -o json
+
+# Stricter lint gate
+elastro health lint --fail-on warn -o json
+
+# Wait for green or fail
+elastro health status --wait green --timeout 120s
+```
+
+---
+
 ## Remediation and rollback workflow
 
-1. Run `elastro health assess --fix` (or `elastro index fix`) and confirm a suggested action.
+1. Run `elastro health fix` (or `elastro health assess --plan` to preview, `elastro health assess --fix` to fix after assessment).
 2. Before applying, Elastro captures relevant index settings (replicas, routing filters, etc.).
 3. The remediation executes; the result includes a `rollback_id` when a snapshot was saved.
-4. If the fix was incorrect, run `elastro health rollback --id <rollback_id>`.
+4. If the fix was incorrect, run `elastro health rollback apply --id <rollback_id>`.
 
 Supported automated actions (via `RemediationCatalog`):
 
@@ -210,8 +360,41 @@ Supported automated actions (via `RemediationCatalog`):
 | `reduce_replicas` | Yellow index with unassigned replicas |
 | `reroute_failed` | Force retry of failed shard allocation |
 | `clear_routing_filters` | Remove custom node routing allocation filters |
+| `ilm_retry` | Retry a stuck ILM lifecycle step (`CONFIRM`) |
+| `clear_read_only` | Clear flood-stage `read_only_allow_delete` block (`DESTRUCTIVE`) |
+
+Disk findings suggest `elastro cluster settings` to review watermarks. Flood-stage indices with read-only blocks surface `clear_read_only` remediation hints during assessment.
 
 Use `--dry-run` on assess or rollback to preview changes without mutating the cluster.
+
+### Scriptable dry-run (v1.10.0+)
+
+Dry-run is **preview-only**: no index settings change, no cluster reroute, no rollback snapshot writes, and no audit documents indexed to Elasticsearch. Diagnostics (cat indices, allocation explain) are read-only cluster calls.
+
+**Recommended scripting paths:**
+
+```bash
+# Preview remediation runbook as JSON
+elastro -o json health fix --dry-run
+
+# Preview rollback restore
+elastro -o json health rollback apply --id rb-... --dry-run
+
+# Assessment + runbook without mutations
+elastro -o json health assess --plan
+```
+
+JSON output for `health fix --dry-run` includes:
+
+| Field | Meaning |
+|-------|---------|
+| `dry_run` | Always `true` |
+| `summary.preview_only` | `true` when no mutations will occur |
+| `summary.executed_count` | Always `0` in dry-run |
+| `planned_actions[].planned_api_call` | Exact API preview per step |
+| `results[].planned_api_call` | Same preview echoed per result |
+
+Rollback dry-run JSON includes `planned_api_call` with the `PUT /{index}/_settings` body that would be restored.
 
 ---
 
@@ -257,7 +440,8 @@ The local GUI uses the same assessment and remediation stack:
 | `GET` | `/api/clusters/{name}/health/assess` | Full assessment |
 | `GET` | `/api/clusters/{name}/health/score` | Cached score (60s TTL) |
 | `GET` | `/api/clusters/{name}/health/findings` | Open findings from cache |
-| `GET` | `/api/clusters/{name}/health/history` | In-memory assessment history |
+| `GET` | `/api/clusters/{name}/health/history` | Assessment history (ES index when `health.assessment.enable_history=true`, merged with cache) |
+| `GET` | `/api/clusters/{name}/health/trends` | Trend report JSON for sparkline display (`?window=7d`) |
 | `GET` | `/api/clusters/{name}/health/nodes` | Node stats summary |
 | `POST` | `/api/clusters/{name}/health/fix` | Apply remediation; returns `rollback_id` |
 | `POST` | `/api/clusters/{name}/indices/{index}/fix` | Index-level fix; returns `rollback_id` |

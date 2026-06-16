@@ -106,7 +106,7 @@ def replica_misconfig_findings(ctx: RuleContext) -> List[Finding]:
                 remediation=RemediationAction(
                     id="reduce_replicas",
                     label=f"Reduce replicas to {suggested}",
-                    command="elastro index fix",
+                    command="elastro health fix",
                     safety=RemediationSafety.DESTRUCTIVE,
                 ),
                 metadata={

@@ -116,8 +116,17 @@ def create_repository(
 
 @repo_group.command("delete", no_args_is_help=True)
 @click.argument("name", type=str)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview deletion without executing (scriptable with -o json)",
+)
 @click.pass_obj
-def delete_repository(client: ElasticsearchClient, name: str) -> None:
+def delete_repository(
+    client: ElasticsearchClient,
+    name: str,
+    dry_run: bool,
+) -> None:
     """
     Delete a snapshot repository.
 
@@ -128,8 +137,15 @@ def delete_repository(client: ElasticsearchClient, name: str) -> None:
     Delete a repository definition:
     ```bash
     elastro snapshot repo delete my_backup
+    elastro -o json snapshot repo delete my_backup --dry-run
     ```
     """
+    from elastro.cli.deletion import emit_delete_preview, preview_snapshot_repository_delete
+
+    if dry_run:
+        emit_delete_preview(preview_snapshot_repository_delete(client, name))
+        return
+
     manager = SnapshotManager(client)
     if not click.confirm(f"Delete repository '{name}'?"):
         return
@@ -373,9 +389,17 @@ def restore_snapshot(
 @snapshot_group.command("delete", no_args_is_help=True)
 @click.argument("repository", type=str)
 @click.argument("snapshot", type=str)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview deletion without executing (scriptable with -o json)",
+)
 @click.pass_obj
 def delete_snapshot(
-    client: ElasticsearchClient, repository: str, snapshot: str
+    client: ElasticsearchClient,
+    repository: str,
+    snapshot: str,
+    dry_run: bool,
 ) -> None:
     """
     Delete a snapshot.
@@ -387,8 +411,15 @@ def delete_snapshot(
     Delete a snapshot:
     ```bash
     elastro snapshot delete my_backup snap_old
+    elastro -o json snapshot delete my_backup snap_old --dry-run
     ```
     """
+    from elastro.cli.deletion import emit_delete_preview, preview_snapshot_delete
+
+    if dry_run:
+        emit_delete_preview(preview_snapshot_delete(client, repository, snapshot))
+        return
+
     manager = SnapshotManager(client)
 
     if not click.confirm(

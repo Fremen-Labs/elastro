@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "elastro-client"
-version = "1.9.0"
+version = "1.13.0"
 description = "A comprehensive Python library for Elasticsearch management with both programmatic and CLI interfaces"
 readme = "README.md"
 requires-python = ">=3.9,<3.14"
@@ -47,10 +47,12 @@ dependencies = [
 test = [
     "pytest>=7.0.0",
     "pytest-cov>=3.0.0",
+    "httpx2>=0.1.0",
 ]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=3.0.0",
+    "httpx2>=0.1.0",
     "black>=22.0.0",
     "isort>=5.0.0",
     "mypy>=0.9.0",

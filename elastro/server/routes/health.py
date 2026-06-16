@@ -10,7 +10,14 @@ from elastro.core.logger import get_logger
 from elastro.health.assessor import HealthAssessor
 from elastro.health.collectors.nodes import NodesCollector
 from elastro.health.collectors.base import CollectContext
+from elastro.health.config import DEFAULT_HISTORY_INDEX
+from elastro.health.history import (
+    filter_records_by_window,
+    parse_window,
+    query_assessment_history,
+)
 from elastro.health.models import AssessmentReport, FindingStatus
+from elastro.health.trends import compute_trends_from_records
 from elastro.health.remediation.catalog import RemediationCatalog
 from elastro.health.remediation.executor import RemediationExecutor
 from elastro.health.rules.jvm import jvm_heap_used_percent
@@ -26,6 +33,83 @@ from elastro.server.services import build_es_client
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api", tags=["health"])
+
+
+def _health_assessment_settings(read_config: Any) -> Dict[str, Any]:
+    config = read_config()
+    health = config.get("health", {}) if isinstance(config, dict) else {}
+    assessment = health.get("assessment", {}) if isinstance(health, dict) else {}
+    if not isinstance(assessment, dict):
+        assessment = {}
+    return {
+        "enable_history": bool(assessment.get("enable_history", False)),
+        "history_index": str(
+            assessment.get("history_index", DEFAULT_HISTORY_INDEX)
+        ),
+    }
+
+
+def _merge_history(
+    cluster_name: str,
+    *,
+    es_records: List[Dict[str, Any]],
+    cache_records: List[Dict[str, Any]],
+    limit: int,
+) -> List[Dict[str, Any]]:
+    merged: Dict[str, Dict[str, Any]] = {}
+    for record in es_records + cache_records:
+        if not isinstance(record, dict):
+            continue
+        session_id = str(record.get("session_id", ""))
+        assessed_at = str(record.get("assessed_at", ""))
+        key = session_id or assessed_at or str(id(record))
+        existing = merged.get(key)
+        if existing is None or str(record.get("assessed_at", "")) > str(
+            existing.get("assessed_at", "")
+        ):
+            merged[key] = record
+
+    records = sorted(
+        merged.values(),
+        key=lambda item: str(item.get("assessed_at", "")),
+        reverse=True,
+    )
+    return records[:limit]
+
+
+def _load_cluster_history(
+    cluster_name: str,
+    target: Dict[str, Any],
+    read_config: Any,
+    *,
+    limit: int = 10,
+) -> List[Dict[str, Any]]:
+    settings = _health_assessment_settings(read_config)
+    cache_records = get_history(cluster_name, limit=limit)
+    if not settings["enable_history"]:
+        return cache_records
+
+    try:
+        client = build_es_client(target)
+        es_records = query_assessment_history(
+            client,
+            history_index=settings["history_index"],
+            cluster_name=cluster_name,
+            limit=limit,
+        )
+        return _merge_history(
+            cluster_name,
+            es_records=es_records,
+            cache_records=cache_records,
+            limit=limit,
+        )
+    except Exception as exc:
+        logger.warning(
+            "ES history unavailable for cluster=%s; using cache only: %s",
+            cluster_name,
+            exc,
+        )
+        return cache_records
 
 
 def _find_cluster(read_config: Any, cluster_name: str) -> Dict[str, Any]:
@@ -83,19 +167,30 @@ def _open_findings(report: AssessmentReport) -> List[Dict[str, Any]]:
 def _run_assessment(
     cluster_name: str,
     target: Dict[str, Any],
+    read_config: Any,
     *,
     verbose: bool = True,
     features: Optional[List[str]] = None,
     timeout: str = "30s",
 ) -> AssessmentReport:
+    settings = _health_assessment_settings(read_config)
     client = build_es_client(target)
     assessor = HealthAssessor(client)
     feature = features[0] if features else None
+    history_records = _load_cluster_history(
+        cluster_name,
+        target,
+        read_config,
+        limit=20,
+    )
     report = assessor.run(
         timeout=timeout,
         verbose_report=verbose,
         feature=feature,
-        assessment_history=get_history(cluster_name, limit=20),
+        assessment_history=history_records,
+        enable_history=settings["enable_history"],
+        history_index=settings["history_index"],
+        host=str(target.get("host", "unknown")),
     )
     if report.cluster_name == "unknown":
         report = report.model_copy(update={"cluster_name": cluster_name})
@@ -150,6 +245,7 @@ def health_routes(read_config: Any, verify_token: Any) -> APIRouter:
             report = _run_assessment(
                 cluster_name,
                 target,
+                read_config,
                 verbose=verbose,
                 features=features,
             )
@@ -179,7 +275,7 @@ def health_routes(read_config: Any, verify_token: Any) -> APIRouter:
 
         try:
             if cached is None:
-                report = _run_assessment(cluster_name, target)
+                report = _run_assessment(cluster_name, target, read_config)
             else:
                 report = cached
 
@@ -230,11 +326,64 @@ def health_routes(read_config: Any, verify_token: Any) -> APIRouter:
         limit: int = Query(10, ge=1, le=50),
         token: str = Depends(verify_token),
     ) -> Dict[str, Any]:
-        _find_cluster(read_config, cluster_name)
+        target = _find_cluster(read_config, cluster_name)
+        settings = _health_assessment_settings(read_config)
+        assessments = _load_cluster_history(
+            cluster_name,
+            target,
+            read_config,
+            limit=limit,
+        )
         return {
             "cluster_name": cluster_name,
-            "assessments": get_history(cluster_name, limit=limit),
+            "assessments": assessments,
+            "source": "merged" if settings["enable_history"] else "cache",
         }
+
+    @router.get("/clusters/{cluster_name}/health/trends")
+    def get_cluster_health_trends(
+        cluster_name: str,
+        window: str = Query("7d", description="History window (7d, 24h, 30d)"),
+        limit: int = Query(50, ge=1, le=200),
+        finding: Optional[str] = Query(None, description="Filter recurring findings"),
+        token: str = Depends(verify_token),
+    ) -> Dict[str, Any]:
+        target = _find_cluster(read_config, cluster_name)
+        settings = _health_assessment_settings(read_config)
+        try:
+            parse_window(window)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        try:
+            records = _load_cluster_history(
+                cluster_name,
+                target,
+                read_config,
+                limit=limit,
+            )
+            records = filter_records_by_window(records, window)
+            report = compute_trends_from_records(
+                records,
+                cluster_name=cluster_name,
+                window=window,
+                finding_id=finding,
+                source="merged" if settings["enable_history"] else "cache",
+            )
+            return report.to_dict()
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.error(
+                "Health trends failed for %s: %s",
+                cluster_name,
+                exc,
+                exc_info=True,
+            )
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to compute health trends: {exc}",
+            ) from exc
 
     @router.get("/clusters/{cluster_name}/health/nodes")
     def get_cluster_health_nodes(

@@ -11,7 +11,7 @@ from elastro.health.manager import HealthManager
 
 logger = get_logger(__name__)
 
-DEFAULT_METRICS = ("jvm", "fs", "os", "breaker")
+DEFAULT_METRICS = ("jvm", "fs", "os", "breaker", "thread_pool")
 
 
 class NodesCollector:
@@ -78,5 +78,6 @@ def _normalize_nodes(
             "fs": body.get("fs", {}),
             "os": body.get("os", {}),
             "breakers": body.get("breakers", {}),
+            "thread_pool": body.get("thread_pool", {}),
         }
     return nodes

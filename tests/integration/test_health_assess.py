@@ -150,56 +150,76 @@ class TestHealthAssessCLI:
         assert mock_assessor_cls.return_value.run.call_args.kwargs["feature"] == "disk"
 
     @patch("elastro.cli.cli.ElasticsearchClient.connect")
-    @patch("elastro.cli.commands.health.HealthAssessor")
-    @patch("elastro.health.remediation.diagnosis.diagnose_unhealthy_indices")
+    @patch("elastro.cli.commands.health.run_health_fix")
+    @patch("elastro.cli.commands.health._run_assessment")
     def test_assess_fix_dry_run_prints_planned_calls(
         self,
-        mock_diagnose,
-        mock_assessor_cls,
+        mock_run_assessment,
+        mock_run_fix,
         mock_connect,
         runner,
     ):
-        from elastro.health.remediation.models import IndexDiagnosis
+        from elastro.health.remediation.models import (
+            FixRunResult,
+            IndexDiagnosis,
+            PlannedAction,
+            RemediationResult,
+        )
+        from elastro.health.models import RemediationSafety
 
         mock_connect.return_value = None
-        mock_assessor_cls.return_value.run.return_value = _mock_report()
-        mock_diagnose.return_value = [
-            IndexDiagnosis(
-                index_name="logs-2024",
-                health="yellow",
-                suggested_action_id="reduce_replicas",
-                suggestion_text="Reduce replicas",
-            )
-        ]
+        mock_run_assessment.return_value = _mock_report()
+        mock_run_fix.return_value = FixRunResult(
+            diagnoses=[
+                IndexDiagnosis(
+                    index_name="logs-2024",
+                    health="yellow",
+                    suggested_action_id="reduce_replicas",
+                    suggestion_text="Reduce replicas",
+                )
+            ],
+            planned_actions=[
+                PlannedAction(
+                    action_id="reduce_replicas",
+                    label="Reduce replicas to safe target",
+                    safety=RemediationSafety.DESTRUCTIVE,
+                    impact="HA loss",
+                    index_name="logs-2024",
+                    planned_api_call="PUT /logs-2024/_settings body={'index': {'number_of_replicas': 0}}",
+                )
+            ],
+            results=[
+                RemediationResult(
+                    action_id="reduce_replicas",
+                    index_name="logs-2024",
+                    success=True,
+                    executed=False,
+                    dry_run=True,
+                    planned_api_call="PUT /logs-2024/_settings body={'index': {'number_of_replicas': 0}}",
+                    message="Reduce replicas to safe target",
+                )
+            ],
+            dry_run=True,
+        )
 
-        with patch(
-            "elastro.health.remediation.executor.RemediationExecutor.remediate_diagnosis",
-            return_value=MagicMock(
-                action_id="reduce_replicas",
-                index_name="logs-2024",
-                success=True,
-                executed=False,
-                dry_run=True,
-                planned_api_call="PUT /logs-2024/_settings body={'index': {'number_of_replicas': 0}}",
-                message="Reduce replicas to 0",
-            ),
-        ):
-            result = runner.invoke(
-                cli,
-                [
-                    "-h",
-                    "http://localhost:9205",
-                    "-o",
-                    "table",
-                    "health",
-                    "assess",
-                    "--fix",
-                    "--dry-run",
-                ],
-            )
+        result = runner.invoke(
+            cli,
+            [
+                "-h",
+                "http://localhost:9205",
+                "-o",
+                "table",
+                "health",
+                "assess",
+                "--fix",
+                "--dry-run",
+            ],
+        )
 
         assert result.exit_code == 0, result.output
-        assert "Planned remediations (dry-run)" in result.output
+        mock_run_fix.assert_called_once()
+        assert mock_run_fix.call_args.kwargs.get("dry_run") is True
+        assert "Remediation runbook (dry-run)" in result.output
         assert "logs-2024" in result.output
         assert "PUT /logs-2024/_settings" in result.output
 
@@ -268,7 +288,8 @@ class TestHealthAssessLive:
             ],
             env={"ELASTRO_LOG_LEVEL": "ERROR"},
         )
-        assert result.exit_code == 0, result.output
+        # Exit 2 is expected when --fail-on fail (default) and the dev cluster is degraded.
+        assert result.exit_code in (0, 2), result.output
         assert "docker-cluster" in result.output
         assert "/100" in result.output
 
@@ -286,7 +307,7 @@ class TestHealthAssessLive:
             ],
             env={"ELASTRO_LOG_LEVEL": "ERROR"},
         )
-        assert result.exit_code == 0, result.output
+        assert result.exit_code in (0, 2), result.output
         payload = json.loads(result.output.strip())
         report = AssessmentReport.model_validate(payload)
         assert report.elasticsearch_version.startswith("8.")

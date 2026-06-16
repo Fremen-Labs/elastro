@@ -153,10 +153,10 @@ elastro index update INDEX_NAME --settings SETTINGS_FILE
 ### Delete Index
 
 ```bash
-elastro index delete INDEX_NAME [--force]
+elastro index delete INDEX_NAME [--force] [--dry-run]
 ```
 
-The `--force` option skips the confirmation prompt.
+The `--force` option skips the confirmation prompt. Use `--dry-run` to preview the planned `DELETE` API call without mutating the cluster (`-o json` for scripting).
 
 ### Open Index
 
@@ -213,16 +213,28 @@ The `--partial` flag enables partial document updates.
 ### Delete Document
 
 ```bash
-elastro doc delete INDEX_NAME DOCUMENT_ID
+elastro doc delete INDEX_NAME DOCUMENT_ID [--dry-run]
 ```
 
 ### Bulk Delete Documents
 
 ```bash
-elastro doc bulk-delete INDEX_NAME --file IDS_FILE
+elastro doc bulk-delete INDEX_NAME --file IDS_FILE [--dry-run]
 ```
 
 The file should contain a JSON array of document IDs.
+
+### Delete dry-run (all delete commands)
+
+Every Elastro delete command supports `--dry-run`. Preview mode performs read-only existence checks, prints the planned Elasticsearch API call, and never executes deletes. JSON output includes `summary.preview_only`, `summary.executed_count` (always `0`), and `planned_api_call`.
+
+```bash
+elastro -o json index delete logs-2024 --dry-run
+elastro -o json template delete my-template --dry-run
+elastro -o json ilm delete my-policy --dry-run
+elastro -o json snapshot delete my_repo snap-001 --dry-run
+elastro -o json ingest pipeline delete web-logs --dry-run
+```
 
 ## Ingest Engine
 
@@ -337,8 +349,8 @@ elastro health score --history --last 5 -o table
 When a fix captures settings before applying, the result includes a `rollback_id`:
 
 ```bash
-elastro health rollback --id rb-abc123 --dry-run
-elastro health rollback --id rb-abc123
+elastro health rollback apply --id rb-abc123 --dry-run
+elastro health rollback apply --id rb-abc123
 ```
 
 Snapshots are stored under `~/.elastic/health-rollbacks/`.

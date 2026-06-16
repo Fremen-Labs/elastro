@@ -1,6 +1,6 @@
 """Health assessment and status commands."""
 
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import rich_click as click
 
@@ -8,13 +8,48 @@ from elastro.core.client import ElasticsearchClient
 from elastro.core.errors import OperationError
 from elastro.core.logger import get_logger
 from elastro.health.assessor import HealthAssessor
+from elastro.health.exit_policy import (
+    FAIL_ON_CHOICES,
+    FailOn,
+    actionable_findings,
+    combine_exit_codes,
+    resolve_exit_code,
+    resolve_fix_exit_code,
+)
 from elastro.health.formatters.render import render_assessment
 from elastro.health.manager import HealthManager
 from elastro.health.models import AssessmentReport, FindingStatus
 from elastro.cli.output import format_output
+from elastro.health.remediation.display import render_fix_run_result
+from elastro.health.remediation.dry_run import remediation_result_payload
+from elastro.health.remediation.catalog import CATALOG_ACTION_IDS
+from elastro.health.remediation.fix import run_health_fix
+from elastro.health.remediation.models import FixRunResult
 
 _VALID_WAIT_STATUSES = ("green", "yellow", "red")
 logger = get_logger(__name__)
+
+
+def fail_on_option(f: Callable) -> Callable:
+    """Shared ``--fail-on`` option for monitoring-friendly exit codes."""
+    return click.option(
+        "--fail-on",
+        type=click.Choice(FAIL_ON_CHOICES, case_sensitive=False),
+        default=FailOn.FAIL.value,
+        show_default=True,
+        help="Exit 2 when health degrades past this threshold (0=success)",
+    )(f)
+
+
+def _resolve_fail_on(fail_on: str) -> FailOn:
+    return FailOn(fail_on.lower())
+
+
+def _parse_finding_status(value: str) -> FindingStatus:
+    try:
+        return FindingStatus(value)
+    except ValueError:
+        return FindingStatus.UNKNOWN
 
 
 def _output_format(ctx: click.Context) -> str:
@@ -109,7 +144,13 @@ def health_group() -> None:
     "--fix",
     is_flag=True,
     default=False,
-    help="Offer the same interactive index remediations as 'elastro index fix'",
+    help="After assessment, run the unified remediation workflow (prefer 'health fix')",
+)
+@click.option(
+    "--plan",
+    is_flag=True,
+    default=False,
+    help="After assessment, show remediation runbook without executing",
 )
 @click.option(
     "--dry-run",
@@ -117,6 +158,22 @@ def health_group() -> None:
     default=False,
     help="With --fix, show planned API calls without executing",
 )
+@click.option("--yes", is_flag=True, default=False, help="With --fix, auto-confirm CONFIRM actions")
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="With --fix and --yes, allow DESTRUCTIVE actions in non-interactive mode",
+)
+@click.option("--index", "index_pattern", type=str, default=None, help="Limit fixes to an index pattern")
+@click.option(
+    "--action",
+    "action_filter",
+    type=click.Choice(CATALOG_ACTION_IDS, case_sensitive=False),
+    default=None,
+    help="Limit fixes to a single remediation action",
+)
+@click.option("--target-replicas", type=int, default=None, help="Explicit replica target for reduce_replicas")
 @click.option(
     "--history/--no-history",
     default=False,
@@ -128,6 +185,19 @@ def health_group() -> None:
     default=None,
     help="Assessment history index name",
 )
+@click.option(
+    "--detail",
+    is_flag=True,
+    default=False,
+    help="With table output, show expanded remediation detail for findings",
+)
+@click.option(
+    "--detail-finding",
+    type=str,
+    default=None,
+    help="Limit --detail to a single finding id (e.g. shards.oversharded)",
+)
+@fail_on_option
 @click.pass_context
 def health_assess(
     ctx: click.Context,
@@ -136,9 +206,18 @@ def health_assess(
     verbose_report: bool,
     include_raw: bool,
     fix: bool,
+    plan: bool,
     dry_run: bool,
+    yes: bool,
+    force: bool,
+    index_pattern: Optional[str],
+    action_filter: Optional[str],
+    target_replicas: Optional[int],
     history: bool,
     history_index: Optional[str],
+    detail: bool,
+    detail_finding: Optional[str],
+    fail_on: str,
 ) -> None:
     """
     Run a full cluster health assessment with score and findings.
@@ -171,6 +250,12 @@ def health_assess(
     if dry_run and not fix:
         click.echo("Error: --dry-run requires --fix", err=True)
         raise SystemExit(2)
+    if plan and fix:
+        click.echo("Error: --plan and --fix are mutually exclusive", err=True)
+        raise SystemExit(2)
+    if (yes or force) and not fix:
+        click.echo("Error: --yes and --force require --fix", err=True)
+        raise SystemExit(2)
 
     client: ElasticsearchClient = ctx.obj
     logger.info(
@@ -194,49 +279,191 @@ def health_assess(
             report,
             _output_format(ctx),
             include_raw=include_raw,
+            show_detail=detail,
+            detail_finding=detail_finding,
         )
         click.echo(output, nl=not output.endswith("\n"))
 
-        if fix or dry_run:
-            logger.info(
-                "Starting post-assessment remediation dry_run=%s",
-                dry_run,
-            )
-            from rich.prompt import Confirm
-
-            from elastro.health.remediation.diagnosis import diagnose_unhealthy_indices
-            from elastro.health.remediation.display import render_remediation_summary
-            from elastro.health.remediation.executor import RemediationExecutor
-
-            from elastro.health.audit import HealthAuditLogger
-
-            audit = HealthAuditLogger(
-                client,
-                profile=_cli_profile(ctx),
-                host=_client_host(client),
-            )
-            executor = RemediationExecutor(
+        fix_result: Optional[FixRunResult] = None
+        if plan or fix or dry_run:
+            fix_result = _render_health_fix(
+                ctx,
                 client,
                 dry_run=dry_run,
-                interactive=fix and not dry_run,
-                confirm=lambda prompt, default: Confirm.ask(prompt, default=default),
+                plan_only=plan,
+                auto_yes=yes,
+                force=force,
+                index_pattern=index_pattern,
+                action_filter=action_filter,
+                target_replicas=target_replicas,
                 session_id=report.session_id,
-                audit_logger=audit,
                 cluster_name=report.cluster_name,
+                interactive=fix and not dry_run and not yes,
             )
-            diagnoses = diagnose_unhealthy_indices(executor.index_manager)
-            results = []
-            for diagnosis in diagnoses:
-                result = executor.remediate_diagnosis(diagnosis)
-                if result is not None:
-                    results.append(result)
-            render_remediation_summary(diagnoses, results, dry_run=dry_run)
 
-        if report.overall_status.value == "fail":
-            raise SystemExit(2)
+        assess_exit = resolve_exit_code(
+            fail_on=_resolve_fail_on(fail_on),
+            overall_status=report.overall_status,
+            overall_score=report.overall_score,
+            findings=report.findings,
+        )
+        fix_exit = resolve_fix_exit_code(fix_result) if fix_result else 0
+        exit_code = combine_exit_codes(assess_exit, fix_exit)
+        if exit_code:
+            raise SystemExit(exit_code)
     except OperationError as e:
         click.echo(f"Error running health assessment: {str(e)}", err=True)
         raise SystemExit(1) from e
+
+
+def _render_health_fix(
+    ctx: click.Context,
+    client: ElasticsearchClient,
+    *,
+    dry_run: bool,
+    plan_only: bool,
+    auto_yes: bool,
+    force: bool,
+    index_pattern: Optional[str],
+    action_filter: Optional[str],
+    target_replicas: Optional[int],
+    session_id: Optional[str],
+    cluster_name: Optional[str],
+    interactive: bool,
+) -> FixRunResult:
+    from rich.prompt import Confirm, Prompt
+
+    from elastro.health.audit import HealthAuditLogger
+
+    logger.info(
+        "Health fix flow invoked dry_run=%s plan_only=%s auto_yes=%s force=%s",
+        dry_run,
+        plan_only,
+        auto_yes,
+        force,
+    )
+    audit = HealthAuditLogger(
+        client,
+        profile=_cli_profile(ctx),
+        host=_client_host(client),
+    )
+    fix_result = run_health_fix(
+        client,
+        dry_run=dry_run,
+        plan_only=plan_only,
+        auto_yes=auto_yes,
+        force=force,
+        index_pattern=index_pattern,
+        action_filter=action_filter,
+        target_replicas=target_replicas,
+        interactive=interactive,
+        session_id=session_id,
+        cluster_name=cluster_name,
+        audit_logger=audit,
+        confirm=lambda prompt, default: Confirm.ask(prompt, default=default),
+        prompt=lambda message: Prompt.ask(message),
+    )
+    render_fix_run_result(fix_result, output_format=_output_format(ctx))
+    return fix_result
+
+
+@health_group.command("fix")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="Preview planned API calls without executing",
+)
+@click.option(
+    "--yes",
+    is_flag=True,
+    default=False,
+    help="Auto-confirm CONFIRM-level actions (non-interactive)",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="With --yes, allow DESTRUCTIVE actions in non-interactive mode",
+)
+@click.option("--index", "index_pattern", type=str, default=None, help="Limit fixes to an index pattern")
+@click.option(
+    "--action",
+    "action_filter",
+    type=click.Choice(CATALOG_ACTION_IDS, case_sensitive=False),
+    default=None,
+    help="Limit fixes to a single remediation action",
+)
+@click.option(
+    "--target-replicas",
+    type=int,
+    default=None,
+    help="Explicit replica target for reduce_replicas",
+)
+@click.pass_context
+def health_fix(
+    ctx: click.Context,
+    dry_run: bool,
+    yes: bool,
+    force: bool,
+    index_pattern: Optional[str],
+    action_filter: Optional[str],
+    target_replicas: Optional[int],
+) -> None:
+    """
+    Diagnose unhealthy indices and apply safe, confirmed remediations.
+
+    Shows impact and consequences before destructive changes. Use ``--dry-run``
+    to preview, ``--yes`` for automation-friendly CONFIRM actions, and
+    ``--force`` with ``--yes`` for DESTRUCTIVE actions.
+
+    Examples:
+
+    Interactive fix workflow:
+    ```bash
+    elastro health fix -o table
+    ```
+
+    Preview without changes:
+    ```bash
+    elastro health fix --dry-run -o table
+    ```
+
+    CI-safe reroute retry:
+    ```bash
+    elastro health fix --yes --action reroute_failed
+    ```
+    """
+    client: ElasticsearchClient = ctx.obj
+    logger.info(
+        "health fix invoked dry_run=%s yes=%s force=%s index=%s action=%s",
+        dry_run,
+        yes,
+        force,
+        index_pattern,
+        action_filter,
+    )
+    try:
+        fix_result = _render_health_fix(
+            ctx,
+            client,
+            dry_run=dry_run,
+            plan_only=False,
+            auto_yes=yes,
+            force=force,
+            index_pattern=index_pattern,
+            action_filter=action_filter,
+            target_replicas=target_replicas,
+            session_id=None,
+            cluster_name=None,
+            interactive=not (yes or dry_run),
+        )
+        exit_code = combine_exit_codes(resolve_fix_exit_code(fix_result))
+        if exit_code:
+            raise SystemExit(exit_code)
+    except OperationError as exc:
+        click.echo(f"Error running health fix: {exc}", err=True)
+        raise SystemExit(1) from exc
 
 
 @health_group.command("score")
@@ -260,6 +487,7 @@ def health_assess(
     default=None,
     help="Assessment history index name",
 )
+@fail_on_option
 @click.pass_context
 def health_score(
     ctx: click.Context,
@@ -267,6 +495,7 @@ def health_score(
     history: bool,
     last: int,
     history_index: Optional[str],
+    fail_on: str,
 ) -> None:
     """
     Print the current cluster health score (0-100).
@@ -298,14 +527,11 @@ def health_score(
                 limit=last,
             )
             if output_fmt == "table":
-                for record in records:
-                    cluster = record.get("cluster_name", "unknown")
-                    score = record.get("overall_score", 0)
-                    status = record.get("overall_status", "unknown")
-                    assessed_at = record.get("assessed_at", "")
-                    click.echo(
-                        f"{cluster}: {score}/100 ({status}) @ {assessed_at}"
-                    )
+                from elastro.health.formatters.history_table import (
+                    format_score_history_table,
+                )
+
+                click.echo(format_score_history_table(records), nl=False)
             else:
                 click.echo(
                     format_output(
@@ -313,6 +539,17 @@ def health_score(
                         output_format=output_fmt,
                     )
                 )
+            if records:
+                latest = records[0]
+                exit_code = resolve_exit_code(
+                    fail_on=_resolve_fail_on(fail_on),
+                    overall_status=_parse_finding_status(
+                        str(latest.get("overall_status", "unknown"))
+                    ),
+                    overall_score=int(latest.get("overall_score") or 0),
+                )
+                if exit_code:
+                    raise SystemExit(exit_code)
             return
 
         report = _run_assessment(
@@ -354,9 +591,145 @@ def health_score(
                 f"{report.cluster_name}: {report.overall_score}/100 ({label}) "
                 f"- {len(report.findings)} finding(s)"
             )
+
+        exit_code = resolve_exit_code(
+            fail_on=_resolve_fail_on(fail_on),
+            overall_status=report.overall_status,
+            overall_score=report.overall_score,
+            findings=report.findings,
+        )
+        if exit_code:
+            raise SystemExit(exit_code)
     except OperationError as e:
         click.echo(f"Error fetching health score: {str(e)}", err=True)
         raise SystemExit(1) from e
+
+
+@health_group.command("trends")
+@click.option(
+    "--window",
+    type=str,
+    default="7d",
+    show_default=True,
+    help="History window (e.g. 7d, 24h, 30d)",
+)
+@click.option(
+    "--cluster",
+    "cluster_name",
+    type=str,
+    default=None,
+    help="Limit trends to a single cluster (omit for fleet summary)",
+)
+@click.option(
+    "--finding",
+    "finding_id",
+    type=str,
+    default=None,
+    help="Filter recurring findings to a specific finding id",
+)
+@click.option(
+    "--limit",
+    type=int,
+    default=50,
+    show_default=True,
+    help="Maximum assessment samples to analyze",
+)
+@click.option(
+    "--history-index",
+    type=str,
+    default=None,
+    help="Assessment history index name",
+)
+@click.pass_context
+def health_trends(
+    ctx: click.Context,
+    window: str,
+    cluster_name: Optional[str],
+    finding_id: Optional[str],
+    limit: int,
+    history_index: Optional[str],
+) -> None:
+    """
+    Show score trends, recurring findings, and persistent yellow signals.
+
+    Examples:
+
+    ```bash
+    elastro health trends -o table
+    elastro health trends --cluster docker-cluster --window 30d
+    elastro health trends --finding shards.oversharded --window 30d -o json
+    ```
+    """
+    from elastro.health.config import DEFAULT_HISTORY_INDEX
+    from elastro.health.formatters.history_table import (
+        format_fleet_summary_table,
+        format_trends_table,
+    )
+    from elastro.health.history import history_cluster_summary, parse_window
+    from elastro.health.trends import compute_trends
+
+    client: ElasticsearchClient = ctx.obj
+    output_fmt = _output_format(ctx)
+    resolved_index = history_index or DEFAULT_HISTORY_INDEX
+
+    logger.info(
+        "health trends invoked window=%s cluster=%s finding=%s limit=%s",
+        window,
+        cluster_name,
+        finding_id,
+        limit,
+    )
+
+    try:
+        parse_window(window)
+    except ValueError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        raise SystemExit(2) from exc
+
+    try:
+        if cluster_name:
+            report = compute_trends(
+                client,
+                history_index=resolved_index,
+                cluster_name=cluster_name,
+                window=window,
+                limit=limit,
+                finding_id=finding_id,
+            )
+            if output_fmt == "table":
+                click.echo(format_trends_table(report), nl=False)
+            else:
+                click.echo(format_output(report.to_dict(), output_format=output_fmt))
+            return
+
+        summary = history_cluster_summary(
+            client,
+            history_index=resolved_index,
+            window=window,
+            limit=limit,
+        )
+        if output_fmt == "table":
+            click.echo(
+                format_fleet_summary_table(summary, window=window),
+                nl=False,
+            )
+        else:
+            click.echo(
+                format_output(
+                    {
+                        "window": window,
+                        "clusters": summary,
+                        "count": len(summary),
+                    },
+                    output_format=output_fmt,
+                )
+            )
+    except OperationError as exc:
+        click.echo(f"Error computing health trends: {exc}", err=True)
+        raise SystemExit(1) from exc
+    except ValueError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        raise SystemExit(2) from exc
 
 
 @health_group.command("nodes")
@@ -500,6 +873,7 @@ def health_nodes(
     show_default=True,
     help="Undershard threshold in gigabytes",
 )
+@fail_on_option
 @click.pass_context
 def health_shards(
     ctx: click.Context,
@@ -508,6 +882,7 @@ def health_shards(
     explain: bool,
     overshard_mb: float,
     undershard_gb: float,
+    fail_on: str,
 ) -> None:
     """
     Inspect cluster shards, analyze shard sizes, or explain allocation.
@@ -574,17 +949,83 @@ def health_shards(
             click.echo(format_output(analysis, output_format="yaml"))
         else:
             click.echo(format_output(analysis, output_format="json"))
-        return
-
-    summary = {
-        "total_shards": analysis.get("total_shards", 0),
-        "unassigned_shards": analysis.get("unassigned_count", 0),
-        "index": index,
-    }
-    if output_fmt == "table":
-        click.echo(format_shard_analyze_summary(analysis))
     else:
-        click.echo(format_output(summary, output_format=output_fmt))
+        summary = {
+            "total_shards": analysis.get("total_shards", 0),
+            "unassigned_shards": analysis.get("unassigned_count", 0),
+            "index": index,
+        }
+        if output_fmt == "table":
+            click.echo(format_shard_analyze_summary(analysis))
+        else:
+            click.echo(format_output(summary, output_format=output_fmt))
+
+    exit_code = resolve_exit_code(
+        fail_on=_resolve_fail_on(fail_on),
+        extra_signals={
+            "unassigned_shards": analysis.get("unassigned_count", 0),
+        },
+    )
+    if exit_code:
+        raise SystemExit(exit_code)
+
+
+@health_group.command("ilm")
+@click.option(
+    "--stuck-only",
+    is_flag=True,
+    default=False,
+    help="Show only indices with failed or stuck ILM lifecycle steps",
+)
+@click.option("--index", "index_pattern", type=str, default=None, help="Limit to an index pattern")
+@click.pass_context
+def health_ilm(
+    ctx: click.Context,
+    stuck_only: bool,
+    index_pattern: Optional[str],
+) -> None:
+    """
+    Inspect ILM lifecycle status and list stuck indices.
+
+    Examples:
+
+    ```bash
+    elastro -o table health ilm --stuck-only
+    elastro health ilm --index logs-* --stuck-only -o json
+    elastro health fix --dry-run --action ilm_retry --index logs-000042
+    ```
+    """
+    from elastro.health.formatters.ilm_table import format_stuck_ilm_table
+    from elastro.health.ilm_status import list_ilm_indices
+
+    client: ElasticsearchClient = ctx.obj
+    logger.info(
+        "health ilm invoked stuck_only=%s index=%s",
+        stuck_only,
+        index_pattern,
+    )
+    output_fmt = _output_format(ctx)
+
+    try:
+        rows = list_ilm_indices(
+            client,
+            index_pattern=index_pattern,
+            stuck_only=stuck_only,
+        )
+
+        if output_fmt == "table":
+            click.echo(format_stuck_ilm_table(rows), nl=False)
+        else:
+            payload = {
+                "stuck_only": stuck_only,
+                "index_pattern": index_pattern,
+                "indices": [item.model_dump(mode="json") for item in rows],
+                "count": len(rows),
+            }
+            click.echo(format_output(payload, output_format=output_fmt))
+    except OperationError as exc:
+        click.echo(f"Error inspecting ILM status: {exc}", err=True)
+        raise SystemExit(1) from exc
 
 
 @health_group.command("hotspots")
@@ -654,6 +1095,7 @@ def health_hotspots(ctx: click.Context, variance: float) -> None:
     show_default=True,
     help="Maximum user indices to scan for settings/mappings lint",
 )
+@fail_on_option
 @click.pass_context
 def health_lint(
     ctx: click.Context,
@@ -661,6 +1103,7 @@ def health_lint(
     index: Optional[str],
     timeout: str,
     max_indices: int,
+    fail_on: str,
 ) -> None:
     """
     Lint index settings, mappings, and shard layout against best practices.
@@ -701,13 +1144,20 @@ def health_lint(
             }
             click.echo(format_output(payload, output_format=output_fmt))
 
-        actionable = [
-            item for item in findings if item.id != "lint.categories_skipped"
-        ]
+        actionable = actionable_findings(findings)
+        overall_status = FindingStatus.PASS
         if any(item.status == FindingStatus.FAIL for item in actionable):
-            raise SystemExit(2)
-        if actionable:
-            raise SystemExit(2)
+            overall_status = FindingStatus.FAIL
+        elif any(item.status == FindingStatus.WARN for item in actionable):
+            overall_status = FindingStatus.WARN
+
+        exit_code = resolve_exit_code(
+            fail_on=_resolve_fail_on(fail_on),
+            overall_status=overall_status,
+            findings=actionable,
+        )
+        if exit_code:
+            raise SystemExit(exit_code)
     except OperationError as exc:
         click.echo(f"Error running health lint: {exc}", err=True)
         raise SystemExit(1) from exc
@@ -801,7 +1251,7 @@ def _run_health_rollback(
         rollback_id,
         dry_run,
     )
-    audit = HealthAuditLogger(
+    audit = None if dry_run else HealthAuditLogger(
         client,
         profile=_cli_profile(ctx),
         host=_client_host(client),
@@ -814,9 +1264,11 @@ def _run_health_rollback(
     )
     result = executor.rollback(rollback_id, dry_run=dry_run)
     output_fmt = _output_format(ctx)
-    payload = result.model_dump(mode="json")
+    payload = remediation_result_payload(result)
     if output_fmt == "table":
         click.echo(result.message)
+        if result.planned_api_call:
+            click.echo(f"Planned: {result.planned_api_call}")
         if result.rollback_id:
             click.echo(f"Rollback id: {result.rollback_id}")
     else:
@@ -839,12 +1291,14 @@ def _run_health_rollback(
     help="Wait for specified status (green, yellow, red)",
 )
 @click.option("--timeout", type=str, default="30s", help="Timeout for health check")
-@click.pass_obj
+@fail_on_option
+@click.pass_context
 def health_status(
-    client: ElasticsearchClient,
+    ctx: click.Context,
     level: str,
     wait: Optional[str],
     timeout: str,
+    fail_on: str,
 ) -> None:
     """
     Check Elasticsearch cluster health.
@@ -863,12 +1317,14 @@ def health_status(
     elastro health status --wait green --timeout 60s
     ```
     """
+    client: ElasticsearchClient = ctx.obj
     health_manager = HealthManager(client)
     logger.info(
-        "health status invoked level=%s wait=%s timeout=%s",
+        "health status invoked level=%s wait=%s timeout=%s fail_on=%s",
         level,
         wait,
         timeout,
+        fail_on,
     )
 
     try:
@@ -878,6 +1334,17 @@ def health_status(
             wait_for_status=wait,
         )
         _render_cluster_health(result)
+
+        exit_code = resolve_exit_code(
+            fail_on=_resolve_fail_on(fail_on),
+            extra_signals={
+                "cluster_status": result.get("status"),
+                "wait_status": wait,
+                "timed_out": result.get("timed_out", False),
+            },
+        )
+        if exit_code:
+            raise SystemExit(exit_code)
     except OperationError as e:
         click.echo(f"Error checking health: {str(e)}", err=True)
         raise SystemExit(1) from e
