@@ -212,8 +212,12 @@ class ElasticsearchClient:
             # Verify connection by making a ping request
             ping_result = self._client.ping()
             if not ping_result:
-                logger.error("Ping failed during connection attempt")
-                raise ConnectionError("Failed to connect to Elasticsearch")
+                # Differentiate auth failure (401) from network failure
+                detail = self._diagnose_ping_failure(client_params)
+                logger.error("Ping failed during connection attempt: %s", detail)
+                if "401" in detail or "authentication" in detail.lower():
+                    raise AuthenticationError(detail)
+                raise ConnectionError(detail)
             self._connected = True
             logger.info("Successfully connected to Elasticsearch")
         except ESConnectionError as e:
@@ -226,6 +230,10 @@ class ElasticsearchClient:
             self._client = None
             logger.error(f"Authentication failed: {str(e)}")
             raise AuthenticationError(f"Authentication failed: {str(e)}")
+        except (ConnectionError, AuthenticationError):
+            self._connected = False
+            self._client = None
+            raise
         except Exception as e:
             self._connected = False
             self._client = None
@@ -233,6 +241,43 @@ class ElasticsearchClient:
             raise ConnectionError(
                 f"Unexpected error connecting to Elasticsearch: {str(e)}"
             )
+
+    @staticmethod
+    def _diagnose_ping_failure(client_params: Dict[str, Any]) -> str:
+        """Probe the cluster root to distinguish auth failures from network issues."""
+        import urllib.request
+        import urllib.error
+
+        hosts = client_params.get("hosts", [])
+        url = hosts[0] if isinstance(hosts, list) and hosts else str(hosts)
+
+        try:
+            req = urllib.request.Request(url, method="GET")
+            with urllib.request.urlopen(req, timeout=5) as _resp:
+                # Reachable without auth — security is likely disabled
+                return "Failed to connect to Elasticsearch"
+        except urllib.error.HTTPError as http_err:
+            if http_err.code == 401:
+                has_creds = "basic_auth" in client_params or "api_key" in client_params
+                if has_creds:
+                    return (
+                        "Security is enabled and returned HTTP 401 — "
+                        "the configured username/password or API key is invalid. "
+                        "Check your Elastro configuration."
+                    )
+                return (
+                    "Security is enabled (HTTP 401) but no credentials were provided. "
+                    "Configure username/password via `elastro connect` or "
+                    "set ELASTIC_AUTH_USERNAME and ELASTIC_AUTH_PASSWORD."
+                )
+            if http_err.code == 403:
+                return (
+                    "Security returned HTTP 403 Forbidden — the user lacks "
+                    "sufficient privileges."
+                )
+            return f"Elasticsearch returned HTTP {http_err.code}"
+        except Exception:
+            return "Failed to connect to Elasticsearch (host unreachable)"
 
     def disconnect(self) -> None:
         """Disconnect from Elasticsearch and clean up resources."""

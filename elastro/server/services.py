@@ -20,6 +20,10 @@ def build_es_client(cluster_config: Dict[str, Any]) -> ElasticsearchClient:
     the GUI server. All route modules MUST use this instead of inlining
     client construction logic.
 
+    Uses ``use_config=False`` so the GUI's own cluster config is the sole
+    source of truth — the CLI's ``config.yaml`` is intentionally ignored
+    here to avoid stale-credential collisions.
+
     Args:
         cluster_config: A dict from gui_config.json with 'host' and 'auth' keys.
 
@@ -34,17 +38,17 @@ def build_es_client(cluster_config: Dict[str, Any]) -> ElasticsearchClient:
     auth_kwargs: Dict[str, Any] = {}
     if "api_key" in auth_conf and auth_conf["api_key"]:
         auth_kwargs["api_key"] = auth_conf["api_key"]
-    elif "username" in auth_conf:
-        auth_kwargs["basic_auth"] = (
-            auth_conf["username"],
-            auth_conf.get("password", ""),
-        )
+    elif "username" in auth_conf and auth_conf["username"]:
+        auth_kwargs["username"] = auth_conf["username"]
+        auth_kwargs["password"] = auth_conf.get("password", "")
 
     host = cluster_config["host"]
     if not host.startswith("http://") and not host.startswith("https://"):
         host = "http://" + host
 
-    client = ElasticsearchClient(hosts=[host], **auth_kwargs)
+    client = ElasticsearchClient(
+        hosts=[host], use_config=False, verify_certs=False, **auth_kwargs
+    )
     client.connect()
     return client
 

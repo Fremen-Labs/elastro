@@ -114,6 +114,41 @@ class ElastroGUI:
 
         self._setup_routes()
 
+    @staticmethod
+    def _has_usable_auth(auth: Dict[str, Any]) -> bool:
+        """Return True when the auth dict contains at least one usable credential."""
+        if not auth or not isinstance(auth, dict):
+            return False
+        if auth.get("api_key"):
+            return True
+        if auth.get("username") and auth.get("password"):
+            return True
+        return False
+
+    def _read_cli_auth(self) -> Dict[str, Any]:
+        """Read auth credentials from the CLI config.yaml, if available."""
+        cli_config_path = self.config_dir / "config.yaml"
+        if not cli_config_path.exists():
+            return {}
+        try:
+            import yaml
+
+            with open(cli_config_path, "r") as f:
+                cli_cfg = yaml.safe_load(f)
+            if cli_cfg and "elasticsearch" in cli_cfg:
+                es_cfg = cli_cfg["elasticsearch"]
+                auth = es_cfg.get("auth", {})
+                if isinstance(auth, dict) and self._has_usable_auth(auth):
+                    # Return only credential keys (strip 'type' and nulls)
+                    return {
+                        k: v
+                        for k, v in auth.items()
+                        if v is not None and k != "type"
+                    }
+        except Exception:
+            pass
+        return {}
+
     def _ensure_config(self) -> None:
         if not self.config_dir.exists():
             self.config_dir.mkdir(parents=True, exist_ok=True)
@@ -144,6 +179,42 @@ class ElastroGUI:
 
             with open(self.config_file, "w") as f:
                 json.dump({"clusters": initial_clusters}, f)
+        else:
+            # Back-fill: if gui_config.json exists but clusters have empty auth,
+            # attempt to populate from CLI config.yaml so the GUI self-heals
+            # when security is enabled or credentials change.
+            self._backfill_auth_from_cli()
+
+    def _backfill_auth_from_cli(self) -> None:
+        """Populate empty GUI cluster auth blocks from CLI config.yaml."""
+        try:
+            with open(self.config_file, "r") as f:
+                gui_cfg = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return
+
+        clusters = gui_cfg.get("clusters", [])
+        if not clusters:
+            return
+
+        cli_auth = self._read_cli_auth()
+        if not cli_auth:
+            return
+
+        changed = False
+        for cluster in clusters:
+            existing_auth = cluster.get("auth", {})
+            if not self._has_usable_auth(existing_auth):
+                cluster["auth"] = cli_auth.copy()
+                changed = True
+                logger.info(
+                    "Back-filled auth for GUI cluster '%s' from CLI config",
+                    cluster.get("name", "unknown"),
+                )
+
+        if changed:
+            with open(self.config_file, "w") as f:
+                json.dump(gui_cfg, f, indent=4)
 
     def _read_config(self) -> Dict[str, Any]:
         self._ensure_config()
