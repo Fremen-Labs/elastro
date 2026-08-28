@@ -5,14 +5,17 @@ This module provides functionality for loading and managing configuration from
 files and environment variables.
 """
 
-import os
-import yaml
+import copy
 import json
+import os
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
+import yaml
 from dotenv import load_dotenv
-from elastro.core.errors import ConfigurationError
+
 from elastro.config.defaults import DEFAULT_CONFIG
+from elastro.core.errors import ConfigurationError
 
 # Load environment variables from .env file
 load_dotenv()
@@ -39,8 +42,8 @@ def load_config(
     """
     global _config
 
-    # Start with default configuration
-    config = DEFAULT_CONFIG.copy()
+    # Start with default configuration (deepcopy so nested auth/hosts are not shared)
+    config = copy.deepcopy(DEFAULT_CONFIG)
 
     # Try to load configuration from file
     if config_path:
@@ -155,6 +158,11 @@ def _load_from_env(config: Dict[str, Any]) -> Dict[str, Any]:
 
     * ``ELASTIC_VERIFY_CERTS=false``  →  ``config["elasticsearch"]["verify_certs"]``
     * ``ELASTIC_URL=https://...``     →  ``config["elasticsearch"]["hosts"]``
+    * ``ELASTIC_HOST`` / ``ELASTIC_PORT`` / ``ELASTIC_PROTOCOL`` compose
+      ``elasticsearch.hosts`` when ``ELASTIC_URL`` is unset
+    * ``ELASTIC_USERNAME`` / ``ELASTIC_PASSWORD`` / ``ELASTIC_API_KEY``
+      (and ``ELASTIC_AUTH_USERNAME`` / ``ELASTIC_AUTH_PASSWORD``) populate
+      ``elasticsearch.auth``
 
     Args:
         config: Current configuration
@@ -170,9 +178,15 @@ def _load_from_env(config: Dict[str, Any]) -> Dict[str, Any]:
     _aliases: Dict[str, Any] = {
         "ELASTIC_VERIFY_CERTS": ("elasticsearch", "verify_certs"),
         "ELASTIC_URL": ("elasticsearch", "hosts"),
+        "ELASTIC_HOSTS": ("elasticsearch", "hosts"),
         "ELASTIC_HOST": ("elasticsearch", "host"),
         "ELASTIC_PORT": ("elasticsearch", "port"),
         "ELASTIC_PROTOCOL": ("elasticsearch", "protocol"),
+        "ELASTIC_USERNAME": ("elasticsearch", "auth", "username"),
+        "ELASTIC_PASSWORD": ("elasticsearch", "auth", "password"),
+        "ELASTIC_API_KEY": ("elasticsearch", "auth", "api_key"),
+        "ELASTIC_AUTH_USERNAME": ("elasticsearch", "auth", "username"),
+        "ELASTIC_AUTH_PASSWORD": ("elasticsearch", "auth", "password"),
     }
 
     # Well-known compound tokens that must NOT be split on underscores.
@@ -212,11 +226,9 @@ def _load_from_env(config: Dict[str, Any]) -> Dict[str, Any]:
                 if section not in current:
                     current[section] = {}
                 current = current[section]
-            # Special case: ELASTIC_URL should set hosts as a list
-            if env_var == "ELASTIC_URL":
-                current[sections[-1]] = (
-                    [typed_value] if isinstance(typed_value, str) else typed_value
-                )
+            # URL / hosts shorthands should set hosts as a list
+            if env_var in ("ELASTIC_URL", "ELASTIC_HOSTS"):
+                current[sections[-1]] = _coerce_hosts_value(typed_value)
             else:
                 current[sections[-1]] = typed_value
             continue
@@ -250,7 +262,39 @@ def _load_from_env(config: Dict[str, Any]) -> Dict[str, Any]:
         # Set the value
         current[path[-1]] = typed_value
 
+    _compose_hosts_from_parts(config)
     return config
+
+
+def _coerce_hosts_value(value: Any) -> Any:
+    """Normalize a host URL env value into the list form the client expects."""
+    if isinstance(value, str):
+        parts = [item.strip() for item in value.split(",") if item.strip()]
+        return parts if parts else [value]
+    return value
+
+
+def _compose_hosts_from_parts(config: Dict[str, Any]) -> None:
+    """Build elasticsearch.hosts from HOST/PORT/PROTOCOL when ELASTIC_URL is unset.
+
+    The client only reads ``elasticsearch.hosts``. Mapping ELASTIC_HOST to a
+    bare ``host`` key is not enough — compose a URL the client can use.
+    ``ELASTIC_URL`` (and ``ELASTIC_HOSTS``) always win when set.
+    """
+    if "ELASTIC_URL" in os.environ or "ELASTIC_HOSTS" in os.environ:
+        return
+    parts_set = any(
+        name in os.environ
+        for name in ("ELASTIC_HOST", "ELASTIC_PORT", "ELASTIC_PROTOCOL")
+    )
+    if not parts_set:
+        return
+
+    es = config.setdefault("elasticsearch", {})
+    protocol = es.get("protocol") or "http"
+    host = es.get("host") or "localhost"
+    port = es.get("port") or 9200
+    es["hosts"] = [f"{protocol}://{host}:{port}"]
 
 
 def _merge_configs(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:

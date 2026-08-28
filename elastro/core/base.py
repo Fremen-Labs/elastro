@@ -6,6 +6,7 @@ for all Elasticsearch operation managers.
 """
 
 from typing import Any, Dict
+
 from elastro.core.client import ElasticsearchClient
 from elastro.core.validation import Validator
 
@@ -22,6 +23,11 @@ class BaseManager:
         """
         self._client = client
         self.validator = Validator()
+
+    @property
+    def client(self) -> ElasticsearchClient:
+        """Return the wrapped ElasticsearchClient (backward-compatible alias)."""
+        return self._client
 
     def _ensure_connected(self) -> None:
         """Securely verify the client is connected before native API routing."""

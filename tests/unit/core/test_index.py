@@ -16,14 +16,16 @@ class TestIndexManager:
         """Set up test fixtures before each test method."""
         self.mock_client = MagicMock()
         self.mock_client.client = MagicMock()
+        self.mock_client.get_client.return_value = self.mock_client.client
+        self.mock_client.is_connected.return_value = True
         self.mock_validator = MagicMock()
 
-        with patch("elastro.core.index.Validator", return_value=self.mock_validator):
+        with patch("elastro.core.base.Validator", return_value=self.mock_validator):
             self.index_manager = IndexManager(self.mock_client)
 
     def test_init(self):
         """Test initialization of IndexManager."""
-        with patch("elastro.core.index.Validator") as mock_validator_class:
+        with patch("elastro.core.base.Validator") as mock_validator_class:
             mock_validator = MagicMock()
             mock_validator_class.return_value = mock_validator
 

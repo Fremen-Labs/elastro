@@ -390,3 +390,84 @@ class TestGetConfig:
             config = loader.get_config()
             assert config == sample_config
             mock_load.assert_called_once()
+
+
+class TestEnvShorthandAliases:
+    """GUI-style and split-host env vars must populate client-readable keys."""
+
+    def _clean_env(self, extra):
+        env = {
+            key: value
+            for key, value in os.environ.items()
+            if not key.startswith("ELASTIC_")
+        }
+        env.update(extra)
+        return env
+
+    def test_username_password_populate_auth(self):
+        config = {"elasticsearch": {"hosts": ["http://localhost:9200"], "auth": {}}}
+        with patch.dict(
+            os.environ,
+            self._clean_env(
+                {
+                    "ELASTIC_USERNAME": "elastic",
+                    "ELASTIC_PASSWORD": "changeme",
+                }
+            ),
+            clear=True,
+        ):
+            result = loader._load_from_env(config)
+        assert result["elasticsearch"]["auth"]["username"] == "elastic"
+        assert result["elasticsearch"]["auth"]["password"] == "changeme"
+
+    def test_auth_username_alias_and_api_key(self):
+        config = {"elasticsearch": {"hosts": ["http://localhost:9200"], "auth": {}}}
+        with patch.dict(
+            os.environ,
+            self._clean_env(
+                {
+                    "ELASTIC_AUTH_USERNAME": "from_auth",
+                    "ELASTIC_AUTH_PASSWORD": "from_auth_pw",
+                    "ELASTIC_API_KEY": "key-123",
+                }
+            ),
+            clear=True,
+        ):
+            result = loader._load_from_env(config)
+        # API key alias and auth username both land under elasticsearch.auth
+        assert result["elasticsearch"]["auth"]["username"] == "from_auth"
+        assert result["elasticsearch"]["auth"]["password"] == "from_auth_pw"
+        assert result["elasticsearch"]["auth"]["api_key"] == "key-123"
+
+    def test_host_port_protocol_compose_hosts_when_url_unset(self):
+        config = {"elasticsearch": {"hosts": ["http://localhost:9200"]}}
+        with patch.dict(
+            os.environ,
+            self._clean_env(
+                {
+                    "ELASTIC_HOST": "es.example.com",
+                    "ELASTIC_PORT": "9243",
+                    "ELASTIC_PROTOCOL": "https",
+                }
+            ),
+            clear=True,
+        ):
+            result = loader._load_from_env(config)
+        assert result["elasticsearch"]["hosts"] == ["https://es.example.com:9243"]
+
+    def test_elastic_url_wins_over_host_parts(self):
+        config = {"elasticsearch": {"hosts": ["http://localhost:9200"]}}
+        with patch.dict(
+            os.environ,
+            self._clean_env(
+                {
+                    "ELASTIC_URL": "https://from-url:9200",
+                    "ELASTIC_HOST": "ignored.example.com",
+                    "ELASTIC_PORT": "1",
+                    "ELASTIC_PROTOCOL": "http",
+                }
+            ),
+            clear=True,
+        ):
+            result = loader._load_from_env(config)
+        assert result["elasticsearch"]["hosts"] == ["https://from-url:9200"]

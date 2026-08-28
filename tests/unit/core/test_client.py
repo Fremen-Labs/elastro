@@ -382,3 +382,45 @@ class TestElasticsearchClient:
             client.health_check()
 
         assert "Unexpected error during health check" in str(excinfo.value)
+
+    def test_get_client_params_includes_timeout(self):
+        """Timeout must be forwarded to elasticsearch-py as request_timeout."""
+        client = ElasticsearchClient(
+            hosts=["http://localhost:9200"], timeout=45, use_config=False
+        )
+        params = client._get_client_params()
+        assert params["request_timeout"] == 45
+
+    def test_connect_passes_timeout(self):
+        """connect() must construct Elasticsearch with request_timeout."""
+        with patch("elastro.core.client.Elasticsearch") as mock_es_class:
+            mock_instance = MagicMock()
+            mock_instance.ping.return_value = True
+            mock_es_class.return_value = mock_instance
+
+            client = ElasticsearchClient(
+                hosts=["http://localhost:9200"], timeout=12, use_config=False
+            )
+            client.connect()
+            assert mock_es_class.call_args[1]["request_timeout"] == 12
+
+    def test_config_auth_and_timeout_reach_client_params(self):
+        """Loader-shaped elasticsearch.auth/timeout must be used by the client."""
+        with patch("elastro.core.client.get_config") as mock_get_config:
+            mock_get_config.return_value = {
+                "elasticsearch": {
+                    "hosts": ["https://es.example.com:9243"],
+                    "timeout": 15,
+                    "retry_on_timeout": True,
+                    "max_retries": 2,
+                    "auth": {
+                        "username": "elastic",
+                        "password": "secret",
+                    },
+                }
+            }
+            client = ElasticsearchClient()
+            params = client._get_client_params()
+            assert params["hosts"] == ["https://es.example.com:9243"]
+            assert params["request_timeout"] == 15
+            assert params["basic_auth"] == ("elastic", "secret")

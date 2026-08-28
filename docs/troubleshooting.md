@@ -61,6 +61,7 @@ This guide helps you diagnose and resolve common issues encountered while using 
 5. Enable debug logging to see which configuration is being loaded:
    ```python
    import logging
+
    logging.basicConfig(level=logging.DEBUG)
    ```
 
@@ -82,6 +83,7 @@ This guide helps you diagnose and resolve common issues encountered while using 
 2. Specify the profile explicitly when connecting:
    ```python
    from elastro import ElasticsearchClient
+
    client = ElasticsearchClient(profile="production")
    ```
 
@@ -172,6 +174,7 @@ This guide helps you diagnose and resolve common issues encountered while using 
 4. Use the validation module to validate documents before indexing:
    ```python
    from elastro.core.validation import validate_document
+
    validate_document(document, schema)
    ```
 
@@ -195,7 +198,9 @@ This guide helps you diagnose and resolve common issues encountered while using 
 4. Start with a simpler query and build complexity gradually
 5. Use `explain=True` to understand the relevance scoring:
    ```python
-   results = doc_manager.search(index="products", query={"match": {"name": "laptop"}}, explain=True)
+   results = doc_manager.search(
+       index="products", query={"match": {"name": "laptop"}}, explain=True
+   )
    ```
 
 ## Bulk Operations Issues
@@ -226,7 +231,7 @@ This guide helps you diagnose and resolve common issues encountered while using 
 ### Command Not Found
 
 **Symptoms:**
-- `elastic-cli: command not found`
+- `elastro: command not found`
 
 **Possible Causes:**
 - Package not installed properly
@@ -237,7 +242,7 @@ This guide helps you diagnose and resolve common issues encountered while using 
 1. Reinstall the package: `pip install -e .`
 2. Ensure Python scripts directory is in PATH
 3. Activate your virtual environment
-4. Install with the `--user` flag if appropriate: `pip install --user elastic-module`
+4. Install with the `--user` flag if appropriate: `pip install --user elastro-client`
 
 ### CLI Configuration Issues
 
@@ -251,8 +256,8 @@ This guide helps you diagnose and resolve common issues encountered while using 
 - Configuration file permissions issues
 
 **Solutions:**
-1. Initialize configuration: `elastic-cli config init`
-2. Specify profile when running commands: `elastic-cli --profile=dev index list`
+1. Initialize configuration: `elastro config init`
+2. Specify profile when running commands: `elastro --profile=dev index list`
 3. Check configuration file permissions
 4. Use environment variables to override configuration temporarily
 
@@ -295,6 +300,7 @@ This guide helps you diagnose and resolve common issues encountered while using 
 1. Use scroll API for processing large result sets:
    ```python
    from elastro.advanced import scroll_search
+
    for batch in scroll_search(doc_manager, "products", query, batch_size=1000):
        process_batch(batch)
    ```
@@ -310,14 +316,15 @@ To get more detailed information about operations:
 
 ```python
 import logging
+
 logging.basicConfig(level=logging.DEBUG)
-logging.getLogger('elastro').setLevel(logging.DEBUG)
+logging.getLogger("elastro").setLevel(logging.DEBUG)
 ```
 
 For CLI operations:
 
 ```bash
-elastic-cli --debug index list
+elastro --debug index list
 ```
 
 ### Tracing Elasticsearch Requests
@@ -326,7 +333,8 @@ To see the actual requests sent to Elasticsearch:
 
 ```python
 import logging
-logging.getLogger('elasticsearch').setLevel(logging.DEBUG)
+
+logging.getLogger("elasticsearch").setLevel(logging.DEBUG)
 ```
 
 ## Getting Help

@@ -59,3 +59,25 @@ jobs:
           else
             echo "logloom CLI not installed; skipping optional logging coverage gate"
           fi
+
+  unit-core:
+    name: Core and CLI unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run core/CLI unit tests (no live cluster)
+        run: |
+          pytest tests/unit/core/ tests/unit/config/ tests/unit/cli/ tests/unit/server/ tests/unit/advanced/ -q
+

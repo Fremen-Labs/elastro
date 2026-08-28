@@ -15,7 +15,11 @@ from elastro.advanced import QueryBuilder
 query = QueryBuilder().match("title", "elasticsearch", operator="and").to_dict()
 
 # Create a match phrase query with slop
-query = QueryBuilder().match_phrase("description", "powerful search engine", slop=1).to_dict()
+query = (
+    QueryBuilder()
+    .match_phrase("description", "powerful search engine", slop=1)
+    .to_dict()
+)
 
 # Create a term query for exact matching
 query = QueryBuilder().term("status", "active").to_dict()
@@ -39,7 +43,8 @@ The Boolean query builder allows combining multiple query clauses with different
 from elastro.advanced import QueryBuilder
 
 # Create a complex bool query
-query = (QueryBuilder()
+query = (
+    QueryBuilder()
     .bool()
     .must(QueryBuilder().match("title", "elasticsearch"))
     .must_not(QueryBuilder().term("status", "deleted"))
@@ -48,7 +53,8 @@ query = (QueryBuilder()
     .filter(QueryBuilder().range("published_date", gte="2023-01-01"))
     .minimum_should_match(1)
     .build()
-    .to_dict())
+    .to_dict()
+)
 ```
 
 The bool query supports:
@@ -72,12 +78,13 @@ from elastro.advanced import AggregationBuilder
 aggs = AggregationBuilder().terms("status_counts", "status", size=5).to_dict()
 
 # Create a date histogram
-aggs = AggregationBuilder().date_histogram(
-    "documents_over_time", 
-    "created_at", 
-    interval="month", 
-    format="yyyy-MM"
-).to_dict()
+aggs = (
+    AggregationBuilder()
+    .date_histogram(
+        "documents_over_time", "created_at", interval="month", format="yyyy-MM"
+    )
+    .to_dict()
+)
 ```
 
 ### Available Aggregation Types
@@ -144,23 +151,16 @@ The ScrollHelper provides three main methods:
     def process_doc(doc):
         # Process a single document
         print(doc["_id"])
-    
-    total = scroll.process_all(
-        index="my_index", 
-        query=query, 
-        processor=process_doc
-    )
+
+
+    total = scroll.process_all(index="my_index", query=query, processor=process_doc)
     print(f"Processed {total} documents")
     ```
 
 3. **collect_all**: Retrieve all matching documents into a single list (use carefully with large datasets)
     ```python
     # Limit to maximum 10,000 documents to avoid memory issues
-    all_docs = scroll.collect_all(
-        index="my_index", 
-        query=query, 
-        max_documents=10000
-    )
+    all_docs = scroll.collect_all(index="my_index", query=query, max_documents=10000)
     ```
 
 ### Configuration Options
@@ -182,23 +182,21 @@ from elastro import ElasticsearchClient
 client = ElasticsearchClient(hosts=["http://localhost:9200"])
 
 # Build a complex query
-query = (QueryBuilder()
+query = (
+    QueryBuilder()
     .bool()
     .must(QueryBuilder().match("content", "elasticsearch"))
     .filter(QueryBuilder().range("date", gte="2023-01-01"))
     .build()
-    .to_dict())
+    .to_dict()
+)
 
 # Add aggregations
 aggs = AggregationBuilder().terms("top_categories", "category", size=10)
 
 # Execute search with aggregations
 results = client.search(
-    index="documents",
-    body={
-        "query": query,
-        "aggs": aggs.to_dict()
-    }
+    index="documents", body={"query": query, "aggs": aggs.to_dict()}
 )
 
 # Process large result sets with scroll

@@ -19,6 +19,7 @@ class TestDatastreamManager:
         self.mock_client = MagicMock(spec=ElasticsearchClient)
         self.mock_client.is_connected.return_value = True
         self.mock_client._client = MagicMock()
+        self.mock_client.get_client.return_value = self.mock_client._client
 
         # Create DatastreamManager with mock client
         self.datastream_manager = DatastreamManager(self.mock_client)

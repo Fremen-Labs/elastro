@@ -24,11 +24,11 @@ The `ElasticsearchClient` class is the primary entry point for connecting to Ela
 ```python
 client = ElasticsearchClient(
     hosts=None,  # List of Elasticsearch hostnames/IPs
-    auth=None,   # Authentication details
+    auth=None,  # Authentication details
     timeout=30,  # Connection timeout in seconds
     retry_on_timeout=True,  # Whether to retry on timeout
     max_retries=3,  # Maximum number of retries
-    profile=None  # Configuration profile to use
+    profile=None,  # Configuration profile to use
 )
 ```
 
@@ -42,22 +42,25 @@ Establishes a connection to the Elasticsearch cluster.
 client.connect()
 ```
 
-#### `health()`
+#### `health_check()`
 
 Retrieves health information about the Elasticsearch cluster.
 
 ```python
-health = client.health()
-# Returns: Dict with cluster health status
+health = client.health_check()
+# Returns: Dict with cluster health status, node counts, and shard metrics
 ```
 
-#### `indices()`
+#### Listing indices
 
-Lists all indices in the cluster.
+`ElasticsearchClient` does not expose `indices()`. Use `IndexManager`:
 
 ```python
-indices = client.indices()
-# Returns: List of index names
+from elastro import IndexManager
+
+index_manager = IndexManager(client)
+indices = index_manager.list()
+# Returns: List of index summary dicts
 ```
 
 ## IndexManager
@@ -79,16 +82,10 @@ Creates a new index with optional settings and mappings.
 ```python
 result = index_manager.create(
     name="my-index",
-    settings={
-        "number_of_shards": 3,
-        "number_of_replicas": 1
-    },
+    settings={"number_of_shards": 3, "number_of_replicas": 1},
     mappings={
-        "properties": {
-            "field1": {"type": "text"},
-            "field2": {"type": "keyword"}
-        }
-    }
+        "properties": {"field1": {"type": "text"}, "field2": {"type": "keyword"}}
+    },
 )
 # Returns: Dict with creation result
 ```
@@ -116,10 +113,7 @@ exists = index_manager.exists("my-index")
 Updates settings for an existing index.
 
 ```python
-result = index_manager.update(
-    "my-index",
-    {"index": {"number_of_replicas": 2}}
-)
+result = index_manager.update("my-index", {"index": {"number_of_replicas": 2}})
 # Returns: Dict with update result
 ```
 
@@ -168,9 +162,7 @@ Indexes a document with the given ID.
 
 ```python
 result = doc_manager.index(
-    index="my-index",
-    id="doc-1",
-    document={"field1": "value1", "field2": "value2"}
+    index="my-index", id="doc-1", document={"field1": "value1", "field2": "value2"}
 )
 # Returns: Dict with indexing result
 ```
@@ -182,7 +174,7 @@ Indexes multiple documents in a single operation.
 ```python
 documents = [
     {"id": "doc-1", "document": {"field1": "value1"}},
-    {"id": "doc-2", "document": {"field1": "value2"}}
+    {"id": "doc-2", "document": {"field1": "value2"}},
 ]
 result = doc_manager.bulk_index("my-index", documents)
 # Returns: Dict with bulk indexing result
@@ -222,7 +214,7 @@ result = ingest_engine.ingest(
     format="csv",
     batch_size=2000,
     dlq_path="failed.ndjson",
-    progress_callback=lambda read, indexed, failed: print(f"{indexed} indexed")
+    progress_callback=lambda read, indexed, failed: print(f"{indexed} indexed"),
 )
 # Returns: IngestResult with operation statistics (total_read, total_indexed, total_failed)
 ```

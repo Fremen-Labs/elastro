@@ -11,7 +11,7 @@
 ```
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10–3.13](https://img.shields.io/badge/python-3.10--3.13-blue.svg)](https://www.python.org/downloads/)
 [![Code style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 
@@ -43,11 +43,16 @@ The library offers both a programmatic API and a command-line interface for seam
 To heavily simplify installation across all operating systems and elegantly check your Python compatibility, run our automated `install.sh` via curl:
 
 ```bash
-# Safely check your python version and install the elastro CLI globally
+# WARNING: piping curl to bash skips checksum verification.
+# Safer path (recommended): download, inspect, then run:
+#   curl -sSfL https://raw.githubusercontent.com/Fremen-Labs/elastro/main/install.sh -o /tmp/elastro-install.sh
+#   less /tmp/elastro-install.sh
+#   bash /tmp/elastro-install.sh
+# Or skip the installer entirely with pipx (below).
 curl -sSfL https://raw.githubusercontent.com/Fremen-Labs/elastro/main/install.sh | bash
 ```
 
-Alternatively, if you already have pipx installed and your Python version is compatible (>=3.9, <3.14):
+Alternatively, if you already have pipx installed and your Python version is compatible (>=3.10, <3.14):
 
 ```bash
 # Manual installation via pipx
@@ -83,14 +88,13 @@ from elastro import ElasticsearchClient
 
 # Connect using API key
 client = ElasticsearchClient(
-    hosts=["https://elasticsearch:9200"],
-    auth={"api_key": "your-api-key"}
+    hosts=["https://elasticsearch:9200"], auth={"api_key": "your-api-key"}
 )
 
 # Or using basic auth
 client = ElasticsearchClient(
     hosts=["https://elasticsearch:9200"],
-    auth={"username": "elastic", "password": "password"}
+    auth={"username": "elastic", "password": "password"},
 )
 
 # Connect to Elasticsearch
@@ -107,24 +111,21 @@ index_manager = IndexManager(client)
 # Create an index
 index_manager.create(
     name="products",
-    settings={
-        "number_of_shards": 3,
-        "number_of_replicas": 1
-    },
+    settings={"number_of_shards": 3, "number_of_replicas": 1},
     mappings={
         "properties": {
             "name": {"type": "text"},
             "price": {"type": "float"},
             "description": {"type": "text"},
-            "created": {"type": "date"}
+            "created": {"type": "date"},
         }
-    }
+    },
 )
 
 # Check if an index exists
 if index_manager.exists("products"):
     print("Products index exists!")
-    
+
 # Delete an index
 index_manager.delete("products")
 ```
@@ -144,15 +145,12 @@ doc_manager.index(
         "name": "Laptop",
         "price": 999.99,
         "description": "High-performance laptop",
-        "created": "2023-05-01T12:00:00"
-    }
+        "created": "2023-05-01T12:00:00",
+    },
 )
 
 # Search for documents
-results = doc_manager.search(
-    index="products",
-    query={"match": {"name": "laptop"}}
-)
+results = doc_manager.search(index="products", query={"match": {"name": "laptop"}})
 
 print(results)
 ```

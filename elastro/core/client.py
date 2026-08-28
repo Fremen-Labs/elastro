@@ -4,15 +4,19 @@ Elasticsearch client module.
 This module provides the core client for connecting to Elasticsearch.
 """
 
-from typing import Dict, List, Optional, Union, Any
-from elasticsearch import Elasticsearch, AsyncElasticsearch
+from typing import Any, Dict, List, Optional, Union
+
+from elasticsearch import AsyncElasticsearch, Elasticsearch
 from elasticsearch.exceptions import (
-    ConnectionError as ESConnectionError,
     AuthenticationException,
     TransportError,
 )
-from elastro.core.errors import ConnectionError, AuthenticationError, OperationError
+from elasticsearch.exceptions import (
+    ConnectionError as ESConnectionError,
+)
+
 from elastro.config import get_config
+from elastro.core.errors import AuthenticationError, ConnectionError, OperationError
 from elastro.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -156,6 +160,9 @@ class ElasticsearchClient:
         client_params.update(self.client_kwargs)
 
         # Add optional parameters if they are not None
+        # elasticsearch-py 8.x uses request_timeout (not timeout)
+        if self.timeout is not None:
+            client_params["request_timeout"] = self.timeout
         if self.retry_on_timeout is not None:
             client_params["retry_on_timeout"] = self.retry_on_timeout
         if self.max_retries is not None:
@@ -245,8 +252,8 @@ class ElasticsearchClient:
     @staticmethod
     def _diagnose_ping_failure(client_params: Dict[str, Any]) -> str:
         """Probe the cluster root to distinguish auth failures from network issues."""
-        import urllib.request
         import urllib.error
+        import urllib.request
 
         hosts = client_params.get("hosts", [])
         url = hosts[0] if isinstance(hosts, list) and hosts else str(hosts)
@@ -267,8 +274,10 @@ class ElasticsearchClient:
                     )
                 return (
                     "Security is enabled (HTTP 401) but no credentials were provided. "
-                    "Configure username/password via `elastro connect` or "
-                    "set ELASTIC_AUTH_USERNAME and ELASTIC_AUTH_PASSWORD."
+                    "Configure username/password via `elastro connect` or set "
+                    "ELASTIC_USERNAME and ELASTIC_PASSWORD (or ELASTIC_API_KEY). "
+                    "ELASTIC_AUTH_USERNAME / ELASTIC_AUTH_PASSWORD are also honored. "
+                    "Host: ELASTIC_URL, or ELASTIC_HOST + ELASTIC_PORT + ELASTIC_PROTOCOL."
                 )
             if http_err.code == 403:
                 return (

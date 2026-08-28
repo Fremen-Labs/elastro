@@ -126,6 +126,7 @@ Collectors run via `concurrent.futures.ThreadPoolExecutor` (existing pattern in 
 # elastro/health/collectors/base.py
 class Collector(Protocol):
     name: str
+
     def collect(self, ctx: CollectContext) -> CollectorResult: ...
 ```
 
@@ -143,65 +144,73 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
+
 class Severity(str, Enum):
-    CRITICAL = "critical"   # red / data loss risk
-    HIGH = "high"             # yellow / imminent failure
-    MEDIUM = "medium"         # degraded performance
-    LOW = "low"               # best-practice deviation
-    INFO = "info"             # informational
+    CRITICAL = "critical"  # red / data loss risk
+    HIGH = "high"  # yellow / imminent failure
+    MEDIUM = "medium"  # degraded performance
+    LOW = "low"  # best-practice deviation
+    INFO = "info"  # informational
+
 
 class FindingStatus(str, Enum):
     PASS = "pass"
     WARN = "warn"
     FAIL = "fail"
     UNKNOWN = "unknown"
-    SKIPPED = "skipped"       # ES version unsupported
+    SKIPPED = "skipped"  # ES version unsupported
+
 
 class RemediationSafety(str, Enum):
-    OBSERVE = "observe"       # read-only recommendation
-    SUGGEST = "suggest"       # show command, no execution
-    CONFIRM = "confirm"       # interactive or --fix required
+    OBSERVE = "observe"  # read-only recommendation
+    SUGGEST = "suggest"  # show command, no execution
+    CONFIRM = "confirm"  # interactive or --fix required
     DESTRUCTIVE = "destructive"  # extra guard (system indices)
 
+
 class RemediationAction(BaseModel):
-    id: str                          # e.g. "reduce_replicas"
-    label: str                       # human label
-    command: str                     # elastro command template
+    id: str  # e.g. "reduce_replicas"
+    label: str  # human label
+    command: str  # elastro command template
     safety: RemediationSafety
     preconditions: List[str] = []
     rollback_command: Optional[str] = None
 
+
 class Finding(BaseModel):
-    id: str                          # stable: "disk.flood_stage.node-3"
-    category: str                    # disk | shards | master | ilm | ...
+    id: str  # stable: "disk.flood_stage.node-3"
+    category: str  # disk | shards | master | ilm | ...
     title: str
     status: FindingStatus
     severity: Severity
-    score_impact: int                # points deducted from 100
+    score_impact: int  # points deducted from 100
     summary: str
     detail: Optional[str] = None
     affected_resources: List[str] = []
-    source: str                      # "health_report" | "rule" | "collector"
+    source: str  # "health_report" | "rule" | "collector"
     indicator: Optional[str] = None  # ES health report indicator name
     remediation: Optional[RemediationAction] = None
     metadata: Dict[str, Any] = {}
 
+
 class AssessmentReport(BaseModel):
     schema_version: str = "1.0"
-    session_id: str                  # uuid4
+    session_id: str  # uuid4
     cluster_name: str
     elasticsearch_version: str
     assessed_at: datetime
     duration_ms: int
-    overall_score: int               # 0-100
-    overall_status: FindingStatus    # derived from score bands
+    overall_score: int  # 0-100
+    overall_status: FindingStatus  # derived from score bands
     findings: List[Finding]
     collectors_run: List[str]
     collectors_failed: List[str] = []
     raw_health_report: Optional[Dict[str, Any]] = None  # omitted in table output
 
+
 class AssessmentHistoryRecord(BaseModel):
     """Indexed to elastro-health-assessments."""
+
     report: AssessmentReport
     profile: str
     host: str
@@ -233,7 +242,7 @@ DEFAULT_WEIGHTS = {
     "data_stream_lifecycle": 5,
     "file_settings": 3,
     "pending_tasks": 4,
-    "jvm_pressure": 3,       # custom rule
+    "jvm_pressure": 3,  # custom rule
 }
 ```
 
@@ -271,6 +280,7 @@ def supports(es_version: str) -> bool:
     major, minor = parse_version(es_version)
     return (major, minor) >= (8, 7)
 
+
 # Fallback for < 8.7: synthesize findings from cluster.health + allocation_explain only
 ```
 
@@ -285,6 +295,7 @@ INDICATOR_SEVERITY = {
     "green": (FindingStatus.PASS, Severity.INFO),
     "unknown": (FindingStatus.UNKNOWN, Severity.MEDIUM),
 }
+
 
 def map_indicator(indicator_name: str, body: dict) -> Finding:
     status = body.get("status", "unknown")
@@ -316,8 +327,7 @@ Maps ES `diagnosis.action` text and rule IDs to executable handlers.
 
 ```python
 class RemediationExecutor:
-    def __init__(self, client, *, dry_run: bool = True, interactive: bool = True):
-        ...
+    def __init__(self, client, *, dry_run: bool = True, interactive: bool = True): ...
 
     def execute(self, action: RemediationAction, context: dict) -> RemediationResult:
         """
@@ -358,6 +368,7 @@ Register in `elastro/cli/cli.py`:
 
 ```python
 from elastro.cli.commands.health import health_group
+
 cli.add_command(health_group)
 ```
 
@@ -505,6 +516,7 @@ class HealthFixRequestSchema(BaseModel):
     action: str
     dry_run: bool = True
     force: bool = False  # system indices
+
 
 class HealthAssessQuerySchema(BaseModel):
     verbose: bool = True
@@ -707,8 +719,10 @@ PR-0 (foundation)
 
 ```python
 used_pct = fs.total.available_bytes / fs.total.total_bytes  # invert as needed
-if used_pct >= flood_stage: severity = CRITICAL
-elif used_pct >= high_stage: severity = HIGH
+if used_pct >= flood_stage:
+    severity = CRITICAL
+elif used_pct >= high_stage:
+    severity = HIGH
 ```
 
 **Acceptance criteria:**
