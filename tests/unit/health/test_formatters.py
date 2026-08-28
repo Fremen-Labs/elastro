@@ -1,6 +1,7 @@
 """Unit tests for health assessment formatters."""
 
 import json
+import re
 import unittest
 
 from elastro.health.formatters.json_fmt import format_assessment_json
@@ -53,11 +54,14 @@ class TestFormatters(unittest.TestCase):
 
     def test_format_assessment_table(self):
         output = format_assessment_table(self._sample_report())
-        self.assertIn("docker-cluster", output)
-        self.assertIn("88/100", output)
-        self.assertIn("Shards Availability", output)
-        self.assertIn("15 unavailable replica shards", output)
-        self.assertIn("elastro cluster allocation", output)
+        # Rich wraps table cells; strip box-drawing so wrapped text is searchable.
+        plain = re.sub(r"[^A-Za-z0-9./-]+", " ", output)
+        self.assertIn("docker-cluster", plain)
+        self.assertIn("88/100", plain)
+        self.assertIn("Shards Availability", plain)
+        self.assertIn("15 unavailable replica shards", plain)
+        self.assertIn("elastro cluster", plain)
+        self.assertIn("allocation", plain)
 
     def test_format_assessment_json(self):
         payload = json.loads(format_assessment_json(self._sample_report()))
