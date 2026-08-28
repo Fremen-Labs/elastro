@@ -67,7 +67,7 @@ def check_cluster_health(client):
     """Check the health of the Elasticsearch cluster"""
 
     # Get cluster health
-    health = client.health()
+    health = client.health_check()
 
     print(f"Cluster name: {health['cluster_name']}")
     print(f"Status: {health['status']}")
@@ -80,12 +80,15 @@ def check_cluster_health(client):
 def list_indices(client):
     """List all indices in the cluster"""
 
-    # Get all indices
-    indices = client.indices()
+    from elastro import IndexManager
+
+    index_manager = IndexManager(client)
+    indices = index_manager.list()
 
     print(f"Found {len(indices)} indices:")
     for index in indices:
-        print(f" - {index}")
+        name = index.get("index", index) if isinstance(index, dict) else index
+        print(f" - {name}")
 
     return indices
 

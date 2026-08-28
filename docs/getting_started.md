@@ -4,7 +4,7 @@ This guide will help you get started with Elastro for managing Elasticsearch ope
 
 ## Prerequisites
 
-- Python 3.8 or higher
+- Python 3.10–3.13
 - An Elasticsearch cluster (version 8.x recommended)
 - Access credentials for your Elasticsearch cluster
 
@@ -13,7 +13,7 @@ This guide will help you get started with Elastro for managing Elasticsearch ope
 You can install Elastro using pip:
 
 ```bash
-pip install elastro
+pip install elastro-client
 ```
 
 Or install from source:
@@ -74,8 +74,10 @@ Or use JSON format (`elastic.json`):
 You can also configure the client using environment variables:
 
 ```bash
-export ELASTIC_HOSTS=https://elasticsearch:9200
+export ELASTIC_URL=https://elasticsearch:9200
 export ELASTIC_API_KEY=your-api-key
+# or: ELASTIC_USERNAME / ELASTIC_PASSWORD
+# or: ELASTIC_HOST + ELASTIC_PORT + ELASTIC_PROTOCOL (when ELASTIC_URL is unset)
 ```
 
 ### Programmatic Configuration
@@ -90,7 +92,7 @@ client = ElasticsearchClient(
     auth={"api_key": "your-api-key"},
     timeout=30,
     retry_on_timeout=True,
-    max_retries=3
+    max_retries=3,
 )
 ```
 
@@ -108,7 +110,7 @@ client = ElasticsearchClient()
 client.connect()
 
 # Check connection and cluster health
-health = client.health()
+health = client.health_check()
 print(f"Cluster status: {health['status']}")
 ```
 
@@ -126,18 +128,15 @@ index_manager.create("simple-index")
 # Create an index with custom settings and mappings
 index_manager.create(
     name="products",
-    settings={
-        "number_of_shards": 3,
-        "number_of_replicas": 1
-    },
+    settings={"number_of_shards": 3, "number_of_replicas": 1},
     mappings={
         "properties": {
             "name": {"type": "text"},
             "price": {"type": "float"},
             "description": {"type": "text"},
-            "created": {"type": "date"}
+            "created": {"type": "date"},
         }
-    }
+    },
 )
 
 # Check if an index exists
@@ -145,13 +144,9 @@ if index_manager.exists("products"):
     # Get index details
     index_info = index_manager.get("products")
     print(index_info)
-    
+
     # Update index settings
-    index_manager.update("products", {
-        "index": {
-            "number_of_replicas": 2
-        }
-    })
+    index_manager.update("products", {"index": {"number_of_replicas": 2}})
 ```
 
 ### Working with Documents
@@ -170,14 +165,14 @@ doc_manager.index(
         "name": "Laptop",
         "price": 999.99,
         "description": "High-performance laptop",
-        "created": "2023-05-01T12:00:00"
-    }
+        "created": "2023-05-01T12:00:00",
+    },
 )
 
 # Bulk index multiple documents
 documents = [
     {"id": "2", "document": {"name": "Smartphone", "price": 699.99}},
-    {"id": "3", "document": {"name": "Tablet", "price": 499.99}}
+    {"id": "3", "document": {"name": "Tablet", "price": 499.99}},
 ]
 doc_manager.bulk_index("products", documents)
 
@@ -186,12 +181,7 @@ product = doc_manager.get("products", "1")
 print(product)
 
 # Update a document
-doc_manager.update(
-    index="products",
-    id="1",
-    document={"price": 899.99},
-    partial=True
-)
+doc_manager.update(index="products", id="1", document={"price": 899.99}, partial=True)
 
 # Delete a document
 doc_manager.delete("products", "3")
@@ -205,27 +195,17 @@ from elastro import DocumentManager
 doc_manager = DocumentManager(client)
 
 # Basic search
-results = doc_manager.search(
-    index="products",
-    query={"match": {"name": "laptop"}}
-)
+results = doc_manager.search(index="products", query={"match": {"name": "laptop"}})
 
 # More complex search
 results = doc_manager.search(
     index="products",
     query={
         "bool": {
-            "must": [
-                {"match": {"name": "laptop"}},
-                {"range": {"price": {"lte": 1000}}}
-            ]
+            "must": [{"match": {"name": "laptop"}}, {"range": {"price": {"lte": 1000}}}]
         }
     },
-    options={
-        "size": 10,
-        "from": 0,
-        "sort": [{"price": "asc"}]
-    }
+    options={"size": 10, "from": 0, "sort": [{"price": "asc"}]},
 )
 
 for hit in results["hits"]["hits"]:
@@ -238,25 +218,25 @@ Elastro provides a command-line interface for common operations:
 
 ```bash
 # Initialize configuration
-elastic-cli config init
+elastro config init
 
 # List available indices
-elastic-cli index list
+elastro index list
 
 # Create an index
-elastic-cli index create products --shards 3 --replicas 1
+elastro index create products --shards 3 --replicas 1
 
 # Add a document
-elastic-cli doc index products --id 1 --data '{"name": "Laptop", "price": 999.99}'
+elastro doc index products --id 1 --data '{"name": "Laptop", "price": 999.99}'
 
 # Or from a file
-elastic-cli doc index products --id 2 --file ./product.json
+elastro doc index products --id 2 --file ./product.json
 
 # Search for documents
-elastic-cli doc search products --query 'name:laptop'
+elastro doc search products --query 'name:laptop'
 
 # Get index details in YAML format
-elastic-cli index get products --format yaml
+elastro index get products --format yaml
 ```
 
 ## Next Steps

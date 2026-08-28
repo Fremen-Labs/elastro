@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 from elasticsearch import NotFoundError
 
 from elastro.core.document import DocumentManager
-from elastro.core.errors import DocumentError, ValidationError, OperationError
+from elastro.core.errors import DocumentError, ValidationError
 
 
 class TestDocumentManager:
@@ -109,7 +109,7 @@ class TestDocumentManager:
 
         # Call the method
         documents = [{"_id": "1", "field1": "value1"}, {"_id": "2", "field1": "value2"}]
-        result = document_manager.bulk_index(
+        result = document_manager.bulk_index_sync(
             index="test_index", documents=documents, refresh=True
         )
 
@@ -144,7 +144,9 @@ class TestDocumentManager:
 
         # Call the method
         documents = [{"field1": "value1"}, {"field1": "value2"}]
-        result = document_manager.bulk_index(index="test_index", documents=documents)
+        result = document_manager.bulk_index_sync(
+            index="test_index", documents=documents
+        )
 
         # Verify the result
         assert result["errors"] is False
@@ -165,15 +167,17 @@ class TestDocumentManager:
         """Test bulk index validation errors."""
         # Test empty index name
         with pytest.raises(ValidationError, match="Index name cannot be empty"):
-            document_manager.bulk_index(index="", documents=[{"field": "value"}])
+            document_manager.bulk_index_sync(index="", documents=[{"field": "value"}])
 
         # Test empty documents list
         with pytest.raises(ValidationError, match="Documents must be a non-empty list"):
-            document_manager.bulk_index(index="test_index", documents=[])
+            document_manager.bulk_index_sync(index="test_index", documents=[])
 
         # Test invalid documents type
         with pytest.raises(ValidationError, match="Documents must be a non-empty list"):
-            document_manager.bulk_index(index="test_index", documents={"not": "a list"})
+            document_manager.bulk_index_sync(
+                index="test_index", documents={"not": "a list"}
+            )
 
     def test_bulk_index_error(self, document_manager):
         """Test handling of errors during bulk indexing."""
@@ -182,9 +186,9 @@ class TestDocumentManager:
 
         # Call the method and expect exception
         with pytest.raises(
-            OperationError, match="Failed to bulk index documents: Bulk error"
+            DocumentError, match="Failed to bulk index documents: Bulk error"
         ):
-            document_manager.bulk_index(
+            document_manager.bulk_index_sync(
                 index="test_index", documents=[{"field": "value"}]
             )
 
@@ -372,7 +376,9 @@ class TestDocumentManager:
 
         # Call the method
         ids = ["1", "2"]
-        result = document_manager.bulk_delete(index="test_index", ids=ids, refresh=True)
+        result = document_manager.bulk_delete_sync(
+            index="test_index", ids=ids, refresh=True
+        )
 
         # Verify the result
         assert result["errors"] is False
@@ -391,15 +397,15 @@ class TestDocumentManager:
         """Test bulk delete validation errors."""
         # Test empty index name
         with pytest.raises(ValidationError, match="Index name cannot be empty"):
-            document_manager.bulk_delete(index="", ids=["1", "2"])
+            document_manager.bulk_delete_sync(index="", ids=["1", "2"])
 
         # Test empty ids list
         with pytest.raises(ValidationError, match="IDs must be a non-empty list"):
-            document_manager.bulk_delete(index="test_index", ids=[])
+            document_manager.bulk_delete_sync(index="test_index", ids=[])
 
         # Test invalid ids type
         with pytest.raises(ValidationError, match="IDs must be a non-empty list"):
-            document_manager.bulk_delete(index="test_index", ids="not_a_list")
+            document_manager.bulk_delete_sync(index="test_index", ids="not_a_list")
 
     def test_bulk_delete_error(self, document_manager):
         """Test handling of errors during bulk delete operation."""
@@ -408,9 +414,9 @@ class TestDocumentManager:
 
         # Call the method and expect exception
         with pytest.raises(
-            OperationError, match="Failed to bulk delete documents: Bulk delete error"
+            DocumentError, match="Failed to bulk delete documents: Bulk delete error"
         ):
-            document_manager.bulk_delete(index="test_index", ids=["1", "2"])
+            document_manager.bulk_delete_sync(index="test_index", ids=["1", "2"])
 
     def test_search_success(self, document_manager):
         """Test searching documents successfully."""
@@ -529,3 +535,22 @@ class TestDocumentManager:
             DocumentError, match="Failed to search documents: Search error"
         ):
             document_manager.search(index="test_index", query={"match_all": {}})
+
+    def test_index_passes_id_to_elasticsearch(self, document_manager):
+        """An explicit document id must be forwarded to elasticsearch-py 8.x `id`."""
+        raw = document_manager._client.get_client()
+        raw.index.return_value = {
+            "result": "created",
+            "_id": "explicit-id",
+            "_index": "products",
+        }
+        document = {"name": "Laptop"}
+        document_manager.index(
+            index="products", id="explicit-id", document=document, refresh=False
+        )
+        raw.index.assert_called_once_with(
+            index="products",
+            document=document,
+            refresh="false",
+            id="explicit-id",
+        )

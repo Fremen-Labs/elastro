@@ -3,6 +3,13 @@
 # Elastro CLI Installer
 # This script intelligently checks for Python and pipx, installs pipx if missing (macOS/Ubuntu),
 # verifies Python compatibility, and installs elastro-client securely.
+#
+# SECURITY: piping this script to bash (curl | bash) does not verify a checksum.
+# Safer path:
+#   curl -sSfL https://raw.githubusercontent.com/Fremen-Labs/elastro/main/install.sh -o /tmp/elastro-install.sh
+#   less /tmp/elastro-install.sh
+#   bash /tmp/elastro-install.sh
+# Or skip this installer:  pipx install elastro-client
 
 set -e
 
@@ -16,6 +23,8 @@ NC='\033[0m' # No Color
 echo -e "${CYAN}=======================================${NC}"
 echo -e "${CYAN}       Elastro Install Wizard          ${NC}"
 echo -e "${CYAN}=======================================${NC}\n"
+echo -e "${YELLOW}Note: curl|bash does not verify a checksum. Prefer pipx install elastro-client${NC}"
+echo -e "${YELLOW}or download this script, inspect it, then run it locally.${NC}\n"
 
 # 1. Dependency Checks & Resolution
 echo -e "${YELLOW}[1/4] Checking System Requirements...${NC}"

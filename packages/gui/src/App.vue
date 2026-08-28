@@ -7,6 +7,17 @@ import { state } from './store'
 const router = useRouter()
 const route = useRoute()
 
+const readCookie = (name: string): string => {
+  const parts = document.cookie.split(';')
+  for (const part of parts) {
+    const trimmed = part.trim()
+    if (trimmed.startsWith(name + '=')) {
+      return decodeURIComponent(trimmed.slice(name.length + 1))
+    }
+  }
+  return ''
+}
+
 onMounted(() => {
   let token = new URLSearchParams(window.location.search).get('token') || ''
   if (!token) {
@@ -15,9 +26,18 @@ onMounted(() => {
       token = hashMatches[1]
     }
   }
+  if (!token) {
+    token = readCookie('elastro_gui_token')
+  }
 
   if (token) {
     state.token = token
+    document.cookie = `elastro_gui_token=${encodeURIComponent(token)}; path=/; SameSite=Strict`
+    const url = new URL(window.location.href)
+    if (url.searchParams.has('token')) {
+      url.searchParams.delete('token')
+      history.replaceState({}, '', url.pathname + url.search + url.hash)
+    }
   }
 })
 

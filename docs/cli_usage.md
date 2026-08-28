@@ -7,7 +7,7 @@ The Elastro package provides a powerful command-line interface (CLI) for managin
 The CLI is automatically installed when you install the elastro package:
 
 ```bash
-pip install elastro
+pip install elastro-client
 ```
 
 ## Getting Started

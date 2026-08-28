@@ -4,12 +4,12 @@ Document management module.
 This module provides functionality for managing Elasticsearch documents.
 """
 
-from typing import Dict, Any, Optional, List, cast
-import asyncio
+from typing import Any, Dict, List, Optional, cast
+
 from elasticsearch import helpers
-from elastro.core.client import ElasticsearchClient
+
 from elastro.core.base import BaseManager
-from elastro.core.errors import DocumentError, ValidationError, OperationError
+from elastro.core.errors import DocumentError, OperationError, ValidationError
 from elastro.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -57,7 +57,10 @@ class DocumentManager(BaseManager):
                 "refresh": "true" if refresh else "false",
             }
 
-            # Add ID if provided
+            # elasticsearch-py 8.x Index API uses `id` (not document_id)
+            if id:
+                params["id"] = id
+
             self._ensure_connected()
 
             logger.debug(f"Indexing document into '{index}' with ID '{id}'")

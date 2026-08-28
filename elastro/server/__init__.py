@@ -21,9 +21,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import uvicorn
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from elastro import __version__
@@ -32,6 +32,62 @@ from elastro.core.logger import get_logger
 logger = get_logger(__name__)
 
 GUI_CAPABILITIES: List[str] = ["clusters", "indices", "health", "cli", "config"]
+GUI_TOKEN_COOKIE = "elastro_gui_token"
+GUI_TOKEN_ENV = "ELASTRO_GUI_TOKEN"
+GUI_CLAIM_ENV = "ELASTRO_GUI_CLAIM"
+
+_TOKEN_SHIM = r"""<script>
+(function(){
+  function readCookie(name){
+    var parts = document.cookie.split(';');
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i].replace(/^\s+/, '');
+      if (p.indexOf(name + '=') === 0) {
+        return decodeURIComponent(p.slice(name.length + 1));
+      }
+    }
+    return '';
+  }
+  var token = readCookie('elastro_gui_token');
+  if (token) {
+    var origGet = URLSearchParams.prototype.get;
+    URLSearchParams.prototype.get = function(key){
+      if (String(key) === 'token') {
+        var v = origGet.call(this, key);
+        return v || token;
+      }
+      return origGet.call(this, key);
+    };
+  }
+})();
+</script>
+"""
+
+
+def inject_gui_token_shim(html: str) -> str:
+    """Inject a cookie-based token shim so the compiled SPA does not need ?token=."""
+    if "URLSearchParams.prototype.get" in html and "elastro_gui_token" in html:
+        return html
+    if "</head>" in html:
+        return html.replace("</head>", _TOKEN_SHIM + "</head>", 1)
+    return _TOKEN_SHIM + html
+
+
+def set_gui_session_cookie(response: Response, token: str) -> None:
+    """Attach a host-only localhost session cookie (no Domain = host-only)."""
+    response.set_cookie(
+        key=GUI_TOKEN_COOKIE,
+        value=token,
+        httponly=False,
+        samesite="strict",
+        path="/",
+        max_age=86400,
+    )
+
+
+def gui_claim_url(port: int, claim_code: str) -> str:
+    """Return the one-time claim URL (session token itself is never in the URL)."""
+    return f"http://127.0.0.1:{port}/auth/claim?code={claim_code}"
 
 
 def _wait_for_server_ready(port: int, *, timeout: float = 8.0) -> bool:
@@ -106,13 +162,30 @@ class ElastroGUI:
     def __init__(self) -> None:
         self.config_dir = Path.home() / ".elastic"
         self.config_file = self.config_dir / "gui_config.json"
-        self.token = secrets.token_urlsafe(32)
         self.app = FastAPI(title="Elastro Local GUI API")
+        self.token = secrets.token_urlsafe(32)
+        self.claim_code = secrets.token_urlsafe(24)
 
         # Setup static dir — points to the embedded Vue build
         self.static_dir = Path(__file__).parent.parent / "gui"
 
         self._setup_routes()
+
+    @property
+    def token(self) -> str:
+        return str(getattr(self.app.state, "gui_token", ""))
+
+    @token.setter
+    def token(self, value: str) -> None:
+        self.app.state.gui_token = value
+
+    @property
+    def claim_code(self) -> str:
+        return str(getattr(self.app.state, "gui_claim", ""))
+
+    @claim_code.setter
+    def claim_code(self, value: str) -> None:
+        self.app.state.gui_claim = value
 
     @staticmethod
     def _has_usable_auth(auth: Dict[str, Any]) -> bool:
@@ -141,9 +214,7 @@ class ElastroGUI:
                 if isinstance(auth, dict) and self._has_usable_auth(auth):
                     # Return only credential keys (strip 'type' and nulls)
                     return {
-                        k: v
-                        for k, v in auth.items()
-                        if v is not None and k != "type"
+                        k: v for k, v in auth.items() if v is not None and k != "type"
                     }
         except Exception:
             pass
@@ -229,13 +300,23 @@ class ElastroGUI:
         with open(self.config_file, "w") as f:
             json.dump(config, f, indent=4)
 
-    def verify_token(self, authorization: Optional[str] = Header(None)) -> str:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Unauthorized")
-        token = authorization.split(" ")[1]
+    def verify_token(self, request: Request) -> str:
+        """Authenticate via Bearer header or localhost session cookie.
 
-        # Prevent timing attacks
-        if not secrets.compare_digest(token, self.token):
+        Implemented as an instance method so tests can still call it, but the
+        expected secret is read from ``request.app.state`` so concurrent GUI
+        instances (and FastAPI dependency caching) cannot mix tokens.
+        """
+        expected = str(getattr(request.app.state, "gui_token", ""))
+        authorization = request.headers.get("authorization")
+        cookie_token = request.cookies.get(GUI_TOKEN_COOKIE)
+        token: Optional[str] = None
+        if authorization and authorization.startswith("Bearer "):
+            token = authorization.split(" ", 1)[1]
+        elif cookie_token:
+            token = cookie_token
+
+        if not expected or not token or not secrets.compare_digest(token, expected):
             raise HTTPException(status_code=401, detail="Unauthorized")
         return token
 
@@ -251,11 +332,11 @@ class ElastroGUI:
 
         # Mount modular routers — each route module binds to our shared
         # config accessor and token verifier via a factory function.
-        from elastro.server.routes.config import config_routes
-        from elastro.server.routes.clusters import cluster_routes
-        from elastro.server.routes.indices import index_routes
         from elastro.server.routes.cli import cli_routes
+        from elastro.server.routes.clusters import cluster_routes
+        from elastro.server.routes.config import config_routes
         from elastro.server.routes.health import health_routes
+        from elastro.server.routes.indices import index_routes
 
         self.app.include_router(
             config_routes(self._read_config, self._write_config, self.verify_token)
@@ -273,6 +354,31 @@ class ElastroGUI:
                 "capabilities": GUI_CAPABILITIES,
             }
 
+        @self.app.get("/auth/claim")
+        def claim_session(code: str = "") -> RedirectResponse:
+            """Exchange a one-time claim code for a localhost session cookie."""
+            if not code or not secrets.compare_digest(code, self.claim_code):
+                raise HTTPException(
+                    status_code=401, detail="Invalid or expired claim code"
+                )
+            self.claim_code = secrets.token_urlsafe(24)
+            redirect = RedirectResponse(url="/", status_code=302)
+            set_gui_session_cookie(redirect, self.token)
+            return redirect
+
+        @self.app.post("/auth/refresh-claim")
+        def refresh_claim(
+            authorization: Optional[str] = Header(None),
+        ) -> Dict[str, str]:
+            """Mint a fresh one-time claim code for CLI reuse of a running GUI."""
+            if not authorization or not authorization.startswith("Bearer "):
+                raise HTTPException(status_code=401, detail="Unauthorized")
+            provided = authorization.split(" ", 1)[1]
+            if not secrets.compare_digest(provided, self.token):
+                raise HTTPException(status_code=401, detail="Unauthorized")
+            self.claim_code = secrets.token_urlsafe(24)
+            return {"code": self.claim_code}
+
         # Mount static GUI files
         if self.static_dir.exists():
             self.app.mount(
@@ -289,7 +395,8 @@ class ElastroGUI:
                 index_path = self.static_dir / "index.html"
                 if index_path.exists():
                     with open(index_path, "r") as f:
-                        return HTMLResponse(content=f.read())
+                        html = inject_gui_token_shim(f.read())
+                    return HTMLResponse(content=html)
                 return HTMLResponse(
                     "GUI not built. Run npm run build in packages/gui.",
                     status_code=404,
@@ -298,8 +405,13 @@ class ElastroGUI:
 
 def run_server(port: int = 8080, token: str = "") -> None:
     gui = ElastroGUI()
-    if token:
-        gui.token = token  # Override for the process
+    env_token = os.environ.get(GUI_TOKEN_ENV, "")
+    chosen_token = token or env_token
+    if chosen_token:
+        gui.token = chosen_token
+    env_claim = os.environ.get(GUI_CLAIM_ENV, "")
+    if env_claim:
+        gui.claim_code = env_claim
 
     # We use log_level warning to keep the detached CLI clean
     uvicorn.run(gui.app, host="127.0.0.1", port=port, log_level="warning")
@@ -319,7 +431,10 @@ def launch_gui_process() -> str:
                 state = json.load(f)
 
             if _should_reuse_gui_server(state):
-                return f"http://127.0.0.1:{state['port']}?token={state['token']}"
+                refreshed = _refresh_gui_claim(int(state["port"]), str(state["token"]))
+                if refreshed:
+                    return gui_claim_url(int(state["port"]), refreshed)
+                return f"http://127.0.0.1:{state['port']}"
 
             pid = state.get("pid")
             if pid:
@@ -340,14 +455,20 @@ def launch_gui_process() -> str:
             port = s.getsockname()[1]
 
     # We use a detached subprocess instead of multiprocessing to survive CLI exit
-    import sys
     import subprocess
+    import sys
 
+    claim_code = secrets.token_urlsafe(24)
+    gui.claim_code = claim_code
     cmd = [
         sys.executable,
         "-c",
-        f"from elastro.server import run_server; run_server({port}, '{gui.token}')",
+        f"from elastro.server import run_server; run_server({port})",
     ]
+
+    child_env = os.environ.copy()
+    child_env[GUI_TOKEN_ENV] = gui.token
+    child_env[GUI_CLAIM_ENV] = claim_code
 
     kwargs: Dict[str, Any] = {}
     if os.name == "posix":
@@ -358,6 +479,7 @@ def launch_gui_process() -> str:
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
+        env=child_env,
         **kwargs,
     )
 
@@ -380,5 +502,26 @@ def launch_gui_process() -> str:
                 f,
             )
 
-    url = f"http://127.0.0.1:{port}?token={gui.token}"
-    return url
+    return gui_claim_url(port, claim_code)
+
+
+def _refresh_gui_claim(port: int, token: str) -> Optional[str]:
+    """Ask a running GUI server for a fresh one-time claim code."""
+    try:
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{port}/auth/refresh-claim",
+            method="POST",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        with urllib.request.urlopen(req, timeout=2) as response:
+            payload = json.loads(response.read().decode())
+        code = payload.get("code")
+        return str(code) if code else None
+    except (
+        urllib.error.URLError,
+        TimeoutError,
+        json.JSONDecodeError,
+        OSError,
+        KeyError,
+    ):
+        return None

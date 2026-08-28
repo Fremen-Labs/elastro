@@ -143,7 +143,7 @@ const scrollToSection = (id: string) => {
           Installation
         </h2>
         <p class="section-desc">
-          Install Elastro using pip. It requires Python 3.8 or higher.
+          Install Elastro using pip. It requires Python 3.10–3.13 (install as elastro-client).
         </p>
         <CodeBlock
           code="# Install from PyPI

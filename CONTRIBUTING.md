@@ -28,7 +28,7 @@ ruff check --fix .
 ```
 
 ### Static Type Checking
-We use **Mypy** in strict mode (Python 3.9+).
+We use **Mypy** in strict mode (Python 3.10+).
 ```bash
 # Run type checks regarding core logic
 mypy .

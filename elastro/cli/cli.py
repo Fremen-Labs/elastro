@@ -12,14 +12,25 @@ if len(sys.argv) >= 3 and sys.argv[1] == "doc" and sys.argv[2] == "search":
     # Only use the fast path if '--help' is not requested
     if "--help" not in sys.argv and "-h" not in sys.argv:
         try:
-            import xmlrpc.client
+            import os
             import socket
+            import xmlrpc.client
 
             # Set a very short timeout so we fallback to heavy CLI if daemon is offline
             socket.setdefaulttimeout(0.05)
+            token = os.environ.get("ELASTRO_DAEMON_TOKEN")
+            if not token:
+                token_path = os.path.expanduser("~/.elastic/daemon.token")
+                try:
+                    with open(token_path, encoding="utf-8") as token_file:
+                        token = token_file.read().strip()
+                except OSError:
+                    token = None
+            if not token:
+                raise RuntimeError("daemon token missing")
             proxy = xmlrpc.client.ServerProxy("http://127.0.0.1:9201")
 
-            result = proxy.fast_path_search(sys.argv[3:])
+            result = proxy.fast_path_search(token, sys.argv[3:])
             if result:
                 print(result, end="")
                 sys.exit(0)
@@ -32,13 +43,9 @@ if len(sys.argv) >= 3 and sys.argv[1] == "doc" and sys.argv[2] == "search":
 # --- END FAST PATH INTERCEPTOR ---
 
 import os
-import json
-import yaml
+from typing import Optional
+
 import rich_click as click
-from typing import Dict, Any, Optional, List, Union
-from rich.console import Console
-from rich.table import Table
-from rich import box
 
 from elastro.cli.art import ELASTRO_ART
 
@@ -58,61 +65,62 @@ else:
     click.rich_click.HEADER_TEXT = ELASTRO_ART
 
 from elastro import __version__
-from elastro.config import load_config, get_config
-from elastro.core.client import ElasticsearchClient
-
-# Import command groups
-from elastro.cli.commands.index import (
-    create_index,
-    get_index,
-    index_exists,
-    update_index,
-    delete_index,
-    open_index,
-    close_index,
-    list_indices,
-    find_indices,
-    index_wizard,
-    fix_indices,
-)
-from elastro.cli.commands.document import (
-    index_document,
-    bulk_index,
-    get_document,
-    search_documents,
-    update_document,
-    delete_document,
-    bulk_delete,
+from elastro.cli.commands.cluster import cluster_group
+from elastro.cli.commands.config import (
+    get_config_value,
+    init_config,
+    list_config,
+    set_config_value,
 )
 from elastro.cli.commands.datastream import (
     create_datastream,
-    list_datastreams,
-    get_datastream,
     delete_datastream,
+    get_datastream,
+    list_datastreams,
     rollover_datastream,
 )
-from elastro.cli.commands.config import (
-    get_config_value,
-    set_config_value,
-    list_config,
-    init_config,
+from elastro.cli.commands.document import (
+    bulk_delete,
+    bulk_index,
+    delete_document,
+    get_document,
+    index_document,
+    search_documents,
+    update_document,
 )
-from elastro.cli.commands.utils import health, templates as utils_templates, aliases
-from elastro.cli.commands.template import template_group
-from elastro.cli.commands.ilm import ilm_group
-from elastro.cli.commands.snapshot import snapshot_group
-from elastro.cli.commands.cluster import cluster_group
-from elastro.cli.commands.security import security_group
-from elastro.cli.commands.tasks import tasks_group
-from elastro.cli.commands.ingest import ingest_group
-from elastro.cli.commands.ml import ml_group
-from elastro.cli.commands.script import script_group
-from elastro.cli.commands.painless_commands import painless_group
-from elastro.cli.commands.telemetry import telemetry_group
-from elastro.cli.commands.memory import memory_group
-from elastro.cli.commands.tools import tools_group
 from elastro.cli.commands.esql import esql_group
 from elastro.cli.commands.health import health_group
+from elastro.cli.commands.ilm import ilm_group
+
+# Import command groups
+from elastro.cli.commands.index import (
+    close_index,
+    create_index,
+    delete_index,
+    find_indices,
+    fix_indices,
+    get_index,
+    index_exists,
+    index_wizard,
+    list_indices,
+    open_index,
+    update_index,
+)
+from elastro.cli.commands.ingest import ingest_group
+from elastro.cli.commands.memory import memory_group
+from elastro.cli.commands.ml import ml_group
+from elastro.cli.commands.painless_commands import painless_group
+from elastro.cli.commands.script import script_group
+from elastro.cli.commands.security import security_group
+from elastro.cli.commands.snapshot import snapshot_group
+from elastro.cli.commands.tasks import tasks_group
+from elastro.cli.commands.telemetry import telemetry_group
+from elastro.cli.commands.template import template_group
+from elastro.cli.commands.tools import tools_group
+from elastro.cli.commands.utils import aliases, health
+from elastro.cli.commands.utils import templates as utils_templates
+from elastro.config import load_config
+from elastro.core.client import ElasticsearchClient
 
 # Register Top-Level Groups
 
@@ -275,9 +283,9 @@ utils.add_command(health)
 utils.add_command(utils_templates)
 utils.add_command(aliases)
 
+from elastro.cli.commands.daemon import daemon_group
 from elastro.cli.commands.gui import gui
 from elastro.cli.commands.rag import rag_group
-from elastro.cli.commands.daemon import daemon_group
 
 # Register Top-Level Groups
 cli.add_command(template_group)
