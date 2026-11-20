@@ -83,21 +83,17 @@ class TestTemplateManager:
         assert manager._es == es_client.client
 
     def test_create_success_with_dict(self, template_manager, mock_elasticsearch):
-        """Test creating a template with dict definition successfully."""
-        # Setup mock response
+        """Test creating a template with name + body dict."""
         mock_elasticsearch.indices.put_index_template.return_value = {
             "acknowledged": True
         }
 
-        # Template definition as a dict
-        template_dict = {
-            "name": "test-template",
+        body = {
             "index_patterns": ["test-*"],
             "template": {"settings": {"number_of_shards": 1}},
         }
 
-        # Test creation
-        result = template_manager.create(template_dict)
+        result = template_manager.create("test-template", body)
         assert result is True
 
         mock_elasticsearch.indices.put_index_template.assert_called_once()
@@ -107,13 +103,11 @@ class TestTemplateManager:
         assert call_args["body"]["template"]["settings"]["number_of_shards"] == 1
 
     def test_create_success_with_model(self, template_manager, mock_elasticsearch):
-        """Test creating a template with TemplateDefinition model successfully."""
-        # Setup mock response
+        """Test creating a template whose body is built from TemplateDefinition."""
         mock_elasticsearch.indices.put_index_template.return_value = {
             "acknowledged": True
         }
 
-        # Template definition as a model
         template = TemplateDefinition(
             name="test-template",
             index_patterns=["test-*"],
@@ -121,9 +115,14 @@ class TestTemplateManager:
             version=2,
             priority=50,
         )
+        body = {
+            "index_patterns": template.index_patterns,
+            "template": template.template,
+            "version": template.version,
+            "priority": template.priority,
+        }
 
-        # Test creation
-        result = template_manager.create(template)
+        result = template_manager.create(template.name, body)
         assert result is True
 
         mock_elasticsearch.indices.put_index_template.assert_called_once()
@@ -136,19 +135,15 @@ class TestTemplateManager:
 
     def test_create_error(self, template_manager, mock_elasticsearch):
         """Test error handling when creating a template."""
-        # Setup mock to raise an exception
         mock_elasticsearch.indices.put_index_template.side_effect = Exception(
             "Test error"
         )
 
-        # Template definition
-        template = TemplateDefinition(name="test-template", index_patterns=["test-*"])
-
-        # Test error handling
         with pytest.raises(
-            OperationError, match="Failed to create template test-template: Test error"
+            OperationError,
+            match="Failed to create index template test-template: Test error",
         ):
-            template_manager.create(template)
+            template_manager.create("test-template", {"index_patterns": ["test-*"]})
 
     def test_get_success(self, template_manager, mock_elasticsearch):
         """Test getting a template by name."""
@@ -196,46 +191,51 @@ class TestTemplateManager:
 
         # Test error handling
         with pytest.raises(
-            OperationError, match="Failed to get template test-template: Test error"
+            OperationError,
+            match="Failed to get index template test-template: Test error",
         ):
             template_manager.get("test-template")
 
-    def test_exists_true(self, template_manager, mock_elasticsearch):
-        """Test checking if a template exists and it does."""
-        # Setup mock response
-        mock_elasticsearch.indices.exists_index_template.return_value = True
+    def test_create_component_success(self, template_manager, mock_elasticsearch):
+        """Create a component template via template_type (no exists() API)."""
+        mock_elasticsearch.cluster.put_component_template.return_value = {
+            "acknowledged": True
+        }
+        body = {"template": {"settings": {"number_of_shards": 1}}}
 
-        # Test checking if template exists
-        result = template_manager.exists("test-template")
+        result = template_manager.create(
+            "test-component", body, template_type="component"
+        )
         assert result is True
-        mock_elasticsearch.indices.exists_index_template.assert_called_once_with(
-            name="test-template"
+        mock_elasticsearch.cluster.put_component_template.assert_called_once_with(
+            name="test-component", body=body
         )
 
-    def test_exists_false(self, template_manager, mock_elasticsearch):
-        """Test checking if a template exists and it doesn't."""
-        # Setup mock response
-        mock_elasticsearch.indices.exists_index_template.return_value = False
+    def test_get_component_missing(self, template_manager, mock_elasticsearch):
+        """get() returns {} when the named component template is absent."""
+        mock_elasticsearch.cluster.get_component_template.return_value = {
+            "component_templates": []
+        }
 
-        # Test checking if template doesn't exist
-        result = template_manager.exists("non-existent")
-        assert result is False
-        mock_elasticsearch.indices.exists_index_template.assert_called_once_with(
+        result = template_manager.get("non-existent", template_type="component")
+        assert result == {}
+        mock_elasticsearch.cluster.get_component_template.assert_called_once_with(
             name="non-existent"
         )
 
-    def test_exists_with_exception(self, template_manager, mock_elasticsearch):
-        """Test handling exceptions when checking if a template exists."""
-        # Setup mock to raise an exception
-        mock_elasticsearch.indices.exists_index_template.side_effect = Exception(
-            "Test error"
-        )
+    def test_list_component_templates(self, template_manager, mock_elasticsearch):
+        """list() returns component_templates entries, not name strings."""
+        mock_response = {
+            "component_templates": [
+                {"name": "comp1", "component_template": {}},
+            ]
+        }
+        mock_elasticsearch.cluster.get_component_template.return_value = mock_response
 
-        # Test exception handling returns False
-        result = template_manager.exists("test-template")
-        assert result is False
-        mock_elasticsearch.indices.exists_index_template.assert_called_once_with(
-            name="test-template"
+        result = template_manager.list(template_type="component")
+        assert result == mock_response["component_templates"]
+        mock_elasticsearch.cluster.get_component_template.assert_called_once_with(
+            name="*"
         )
 
     def test_delete_success(self, template_manager, mock_elasticsearch):
@@ -261,13 +261,13 @@ class TestTemplateManager:
 
         # Test error handling
         with pytest.raises(
-            OperationError, match="Failed to delete template test-template: Test error"
+            OperationError,
+            match="Failed to delete index template test-template: Test error",
         ):
             template_manager.delete("test-template")
 
     def test_list_success(self, template_manager, mock_elasticsearch):
         """Test listing all templates successfully."""
-        # Setup mock response
         mock_response = {
             "index_templates": [
                 {"name": "template1", "index_template": {}},
@@ -276,10 +276,9 @@ class TestTemplateManager:
         }
         mock_elasticsearch.indices.get_index_template.return_value = mock_response
 
-        # Test listing templates
         result = template_manager.list()
-        assert result == ["template1", "template2"]
-        mock_elasticsearch.indices.get_index_template.assert_called_once()
+        assert result == mock_response["index_templates"]
+        mock_elasticsearch.indices.get_index_template.assert_called_once_with(name="*")
 
     def test_list_empty(self, template_manager, mock_elasticsearch):
         """Test listing templates when none exist."""
@@ -302,6 +301,6 @@ class TestTemplateManager:
 
         # Test error handling
         with pytest.raises(
-            OperationError, match="Failed to list templates: Test error"
+            OperationError, match="Failed to list index templates: Test error"
         ):
             template_manager.list()
