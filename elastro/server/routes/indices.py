@@ -216,6 +216,28 @@ def index_routes(read_config: Any, verify_token: Any) -> APIRouter:
                 }
             if not result.success:
                 raise HTTPException(status_code=500, detail=result.message)
+            if not result.executed:
+                logger.warning(
+                    "GUI index fix skipped cluster=%s action=%s",
+                    cluster_name,
+                    action,
+                )
+                planned_api_call = result.planned_api_call
+                if not planned_api_call and entry is not None:
+                    planned_api_call = RemediationCatalog.planned_call(
+                        action,
+                        index_name,
+                        api_payload=True,
+                    )
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "code": "confirmation_required",
+                        "action": action,
+                        "safety": entry.safety.value if entry is not None else "",
+                        "planned_api_call": planned_api_call or "",
+                    },
+                )
             return {
                 "status": "success",
                 "message": result.message,
