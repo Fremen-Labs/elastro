@@ -12,6 +12,7 @@ from elastro.cli.art import banner_enabled
 from elastro.cli.cli import cli
 from elastro.cli.commands.cluster import cluster_group
 from elastro.cli.commands.document import search_documents
+from elastro.cli.commands.health import health_group
 from elastro.cli.commands.ilm import ilm_group
 from elastro.cli.commands.memory import memory_group
 from elastro.cli.commands.painless_commands import painless_group
@@ -260,7 +261,8 @@ def test_cluster_allocation_no_unassigned_exits_0() -> None:
     result = CliRunner().invoke(cluster_group, ["allocation"], obj=client)
 
     assert result.exit_code == 0, result.output
-    assert "no unassigned shards to explain" in result.output.lower()
+    payload = json.loads(result.stdout)
+    assert payload["message"] == "no unassigned shards to explain"
 
 
 def test_cluster_allocation_other_400_exits_1() -> None:
@@ -274,6 +276,39 @@ def test_cluster_allocation_other_400_exits_1() -> None:
 
     client.client.cluster.allocation_explain.side_effect = BadRequest()
     result = CliRunner().invoke(cluster_group, ["allocation"], obj=client)
+
+    assert result.exit_code == 1
+    assert "invalid allocation request" in result.stderr
+
+
+def test_health_shards_explain_no_unassigned_exits_0() -> None:
+    client = _client()
+
+    class BadRequest(Exception):
+        status_code = 400
+
+        def __str__(self) -> str:
+            return "No shard was specified"
+
+    client.client.cluster.allocation_explain.side_effect = BadRequest()
+    result = CliRunner().invoke(health_group, ["shards", "--explain"], obj=client)
+
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.stdout)
+    assert payload["message"] == "no unassigned shards to explain"
+
+
+def test_health_shards_explain_other_400_exits_1() -> None:
+    client = _client()
+
+    class BadRequest(Exception):
+        status_code = 400
+
+        def __str__(self) -> str:
+            return "invalid allocation request"
+
+    client.client.cluster.allocation_explain.side_effect = BadRequest()
+    result = CliRunner().invoke(health_group, ["shards", "--explain"], obj=client)
 
     assert result.exit_code == 1
     assert "invalid allocation request" in result.stderr

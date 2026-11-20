@@ -83,6 +83,20 @@ def test_search_missing_index_returns_empty(es_client, caplog) -> None:
     assert not any(record.exc_info for record in caplog.records)
 
 
+def test_search_gateway_404_is_operation_error(es_client) -> None:
+    class Gateway404(Exception):
+        status_code = 404
+
+        def __str__(self) -> str:
+            return "404 Not Found"
+
+    es_client.client.search.side_effect = Gateway404()
+    with pytest.raises(OperationError, match="404 Not Found"):
+        AgentStore(es_client).search(
+            AGENT_SEMANTIC_MEMORY, {"query": {"match_all": {}}}
+        )
+
+
 def test_delete_by_query_operation_error(es_client) -> None:
     es_client.client.delete_by_query.side_effect = Exception("No node reached")
     with pytest.raises(OperationError, match="No node reached"):

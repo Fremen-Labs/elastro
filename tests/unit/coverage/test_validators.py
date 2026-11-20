@@ -288,3 +288,43 @@ def test_field_presence_ignores_unscoped_host_count(es_client) -> None:
     assert "35757" not in field.summary
     assert field.metadata["host.name"] == 2
     assert field.metadata["host.name"] <= report.doc_count
+
+
+def test_field_presence_uses_in_window_count_when_hits_capped(es_client) -> None:
+    body = _search_hits(count=2, service_docs=10, host_docs=35757)
+    body["hits"]["total"] = {"value": 2, "relation": "gte"}
+    body["aggregations"]["in_window"]["doc_count"] = 35757
+    body["aggregations"]["has_host_name"] = {"doc_count": 35757}
+    with patch("elastro.coverage.validators.IndexManager") as idx:
+        with patch("elastro.coverage.validators.DatastreamManager") as ds:
+            with patch("elastro.coverage.validators.DocumentManager") as docs:
+                idx.return_value.list.return_value = [{"index": "filebeat-8.15.0"}]
+                ds.return_value.list.return_value = []
+                docs.return_value.search.return_value = body
+                report = CoverageValidator(es_client).check_pattern("filebeat-*")
+    field = next(item for item in report.checks if item.name == "field_presence")
+    assert "of 2 docs" not in field.summary
+    assert field.doc_count == 35757
+    assert report.doc_count == 35757
+    assert field.metadata["host.name"] == 35757
+    assert field.metadata["host.name"] <= field.doc_count
+    assert "host.name=35757 of 35757 docs" in field.summary
+
+
+def test_field_presence_incomplete_in_window_does_not_use_unscoped(
+    es_client,
+) -> None:
+    body = _search_hits(count=2, service_docs=2, host_docs=2)
+    body["aggregations"]["has_host_name"] = {"doc_count": 35757}
+    body["aggregations"]["in_window"] = {"doc_count": 35757}
+    with patch("elastro.coverage.validators.IndexManager") as idx:
+        with patch("elastro.coverage.validators.DatastreamManager") as ds:
+            with patch("elastro.coverage.validators.DocumentManager") as docs:
+                idx.return_value.list.return_value = [{"index": "filebeat-8.15.0"}]
+                ds.return_value.list.return_value = []
+                docs.return_value.search.return_value = body
+                report = CoverageValidator(es_client).check_pattern("filebeat-*")
+    field = next(item for item in report.checks if item.name == "field_presence")
+    assert field.metadata["host.name"] == 0
+    assert "host.name=35757" not in field.summary
+    assert report.doc_count == 35757

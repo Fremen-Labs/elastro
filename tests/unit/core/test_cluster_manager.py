@@ -88,3 +88,15 @@ class TestClusterManager:
 
         with pytest.raises(OperationError, match="Failed to explain allocation"):
             ClusterManager(es_client).allocation_explain()
+
+    def test_allocation_explain_500_with_marker_still_fails(self, es_client) -> None:
+        class ServerError(Exception):
+            status_code = 500
+
+            def __str__(self) -> str:
+                return "No shard was specified"
+
+        es_client.client.cluster.allocation_explain.side_effect = ServerError()
+
+        with pytest.raises(OperationError, match="Failed to explain allocation"):
+            ClusterManager(es_client).allocation_explain()

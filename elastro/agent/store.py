@@ -106,13 +106,29 @@ _MISSING_INDEX_MARKERS = (
 
 
 def _is_missing_index(exc: Exception) -> bool:
-    status = getattr(exc, "status_code", None)
-    meta = getattr(exc, "meta", None)
-    if status is None and meta is not None:
-        status = getattr(meta, "status", None)
-    if status == 404:
-        return True
-    if type(exc).__name__ in {"NotFoundError", "NotFoundException"}:
-        return True
     message = str(exc).lower()
-    return any(marker in message for marker in _MISSING_INDEX_MARKERS)
+    if any(marker in message for marker in _MISSING_INDEX_MARKERS):
+        return True
+    for candidate in (
+        getattr(exc, "error", None),
+        getattr(exc, "body", None),
+    ):
+        if _error_has_missing_index_marker(candidate):
+            return True
+    return False
+
+
+def _error_has_missing_index_marker(payload: Any) -> bool:
+    if isinstance(payload, dict):
+        error = payload.get("error") if "error" in payload else payload
+        if isinstance(error, dict):
+            blob = " ".join(
+                str(error.get(key) or "") for key in ("type", "reason", "caused_by")
+            ).lower()
+        else:
+            blob = str(error).lower()
+        return any(marker in blob for marker in _MISSING_INDEX_MARKERS)
+    if payload is None:
+        return False
+    text = str(payload).lower()
+    return any(marker in text for marker in _MISSING_INDEX_MARKERS)

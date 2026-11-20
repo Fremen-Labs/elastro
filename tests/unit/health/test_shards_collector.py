@@ -38,6 +38,21 @@ class TestShardsCollector(unittest.TestCase):
         payload = explain_allocation(self.ctx, index_name="logs-000001")
         self.assertEqual(payload["allocate_explanation"], "blocked")
 
+    def test_explain_allocation_no_unassigned_shards(self):
+        from elastro.health.collectors.shards import explain_allocation
+
+        class BadRequest(Exception):
+            status_code = 400
+
+            def __str__(self) -> str:
+                return "No shard was specified"
+
+        self.mock_client.is_connected.return_value = True
+        self.mock_client.get_client.return_value = self.mock_es
+        self.mock_es.cluster.allocation_explain.side_effect = BadRequest()
+        payload = explain_allocation(self.ctx)
+        self.assertEqual(payload["message"], "no unassigned shards to explain")
+
 
 if __name__ == "__main__":
     unittest.main()

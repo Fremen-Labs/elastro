@@ -343,6 +343,17 @@ class TestHealthManager(unittest.TestCase):
 
         self.assertIn("Failed to explain allocation", str(context.exception))
 
+    def test_allocation_explain_no_unassigned_shards(self):
+        class BadRequest(Exception):
+            status_code = 400
+
+            def __str__(self) -> str:
+                return "No shard was specified"
+
+        self.mock_es.cluster.allocation_explain.side_effect = BadRequest()
+        result = self.health_manager.allocation_explain()
+        self.assertEqual(result, {"message": "no unassigned shards to explain"})
+
     def test_cluster_settings(self):
         """Test getting cluster settings."""
         # Setup mock response

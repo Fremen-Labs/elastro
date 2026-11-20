@@ -222,9 +222,12 @@ class CoverageValidator:
                     ) from exc
 
         if search_body is not None:
-            doc_count = _hit_count(search_body)
             aggs = search_body.get("aggregations") or search_body.get("aggs") or {}
             scoped = _scoped_aggs(aggs)
+            window_count = _in_window_doc_count(aggs)
+            hit_count = _hit_count(search_body)
+            # hits.total is capped by track_total_hits; in_window.doc_count is not
+            doc_count = window_count if window_count is not None else hit_count
             latest_timestamp, _latest_dt = _latest_from_agg(aggs)
             count_ok = doc_count >= min_docs
             checks.append(
@@ -448,25 +451,36 @@ def _latest_from_agg(
     return None, None
 
 
+def _in_window_doc_count(aggs: Dict[str, Any]) -> Optional[int]:
+    """Return the filter-agg window size, which is not capped by track_total_hits."""
+    nested = aggs.get("in_window")
+    if not isinstance(nested, dict) or "doc_count" not in nested:
+        return None
+    try:
+        return int(nested.get("doc_count") or 0)
+    except (TypeError, ValueError):
+        return None
+
+
+def _has_presence_aggs(body: Dict[str, Any]) -> bool:
+    return (
+        "has_service_name" in body
+        or "has_host_name" in body
+        or "service_cardinality" in body
+    )
+
+
 def _scoped_aggs(aggs: Dict[str, Any]) -> Dict[str, Any]:
     """Return field-presence aggregations nested under the time-window filter."""
     nested = aggs.get("in_window")
     if not isinstance(nested, dict):
-        return aggs
+        return {}
     inner = nested.get("aggs")
-    if isinstance(inner, dict) and (
-        "has_service_name" in inner
-        or "has_host_name" in inner
-        or "service_cardinality" in inner
-    ):
+    if isinstance(inner, dict) and _has_presence_aggs(inner):
         return inner
-    if (
-        "has_service_name" in nested
-        or "has_host_name" in nested
-        or "service_cardinality" in nested
-    ):
+    if _has_presence_aggs(nested):
         return nested
-    return aggs
+    return {}
 
 
 def _apply_service_streams_present(
