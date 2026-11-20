@@ -106,13 +106,13 @@ def simulate_pipeline(
     elastro ingest simulate my-pipeline --file ./sample.json
     ```
     """
-    require_client()
     console = Console()
 
     if not doc and not file:
         console.print("[bold red]Error:[/bold red] Provide either --doc or --file")
         raise SystemExit(1)
 
+    require_client()
     try:
         es = client.client
 
@@ -486,7 +486,6 @@ def profile_data_cmd(
     elastro ingest profile events.ndjson --sample-size 5000
     ```
     """
-    require_client()
     from elastro.core.ingest.readers import read_source
     from elastro.core.ingest.validators import profile_data
 
@@ -585,7 +584,6 @@ def auto_map(
     elastro ingest auto-map events.ndjson --output mapping.json
     ```
     """
-    require_client()
     from elastro.core.ingest.readers import read_source
     from elastro.core.ingest.validators import infer_mapping
 
@@ -670,7 +668,6 @@ def validate_data(
     elastro ingest validate data.json --index logs --strict
     ```
     """
-    require_client()
     from elastro.core.ingest.readers import read_source
     from elastro.core.ingest.validators import SchemaValidator, infer_mapping
 
@@ -678,6 +675,7 @@ def validate_data(
     props: dict[str, Any] = {}
 
     if index:
+        require_client()
         # Fetch mapping from the live index
         try:
             es = client.client
@@ -822,7 +820,6 @@ def pipeline_wizard(client: ElasticsearchClient) -> None:
     elastro ingest pipeline wizard
     ```
     """
-    require_client()
     import sys
 
     from rich.prompt import Confirm, Prompt
@@ -912,6 +909,7 @@ def pipeline_wizard(client: ElasticsearchClient) -> None:
         f"\n[bold]Deploy pipeline '{pipeline_id}' to cluster?[/bold]",
         default=False,
     ):
+        require_client()
         try:
             builder.deploy(client, pipeline_id=pipeline_id)
             console.print(
@@ -1035,10 +1033,10 @@ def pipeline_create(
     elastro ingest pipeline create web-logs --file ./pipeline.json
     ```
     """
-    require_client()
     console = Console()
     try:
         body = json.load(pipeline_file)
+        require_client()
         es = client.client
         es.ingest.put_pipeline(id=pipeline_id, body=body)
         proc_count = len(body.get("processors", []))
@@ -1078,7 +1076,6 @@ def pipeline_delete(
     elastro -o json ingest pipeline delete web-logs --dry-run
     ```
     """
-    require_client()
     from rich.prompt import Confirm
 
     from elastro.cli.deletion import emit_delete_preview, preview_pipeline_delete
@@ -1086,6 +1083,7 @@ def pipeline_delete(
     console = Console()
 
     if dry_run:
+        require_client()
         emit_delete_preview(preview_pipeline_delete(client, pipeline_id))
         return
 
@@ -1097,6 +1095,7 @@ def pipeline_delete(
             console.print("[dim]Aborted.[/dim]")
             return
 
+    require_client()
     try:
         es = client.client
         es.ingest.delete_pipeline(id=pipeline_id)
@@ -1188,7 +1187,6 @@ def grok_builder_cmd(
     elastro ingest grok-builder --preset syslog
     ```
     """
-    require_client()
     from elastro.core.ingest.grok_builder import GrokBuilder
 
     console = Console()

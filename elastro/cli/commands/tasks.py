@@ -119,8 +119,8 @@ def cancel_task(client: ElasticsearchClient, task_id: str, yes: bool) -> None:
 
     TASK_ID must be in format <node_id>:<task_id>.
     """
-    require_client()
     confirm_or_exit(f"Cancel task '{task_id}'?", yes=yes)
+    require_client()
     console = Console()
     logger.info("tasks.cancel task_id=%s", task_id)
     try:

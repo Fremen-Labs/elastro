@@ -91,14 +91,15 @@ def delete_script(
     """
     Delete a stored Painless script.
     """
-    require_client()
     from elastro.cli.deletion import emit_delete_preview, preview_script_delete
 
     if dry_run:
+        require_client()
         emit_delete_preview(preview_script_delete(client, id))
         return
 
     confirm_or_exit(f"Are you sure you want to delete script '{id}'?", yes=yes)
+    require_client()
     logger.info("script.delete id=%s", id)
     try:
         response = client.client.delete_script(id=id)
@@ -130,7 +131,6 @@ def create_script(
 
     You can optionally open your default local editor to compose the script interactively.
     """
-    require_client()
     script_source = ""
 
     if file:
@@ -173,6 +173,7 @@ def create_script(
 
     script_payload = {"script": {"lang": "painless", "source": script_source}}
 
+    require_client()
     logger.info("script.create id=%s", id)
     try:
         response = client.client.put_script(id=id, body=script_payload)
@@ -200,7 +201,6 @@ def execute_script(
     This heavily relies on the _scripts/painless/_execute endpoint to test syntax
     without permanently altering production data structures.
     """
-    require_client()
     if not source and not id:
         usage_error("Error: Must provide either --source or --id.")
 
@@ -220,6 +220,7 @@ def execute_script(
         payload["context"] = "score"  # default test endpoint context
         payload["context_setup"] = {"document": ctx_data}
 
+    require_client()
     logger.info("script.execute id=%s has_source=%s", id or "-", bool(source))
     try:
         response = client.client.perform_request(

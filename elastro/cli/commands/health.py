@@ -1258,7 +1258,6 @@ def health_rollback_apply(
     elastro health rollback apply --id rb-abc123
     ```
     """
-    require_client(ctx)
     _run_health_rollback(ctx, rollback_id=rollback_id, dry_run=dry_run)
 
 

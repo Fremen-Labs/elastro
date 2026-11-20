@@ -97,7 +97,6 @@ def esql_query(
     elastro esql query "FROM metrics-* | STATS avg(cpu) BY host" --format csv
     ```
     """
-    require_client()
     console = Console()
 
     # Resolve query source
@@ -138,6 +137,7 @@ def esql_query(
     )
 
     # Execute
+    require_client()
     try:
         body: Dict[str, Any] = {"query": query_text}
         if columnar:
@@ -288,7 +288,6 @@ def esql_build(
     elastro esql build -s "logs-*" -w "status >= 400" --limit 5 --execute
     ```
     """
-    require_client()
     from elastro.core.esql import ESQLQuery
 
     console = Console()

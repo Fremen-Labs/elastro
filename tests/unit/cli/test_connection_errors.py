@@ -128,3 +128,80 @@ def test_fast_path_miss_restores_socket_timeout(monkeypatch) -> None:
 def test_pass_obj_callbacks_do_not_gain_ctx_parameter() -> None:
     params = list(inspect.signature(list_users.callback).parameters)
     assert params == ["client", "username"]
+
+
+def _write_sample_csv(tmp_path) -> str:
+    source = tmp_path / "sample.csv"
+    source.write_text("name,age\nalice,30\nbob,41\n", encoding="utf-8")
+    return str(source)
+
+
+def test_ingest_profile_runs_when_connect_fails(monkeypatch, tmp_path) -> None:
+    _patch_connect_auth(monkeypatch)
+    result = CliRunner().invoke(cli, ["ingest", "profile", _write_sample_csv(tmp_path)])
+
+    assert result.exit_code == 0, result.output
+
+
+def test_ingest_auto_map_runs_when_connect_fails(monkeypatch, tmp_path) -> None:
+    _patch_connect_auth(monkeypatch)
+    result = CliRunner().invoke(
+        cli, ["ingest", "auto-map", _write_sample_csv(tmp_path)]
+    )
+
+    assert result.exit_code == 0, result.output
+
+
+def test_ingest_grok_builder_list_presets_when_connect_fails(monkeypatch) -> None:
+    _patch_connect_auth(monkeypatch)
+    result = CliRunner().invoke(cli, ["ingest", "grok-builder", "--list-presets"])
+
+    assert result.exit_code == 0, result.output
+
+
+def test_ingest_validate_local_when_connect_fails(monkeypatch, tmp_path) -> None:
+    _patch_connect_auth(monkeypatch)
+    result = CliRunner().invoke(
+        cli, ["ingest", "validate", _write_sample_csv(tmp_path)]
+    )
+
+    assert result.exit_code == 0, result.output
+
+
+def test_esql_build_without_execute_when_connect_fails(monkeypatch) -> None:
+    _patch_connect_auth(monkeypatch)
+    result = CliRunner().invoke(cli, ["esql", "build", "-s", "logs-*"])
+
+    assert result.exit_code == 0, result.output
+
+
+def test_ml_init_job_non_tty_exits_2_when_connect_fails(monkeypatch) -> None:
+    _patch_connect_auth(monkeypatch)
+    result = CliRunner().invoke(cli, ["ml", "init-job"])
+
+    assert result.exit_code == 2
+    assert "interactive wizard requires a TTY" in result.stderr
+
+
+def test_tasks_cancel_without_yes_exits_2_when_connect_fails(monkeypatch) -> None:
+    _patch_connect_auth(monkeypatch)
+    result = CliRunner().invoke(cli, ["tasks", "cancel", "node-1:123"])
+
+    assert result.exit_code == 2
+    assert "--yes" in result.stderr
+
+
+def test_cluster_settings_without_yes_exits_2_when_connect_fails(monkeypatch) -> None:
+    _patch_connect_auth(monkeypatch)
+    result = CliRunner().invoke(cli, ["cluster", "settings", "--enable-routing", "all"])
+
+    assert result.exit_code == 2
+    assert "--yes" in result.stderr
+
+
+def test_script_delete_without_yes_exits_2_when_connect_fails(monkeypatch) -> None:
+    _patch_connect_auth(monkeypatch)
+    result = CliRunner().invoke(cli, ["script", "delete", "my-script"])
+
+    assert result.exit_code == 2
+    assert "--yes" in result.stderr

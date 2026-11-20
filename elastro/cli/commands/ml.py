@@ -35,7 +35,6 @@ def init_job(client: ElasticsearchClient) -> None:
     This command guides you through deploying a single-metric ML job
     over an existing Index or Datastream without hand-writing JSON.
     """
-    require_client()
     if not stdin_is_tty():
         usage_error("interactive wizard requires a TTY")
     logger.info("ml.init-job")
@@ -108,6 +107,7 @@ def init_job(client: ElasticsearchClient) -> None:
         click.echo("Aborted", err=True)
         return
 
+    require_client()
     try:
         # ES API call: PUT _ml/anomaly_detectors/<job_id>
         client.client.ml.put_job(job_id=job_id, body=job_config)

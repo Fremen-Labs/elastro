@@ -110,12 +110,12 @@ def cluster_settings(
 
     If no options are passed, prints the current persistent and transient settings.
     """
-    require_client()
     if enable_routing:
         confirm_or_exit(
             f"Set cluster.routing.allocation.enable to '{enable_routing}'?",
             yes=yes,
         )
+    require_client()
     console = Console()
     logger.info(
         "cluster.settings enable_routing=%s yes=%s",
