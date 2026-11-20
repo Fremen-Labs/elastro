@@ -147,6 +147,13 @@ def test_default_config_exists():
     assert "verbose" in defaults.DEFAULT_CONFIG["cli"]
     assert defaults.DEFAULT_CONFIG["cli"]["verbose"] == defaults.DEFAULT_CLI_VERBOSE
 
+    coverage = defaults.DEFAULT_CONFIG["coverage"]
+    assert coverage["default_window"] == "15m"
+    assert coverage["templates_path"] is None
+    assert coverage["fleet"]["enabled"] is False
+    assert coverage["fleet"]["kibana_url"] is None
+    assert coverage["fleet"]["api_key"] is None
+
     # Check logging section
     assert "level" in defaults.DEFAULT_CONFIG["logging"]
     assert defaults.DEFAULT_CONFIG["logging"]["level"] == "INFO"

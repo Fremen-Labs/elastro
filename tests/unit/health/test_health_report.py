@@ -143,6 +143,15 @@ class TestHealthReportCollector(unittest.TestCase):
         self.assertEqual(result.status, "ok")
         self.mock_es.health_report.assert_called_once_with(feature="disk", verbose=True)
 
+    def test_custom_apm_feature_not_passed_to_api(self):
+        report = _load_fixture("health_report_green.json")
+        self.mock_es.health_report.return_value = report
+        ctx = CollectContext(client=self.mock_client, es_version="8.15.2")
+        ctx.options["feature"] = "apm"
+        result = self.collector.collect(ctx)
+        self.assertEqual(result.status, "ok")
+        self.mock_es.health_report.assert_called_once_with(verbose=True)
+
 
 if __name__ == "__main__":
     unittest.main()

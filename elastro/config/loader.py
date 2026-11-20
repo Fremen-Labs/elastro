@@ -235,6 +235,9 @@ def _load_from_env(config: Dict[str, Any]) -> Dict[str, Any]:
         "api_key",
         "cloud_id",
         "auth_type",
+        "kibana_url",
+        "default_window",
+        "templates_path",
     ]
 
     for env_var, value in os.environ.items():

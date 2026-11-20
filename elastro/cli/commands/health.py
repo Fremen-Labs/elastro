@@ -128,7 +128,10 @@ def health_group() -> None:
     "--feature",
     "features",
     multiple=True,
-    help="Limit health report to specific indicator(s); only first is used today",
+    help=(
+        "Limit to a _health_report indicator (disk, ilm, ...) or custom "
+        "coverage rules (apm, beats); only first is used today"
+    ),
 )
 @click.option(
     "--verbose-report/--no-verbose-report",

@@ -13,3 +13,4 @@ global-exclude __pycache__
 global-exclude *.so
 global-exclude .DS_Store
 recursive-include elastro/gui *
+recursive-include elastro/coverage/assets *

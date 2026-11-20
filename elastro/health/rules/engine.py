@@ -21,6 +21,8 @@ class RuleContext:
     collector_data: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     assessment_history: List[Dict[str, Any]] = field(default_factory=list)
     es_version: Optional[str] = None
+    feature: Optional[str] = None
+    coverage_strict: bool = False
 
 
 class RuleEngine:
@@ -31,6 +33,13 @@ class RuleEngine:
 
     @classmethod
     def default_rules(cls) -> List[RuleFn]:
+        from elastro.health.rules.apm_beats import (
+            apm_beats_shard_imbalance_findings,
+            apm_data_stream_findings,
+            apm_ilm_phase_lag_findings,
+            apm_rejection_findings,
+            beats_ilm_findings,
+        )
         from elastro.health.rules.backup_policy import backup_policy_findings
         from elastro.health.rules.circuit_breaker import circuit_breaker_rule
         from elastro.health.rules.cluster_blocks import cluster_block_findings
@@ -61,6 +70,11 @@ class RuleEngine:
             oversharding_findings,
             hotspot_findings,
             mapping_explosion_findings,
+            apm_data_stream_findings,
+            beats_ilm_findings,
+            apm_rejection_findings,
+            apm_beats_shard_imbalance_findings,
+            apm_ilm_phase_lag_findings,
         ]
 
     def evaluate(self, ctx: RuleContext) -> List[Finding]:

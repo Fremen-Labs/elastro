@@ -1,0 +1,65 @@
+name: metricbeat-metrics
+description: ILM and index template for Metricbeat / metrics-metricbeat data streams
+aliases:
+  - metricbeat
+index_patterns:
+  - metrics-metricbeat*
+ilm:
+  policy_name: elastro-metricbeat-metrics
+  policy:
+    phases:
+      hot:
+        min_age: 0ms
+        actions:
+          rollover:
+            max_primary_shard_size: 20gb
+            max_age: 12h
+          set_priority:
+            priority: 100
+      warm:
+        min_age: 12h
+        actions:
+          set_priority:
+            priority: 50
+          readonly: {}
+          forcemerge:
+            max_num_segments: 1
+      delete:
+        min_age: 14d
+        actions:
+          delete: {}
+template:
+  index_patterns:
+    - metrics-metricbeat*
+  data_stream: {}
+  priority: 100
+  _meta:
+    managed_by: elastro
+    coverage_template: metricbeat-metrics
+  template:
+    settings:
+      index.lifecycle.name: elastro-metricbeat-metrics
+      index.number_of_shards: 1
+      index.refresh_interval: 10s
+    mappings:
+      properties:
+        "@timestamp":
+          type: date
+        host:
+          properties:
+            name:
+              type: keyword
+            hostname:
+              type: keyword
+        service:
+          properties:
+            name:
+              type: keyword
+        metricset:
+          properties:
+            name:
+              type: keyword
+        agent:
+          properties:
+            type:
+              type: keyword

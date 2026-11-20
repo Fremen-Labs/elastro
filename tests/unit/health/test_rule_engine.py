@@ -59,6 +59,11 @@ class TestRuleEngine(unittest.TestCase):
         self.assertIn("circuit_breaker_rule", rule_names)
         self.assertIn("thread_pool_rule", rule_names)
         self.assertIn("backup_policy_findings", rule_names)
+        self.assertIn("apm_data_stream_findings", rule_names)
+        self.assertIn("beats_ilm_findings", rule_names)
+        self.assertIn("apm_rejection_findings", rule_names)
+        self.assertIn("apm_beats_shard_imbalance_findings", rule_names)
+        self.assertIn("apm_ilm_phase_lag_findings", rule_names)
 
 
 if __name__ == "__main__":

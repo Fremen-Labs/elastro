@@ -439,6 +439,31 @@ class TestEnvShorthandAliases:
         assert result["elasticsearch"]["auth"]["password"] == "from_auth_pw"
         assert result["elasticsearch"]["auth"]["api_key"] == "key-123"
 
+    def test_coverage_fleet_compound_tokens(self):
+        config = {
+            "elasticsearch": {"hosts": ["http://localhost:9200"]},
+            "coverage": {
+                "default_window": "15m",
+                "templates_path": None,
+                "fleet": {"enabled": False, "kibana_url": None, "api_key": None},
+            },
+        }
+        with patch.dict(
+            os.environ,
+            self._clean_env(
+                {
+                    "ELASTIC_COVERAGE_FLEET_API_KEY": "fleet-secret",
+                    "ELASTIC_COVERAGE_FLEET_KIBANA_URL": "https://kibana:5601",
+                    "ELASTIC_COVERAGE_DEFAULT_WINDOW": "10m",
+                }
+            ),
+            clear=True,
+        ):
+            result = loader._load_from_env(config)
+        assert result["coverage"]["fleet"]["api_key"] == "fleet-secret"
+        assert result["coverage"]["fleet"]["kibana_url"] == "https://kibana:5601"
+        assert result["coverage"]["default_window"] == "10m"
+
     def test_host_port_protocol_compose_hosts_when_url_unset(self):
         config = {"elasticsearch": {"hosts": ["http://localhost:9200"]}}
         with patch.dict(

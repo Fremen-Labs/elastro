@@ -34,7 +34,7 @@ elastro health assess [OPTIONS]
 | Option | Description |
 |--------|-------------|
 | `--timeout` | Per-collector timeout (default: `30s`) |
-| `--feature` | Limit `_health_report` to one indicator; repeatable |
+| `--feature` | Limit `_health_report` to one indicator (`disk`, `ilm`, ...); `apm` and `beats` filter custom coverage rules instead of being sent to Elasticsearch. Repeatable; only the first value is used |
 | `--verbose-report` / `--no-verbose-report` | Request verbose root-cause analysis (default: on) |
 | `--include-raw` | Include raw `_health_report` in JSON/YAML output |
 | `--fix` | After assessment, run the unified remediation workflow |
@@ -56,6 +56,7 @@ elastro health assess [OPTIONS]
 ```bash
 elastro health assess -o table
 elastro health assess --feature disk -o json
+elastro health assess --feature apm -o table
 elastro health assess --fix --dry-run -o table
 elastro health assess --plan -o table
 elastro health assess --history -o table

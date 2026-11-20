@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Optional
 
 from elastro.core.client import ElasticsearchClient
 from elastro.core.logger import get_logger
+from elastro.health.audit import HealthAuditLogger
+from elastro.health.collectors.apm_beats import ApmBeatsCollector
 from elastro.health.collectors.base import CollectContext, Collector, CollectorRegistry
 from elastro.health.collectors.cluster import (
     ClusterHealthCollector,
@@ -17,13 +19,14 @@ from elastro.health.collectors.health_report import (
     HealthReportCollector,
     non_passing_findings,
 )
-from elastro.health.collectors.nodes import NodesCollector
 from elastro.health.collectors.ilm import IlmCollector
 from elastro.health.collectors.mappings import MappingsCollector
+from elastro.health.collectors.nodes import NodesCollector
 from elastro.health.collectors.security import SecurityCollector
 from elastro.health.collectors.shards import ShardsCollector
 from elastro.health.collectors.snapshots import SnapshotsCollector
-from elastro.health.rules.engine import RuleContext, RuleEngine
+from elastro.health.config import DEFAULT_HISTORY_INDEX
+from elastro.health.history import index_assessment, query_assessment_history
 from elastro.health.models import (
     AssessmentReport,
     Finding,
@@ -31,9 +34,8 @@ from elastro.health.models import (
     Severity,
     score_to_status,
 )
-from elastro.health.audit import HealthAuditLogger
-from elastro.health.config import DEFAULT_HISTORY_INDEX
-from elastro.health.history import index_assessment, query_assessment_history
+from elastro.health.rules.apm_beats import COVERAGE_FEATURES, finding_matches_feature
+from elastro.health.rules.engine import RuleContext, RuleEngine
 from elastro.health.scoring import compute_fallback_score, compute_weighted_score
 
 logger = get_logger(__name__)
@@ -49,6 +51,7 @@ _DEFAULT_COLLECTORS: List[Collector] = [
     ShardsCollector(),
     MappingsCollector(),
     SecurityCollector(),
+    ApmBeatsCollector(),
 ]
 
 
@@ -76,13 +79,21 @@ class HealthAssessor:
         profile: str = "default",
         host: Optional[str] = None,
         audit_logger: Optional[HealthAuditLogger] = None,
+        audit: bool = True,
+        coverage_strict: bool = False,
     ) -> AssessmentReport:
         """Run registered collectors and build an assessment report."""
         start = time.monotonic()
         ctx = CollectContext(client=self._client, timeout=timeout)
         ctx.options["verbose_report"] = verbose_report
+        custom_feature: Optional[str] = None
         if feature:
-            ctx.options["feature"] = feature
+            lowered = feature.lower()
+            if lowered in COVERAGE_FEATURES:
+                custom_feature = lowered
+            else:
+                ctx.options["feature"] = feature
+        strict_coverage = coverage_strict or custom_feature == "apm"
         if assessment_history:
             ctx.options["assessment_history"] = assessment_history
 
@@ -250,12 +261,22 @@ class HealthAssessor:
             collector_data=collector_data,
             assessment_history=assessment_history,
             es_version=es_version,
+            feature=custom_feature,
+            coverage_strict=strict_coverage,
         )
         rule_findings = RuleEngine().evaluate(rule_ctx)
         if rule_findings:
             findings.extend(rule_findings)
             deduction = sum(item.score_impact for item in rule_findings)
             overall_score = max(0, overall_score - deduction)
+
+        if custom_feature:
+            findings = [
+                item
+                for item in findings
+                if finding_matches_feature(item, custom_feature)
+            ]
+            overall_score = max(0, 100 - sum(item.score_impact for item in findings))
 
         duration_ms = int((time.monotonic() - start) * 1000)
         report = AssessmentReport(
@@ -280,12 +301,13 @@ class HealthAssessor:
         )
 
         resolved_host = host or _resolve_client_host(self._client)
-        auditor = audit_logger or HealthAuditLogger(
-            self._client,
-            profile=profile,
-            host=resolved_host,
-        )
-        auditor.log_assess(report)
+        if audit:
+            auditor = audit_logger or HealthAuditLogger(
+                self._client,
+                profile=profile,
+                host=resolved_host,
+            )
+            auditor.log_assess(report)
 
         if enable_history:
             index_assessment(

@@ -67,4 +67,13 @@ DEFAULT_CONFIG = {
         "level": "INFO",
         "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     },
+    "coverage": {
+        "default_window": "15m",
+        "templates_path": None,
+        "fleet": {
+            "enabled": False,
+            "kibana_url": None,
+            "api_key": None,
+        },
+    },
 }

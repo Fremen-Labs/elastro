@@ -150,6 +150,12 @@ class HealthReportCollector:
 
         verbose = bool(ctx.options.get("verbose_report", True))
         feature = ctx.options.get("feature")
+        if isinstance(feature, str) and feature.lower() in {"apm", "beats"}:
+            logger.info(
+                "Ignoring custom coverage feature=%s for _health_report",
+                feature,
+            )
+            feature = None
 
         try:
             report = _fetch_health_report(ctx, verbose=verbose, feature=feature)
