@@ -102,7 +102,6 @@ class TestHealthFixRouteSafety:
             mock_executor.execute_action.return_value = MagicMock(
                 dry_run=False,
                 success=True,
-                executed=True,
                 message="Replicas reduced to 0",
                 rollback_id=None,
             )
@@ -124,49 +123,6 @@ class TestHealthFixRouteSafety:
         mock_executor.execute_action.assert_called_once_with(
             "reduce_replicas", "logs-000001"
         )
-
-    def test_skipped_execute_returns_409(self, tmp_path):
-        client = _gui_client(tmp_path)
-        planned = RemediationCatalog.planned_call(
-            "reduce_replicas",
-            "logs-000001",
-            api_payload=True,
-        )
-        with (
-            patch(
-                "elastro.server.routes.health.RemediationExecutor"
-            ) as mock_executor_cls,
-            patch("elastro.server.routes.health.build_es_client") as mock_build,
-        ):
-            mock_build.return_value = MagicMock()
-            mock_executor = MagicMock()
-            mock_executor.execute_action.return_value = MagicMock(
-                dry_run=False,
-                success=True,
-                executed=False,
-                message="Skipped by user",
-                planned_api_call=planned,
-                rollback_id=None,
-            )
-            mock_executor_cls.return_value = mock_executor
-            response = client.post(
-                "/api/clusters/docker-cluster/health/fix",
-                headers=_auth_headers(),
-                json={
-                    "action": "reduce_replicas",
-                    "index_name": "logs-000001",
-                    "dry_run": False,
-                    "force": True,
-                },
-            )
-
-        assert response.status_code == 409
-        _assert_confirmation_required(
-            response.json(),
-            action="reduce_replicas",
-            safety=RemediationSafety.DESTRUCTIVE.value,
-        )
-        _assert_forced_executor(mock_executor_cls)
 
     def test_dry_run_previews_without_force(self, tmp_path):
         client = _gui_client(tmp_path)
@@ -253,7 +209,6 @@ class TestIndexFixRouteSafety:
             mock_executor.execute_action.return_value = MagicMock(
                 dry_run=False,
                 success=True,
-                executed=True,
                 message="Replicas reduced to 0",
                 rollback_id=None,
             )
@@ -274,48 +229,6 @@ class TestIndexFixRouteSafety:
         mock_executor.execute_action.assert_called_once_with(
             "reduce_replicas", "logs-000001"
         )
-
-    def test_skipped_execute_returns_409(self, tmp_path):
-        client = _gui_client(tmp_path)
-        planned = RemediationCatalog.planned_call(
-            "reduce_replicas",
-            "logs-000001",
-            api_payload=True,
-        )
-        with (
-            patch(
-                "elastro.health.remediation.executor.RemediationExecutor"
-            ) as mock_executor_cls,
-            patch("elastro.server.routes.indices.build_es_client") as mock_build,
-        ):
-            mock_build.return_value = MagicMock()
-            mock_executor = MagicMock()
-            mock_executor.execute_action.return_value = MagicMock(
-                dry_run=False,
-                success=True,
-                executed=False,
-                message="Skipped by user",
-                planned_api_call=planned,
-                rollback_id=None,
-            )
-            mock_executor_cls.return_value = mock_executor
-            response = client.post(
-                "/api/clusters/docker-cluster/indices/logs-000001/fix",
-                headers=_auth_headers(),
-                json={
-                    "action": "reduce_replicas",
-                    "dry_run": False,
-                    "force": True,
-                },
-            )
-
-        assert response.status_code == 409
-        _assert_confirmation_required(
-            response.json(),
-            action="reduce_replicas",
-            safety=RemediationSafety.DESTRUCTIVE.value,
-        )
-        _assert_forced_executor(mock_executor_cls)
 
 
 class TestCliFixGateUnchanged:

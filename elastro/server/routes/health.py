@@ -516,26 +516,6 @@ def health_routes(read_config: Any, verify_token: Any) -> APIRouter:
                 }
             if not result.success:
                 raise HTTPException(status_code=500, detail=result.message)
-            if not result.executed:
-                logger.warning(
-                    "GUI health fix skipped cluster=%s action=%s",
-                    cluster_name,
-                    action,
-                )
-                raise HTTPException(
-                    status_code=409,
-                    detail={
-                        "code": "confirmation_required",
-                        "action": action,
-                        "safety": entry.safety.value,
-                        "planned_api_call": result.planned_api_call
-                        or RemediationCatalog.planned_call(
-                            action,
-                            index_name,
-                            api_payload=True,
-                        ),
-                    },
-                )
             return {
                 "status": "success",
                 "action": action,

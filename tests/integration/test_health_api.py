@@ -340,7 +340,6 @@ class TestHealthFixAPI:
         mock_executor.execute_action.return_value = MagicMock(
             dry_run=False,
             success=True,
-            executed=True,
             message="Replicas reduced to 0",
             planned_api_call="PUT /logs-000001/_settings",
         )
@@ -574,7 +573,6 @@ class TestIndexFixAPI:
         mock_executor.execute_action.return_value = MagicMock(
             dry_run=False,
             success=True,
-            executed=True,
             message="Replicas reduced to 0",
         )
         mock_executor_cls.return_value = mock_executor
