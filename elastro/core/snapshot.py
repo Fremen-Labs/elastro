@@ -141,31 +141,6 @@ class SnapshotManager(BaseManager):
                 f"Failed to list snapshots in '{repository}': {str(e)}"
             )
 
-    def get_snapshots(self, repository: str, snapshot: str = "_all") -> Dict[str, Any]:
-        """
-        Return the raw snapshot.get payload for one snapshot or ``_all``.
-
-        Args:
-            repository: Repository name
-            snapshot: Snapshot name, or ``_all`` for every snapshot in the repo
-
-        Returns:
-            Elasticsearch snapshot.get body (includes the ``snapshots`` list)
-        """
-        if not repository:
-            raise ValidationError("Repository name is required")
-
-        try:
-            logger.debug(f"Getting snapshots '{snapshot}' from '{repository}'")
-            self._ensure_connected()
-            response = self._client.get_client().snapshot.get(
-                repository=repository, snapshot=snapshot
-            )
-            return self._handle_response(response)
-        except Exception as e:
-            logger.error(f"Failed to get snapshot information: {str(e)}")
-            raise OperationError(f"Failed to get snapshot information: {str(e)}")
-
     def get_snapshot(self, repository: str, snapshot: str) -> Dict[str, Any]:
         """
         Get details of a specific snapshot.

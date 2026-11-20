@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field
 
 from elastro.core.client import ElasticsearchClient
-from elastro.core.errors import OperationError
+from elastro.core.errors import ElasticModuleError, OperationError
 from elastro.core.snapshot import SnapshotManager as CoreSnapshotManager
 
 
@@ -41,8 +41,7 @@ class RepositoryConfig(BaseModel):
 class SnapshotManager:
     """Adapter for snapshot operations with the historical utils signatures.
 
-    HTTP is delegated to ``elastro.core.snapshot.SnapshotManager``. ``_es`` is
-    retained for callers that read it; it is not used for transport.
+    HTTP is delegated to ``elastro.core.snapshot.SnapshotManager``.
     """
 
     def __init__(self, client: ElasticsearchClient):
@@ -52,8 +51,16 @@ class SnapshotManager:
             client: The Elasticsearch client instance.
         """
         self._client = client
-        self._es = client.client
         self._core = CoreSnapshotManager(client)
+
+    def _delegate(self, hist: str, fn: Any, *args: Any, **kwargs: Any) -> Any:
+        """Call core and map non-operation domain errors to OperationError."""
+        try:
+            return fn(*args, **kwargs)
+        except OperationError:
+            raise
+        except ElasticModuleError as exc:
+            raise OperationError(f"{hist}: {exc}") from exc
 
     def create_repository(
         self, repo_config: Union[Dict[str, Any], RepositoryConfig]
@@ -85,7 +92,13 @@ class SnapshotManager:
                 f"Failed to create repository {repo_name}: {str(e)}"
             ) from e
 
-        return self._core.create_repository(config.name, config.type, config.settings)
+        return self._delegate(
+            f"Failed to create repository {config.name}",
+            self._core.create_repository,
+            config.name,
+            config.type,
+            config.settings,
+        )
 
     def delete_repository(self, name: str) -> bool:
         """Delete a snapshot repository.
@@ -99,7 +112,11 @@ class SnapshotManager:
         Raises:
             OperationError: If repository deletion fails.
         """
-        return self._core.delete_repository(name)
+        return self._delegate(
+            f"Failed to delete repository {name}",
+            self._core.delete_repository,
+            name,
+        )
 
     def get_repository(self, name: Optional[str] = None) -> Dict[str, Any]:
         """Get repository information.
@@ -115,8 +132,15 @@ class SnapshotManager:
             OperationError: If repository retrieval fails.
         """
         if name:
-            return self._core.get_repository(name)
-        return self._core.list_repositories()
+            return self._delegate(
+                "Failed to get repository information",
+                self._core.get_repository,
+                name,
+            )
+        return self._delegate(
+            "Failed to get repository information",
+            self._core.list_repositories,
+        )
 
     def create_snapshot(
         self, repo_name: str, snapshot_config: Union[Dict[str, Any], SnapshotConfig]
@@ -150,7 +174,9 @@ class SnapshotManager:
             ) from e
 
         indices = ",".join(config.indices) if config.indices else "_all"
-        return self._core.create_snapshot(
+        return self._delegate(
+            f"Failed to create snapshot {config.name}",
+            self._core.create_snapshot,
             repository=repo_name,
             snapshot=config.name,
             indices=indices,
@@ -173,7 +199,12 @@ class SnapshotManager:
         Raises:
             OperationError: If snapshot deletion fails.
         """
-        return self._core.delete_snapshot(repo_name, snapshot_name)
+        return self._delegate(
+            f"Failed to delete snapshot {snapshot_name}",
+            self._core.delete_snapshot,
+            repo_name,
+            snapshot_name,
+        )
 
     def get_snapshot(
         self, repo_name: str, snapshot_name: str = "_all"
@@ -190,7 +221,20 @@ class SnapshotManager:
         Raises:
             OperationError: If snapshot retrieval fails.
         """
-        return self._core.get_snapshots(repo_name, snapshot_name)
+        if snapshot_name == "_all":
+            snapshots = self._delegate(
+                "Failed to get snapshot information",
+                self._core.list_snapshots,
+                repo_name,
+            )
+            return {"snapshots": snapshots}
+        snapshot = self._delegate(
+            "Failed to get snapshot information",
+            self._core.get_snapshot,
+            repo_name,
+            snapshot_name,
+        )
+        return {"snapshots": [snapshot]}
 
     def restore_snapshot(
         self,
@@ -218,7 +262,9 @@ class SnapshotManager:
             OperationError: If snapshot restoration fails.
         """
         indices_arg = ",".join(indices) if indices else "_all"
-        return self._core.restore_snapshot(
+        return self._delegate(
+            f"Failed to restore snapshot {snapshot_name}",
+            self._core.restore_snapshot,
             repo_name,
             snapshot_name,
             indices=indices_arg,
@@ -242,6 +288,9 @@ class SnapshotManager:
         Raises:
             OperationError: If status retrieval fails.
         """
-        return self._core.get_snapshot_status(
-            repository=repo_name, snapshot=snapshot_name
+        return self._delegate(
+            "Failed to get snapshot status",
+            self._core.get_snapshot_status,
+            repository=repo_name,
+            snapshot=snapshot_name,
         )
