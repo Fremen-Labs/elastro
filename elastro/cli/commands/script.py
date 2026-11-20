@@ -2,18 +2,22 @@
 Painless scripting management commands for the CLI.
 """
 
-import os
 import json
-import tempfile
+import os
 import subprocess
-import rich_click as click
+import tempfile
 from typing import Any
+
+import rich_click as click
 from rich.console import Console
-from rich.prompt import Prompt, Confirm
-from elastro.core.client import ElasticsearchClient
+
+from elastro.cli.errors import confirm_or_exit, exit_from_exception, usage_error
 from elastro.cli.output import format_output
+from elastro.core.client import ElasticsearchClient
+from elastro.core.logger import get_logger
 
 console = Console()
+logger = get_logger(__name__)
 
 
 @click.group("script")
@@ -33,6 +37,7 @@ def list_scripts(client: ElasticsearchClient) -> None:
     Warning: Elasticsearch does not natively provide an endpoint to list all
     scripts. This fetches cluster state metadata, which may be heavy.
     """
+    logger.info("script.list")
     try:
         # Pull cluster state selecting only metadata.stored_scripts
         response = client.client.cluster.state(
@@ -45,8 +50,8 @@ def list_scripts(client: ElasticsearchClient) -> None:
             return
 
         console.print(format_output(scripts, output_format="json"))
-    except Exception as e:
-        console.print(f"[bold red]Error listing scripts:[/bold red] {str(e)}")
+    except Exception as exc:
+        exit_from_exception(exc, logger=logger, action="list scripts")
 
 
 @script_group.command("get")
@@ -56,11 +61,12 @@ def get_script(client: ElasticsearchClient, id: str) -> None:
     """
     Get a stored Painless script by its ID.
     """
+    logger.info("script.get id=%s", id)
     try:
         response = client.client.get_script(id=id)
         console.print(format_output(response, output_format="json"))
-    except Exception as e:
-        console.print(f"[bold red]Error getting script '{id}':[/bold red] {str(e)}")
+    except Exception as exc:
+        exit_from_exception(exc, logger=logger, action="get script")
 
 
 @script_group.command("delete")
@@ -70,8 +76,15 @@ def get_script(client: ElasticsearchClient, id: str) -> None:
     is_flag=True,
     help="Preview deletion without executing (scriptable with -o json)",
 )
+@click.option(
+    "--yes",
+    is_flag=True,
+    help="Confirm deletion without prompting (required when stdin is not a TTY)",
+)
 @click.pass_obj
-def delete_script(client: ElasticsearchClient, id: str, dry_run: bool) -> None:
+def delete_script(
+    client: ElasticsearchClient, id: str, dry_run: bool, yes: bool
+) -> None:
     """
     Delete a stored Painless script.
     """
@@ -81,19 +94,16 @@ def delete_script(client: ElasticsearchClient, id: str, dry_run: bool) -> None:
         emit_delete_preview(preview_script_delete(client, id))
         return
 
-    if Confirm.ask(f"Are you sure you want to delete script '{id}'?"):
-        try:
-            response = client.client.delete_script(id=id)
-            if response.get("acknowledged"):
-                console.print(
-                    f"[bold green]Success![/bold green] Script '{id}' deleted."
-                )
-            else:
-                console.print(format_output(response, output_format="json"))
-        except Exception as e:
-            console.print(
-                f"[bold red]Error deleting script '{id}':[/bold red] {str(e)}"
-            )
+    confirm_or_exit(f"Are you sure you want to delete script '{id}'?", yes=yes)
+    logger.info("script.delete id=%s", id)
+    try:
+        response = client.client.delete_script(id=id)
+        if response.get("acknowledged"):
+            console.print(f"[bold green]Success![/bold green] Script '{id}' deleted.")
+        else:
+            console.print(format_output(response, output_format="json"))
+    except Exception as exc:
+        exit_from_exception(exc, logger=logger, action="delete script")
 
 
 @script_group.command("create")
@@ -158,14 +168,15 @@ def create_script(
 
     script_payload = {"script": {"lang": "painless", "source": script_source}}
 
+    logger.info("script.create id=%s", id)
     try:
         response = client.client.put_script(id=id, body=script_payload)
         if response.get("acknowledged"):
             console.print(f"[bold green]Success![/bold green] Script '{id}' stored.")
         else:
             console.print(format_output(response, output_format="json"))
-    except Exception as e:
-        console.print(f"[bold red]Error pushing script:[/bold red] {str(e)}")
+    except Exception as exc:
+        exit_from_exception(exc, logger=logger, action="put script")
 
 
 @script_group.command("execute")
@@ -185,16 +196,12 @@ def execute_script(
     without permanently altering production data structures.
     """
     if not source and not id:
-        console.print(
-            "[bold red]Error:[/bold red] Must provide either --source or --id."
-        )
-        return
+        usage_error("Error: Must provide either --source or --id.")
 
     try:
         ctx_data = json.loads(context)
     except json.JSONDecodeError:
-        console.print("[bold red]Error:[/bold red] Invalid JSON context maps provided.")
-        return
+        usage_error("Error: Invalid JSON context maps provided.")
 
     payload: dict[str, Any] = {}
     if source:
@@ -207,11 +214,12 @@ def execute_script(
         payload["context"] = "score"  # default test endpoint context
         payload["context_setup"] = {"document": ctx_data}
 
+    logger.info("script.execute id=%s has_source=%s", id or "-", bool(source))
     try:
         response = client.client.perform_request(
             "POST", "/_scripts/painless/_execute", body=payload
         )
         console.print("[bold green]Execution Result:[/bold green]")
         console.print(format_output(response, output_format="json"))
-    except Exception as e:
-        console.print(f"[bold red]Execution Error:[/bold red] {str(e)}")
+    except Exception as exc:
+        exit_from_exception(exc, logger=logger, action="execute script")

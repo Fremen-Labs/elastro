@@ -6,7 +6,11 @@ import rich_click as click
 from rich.console import Console
 from rich.table import Table
 
+from elastro.cli.errors import exit_from_exception
 from elastro.core.client import ElasticsearchClient
+from elastro.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 @click.group(name="security")
@@ -25,6 +29,7 @@ def list_users(client: ElasticsearchClient, username: str) -> None:
     List or fetch native realm users.
     """
     console = Console()
+    logger.info("security.users username=%s", username or "*")
     try:
         es = client.client
         res = (
@@ -50,8 +55,8 @@ def list_users(client: ElasticsearchClient, username: str) -> None:
             )
 
         console.print(table)
-    except Exception as e:
-        console.print(f"[bold red]Security Error:[/bold red] {str(e)}")
+    except Exception as exc:
+        exit_from_exception(exc, logger=logger, action="list users")
 
 
 @security_group.command(name="roles")
@@ -62,6 +67,7 @@ def list_roles(client: ElasticsearchClient, name: str) -> None:
     List or fetch cluster mapping roles.
     """
     console = Console()
+    logger.info("security.roles name=%s", name or "*")
     try:
         es = client.client
         res = es.security.get_role(name=name) if name else es.security.get_role()
@@ -88,5 +94,5 @@ def list_roles(client: ElasticsearchClient, name: str) -> None:
             )
 
         console.print(table)
-    except Exception as e:
-        console.print(f"[bold red]Security Error:[/bold red] {str(e)}")
+    except Exception as exc:
+        exit_from_exception(exc, logger=logger, action="list roles")

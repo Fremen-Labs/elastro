@@ -2,14 +2,19 @@
 Machine Learning commands for the CLI.
 """
 
-import rich_click as click
 from typing import Any
+
+import rich_click as click
 from rich.console import Console
-from rich.prompt import Prompt, Confirm
-from elastro.core.client import ElasticsearchClient
+from rich.prompt import Confirm, Prompt
+
+from elastro.cli.errors import exit_from_exception, require_tty
 from elastro.cli.output import format_output
+from elastro.core.client import ElasticsearchClient
+from elastro.core.logger import get_logger
 
 console = Console()
+logger = get_logger(__name__)
 
 
 @click.group("ml")
@@ -29,6 +34,9 @@ def init_job(client: ElasticsearchClient) -> None:
     This command guides you through deploying a single-metric ML job
     over an existing Index or Datastream without hand-writing JSON.
     """
+    require_tty("interactive wizard requires a TTY")
+    logger.info("ml.init-job")
+
     console.print("\n[bold cyan]Elastro ML Anomaly Detection Wizard[/bold cyan]")
     console.print(
         "This wizard will configure a basic Single Metric anomaly detection job.\n"
@@ -94,12 +102,12 @@ def init_job(client: ElasticsearchClient) -> None:
     console.print(format_output(job_config, output_format="json"))
 
     if not Confirm.ask("\nDeploy this ML Job to the cluster?"):
-        console.print("[dim]Operation aborted.[/dim]")
+        click.echo("Aborted", err=True)
         return
 
     try:
         # ES API call: PUT _ml/anomaly_detectors/<job_id>
-        response = client.client.ml.put_job(job_id=job_id, body=job_config)
+        client.client.ml.put_job(job_id=job_id, body=job_config)
         console.print(f"[bold green]Success![/bold green] ML Job '{job_id}' deployed.")
 
         # Scaffold the datafeed
@@ -110,5 +118,5 @@ def init_job(client: ElasticsearchClient) -> None:
             f"[bold green]Success![/bold green] Datafeed '{datafeed_id}' attached."
         )
 
-    except Exception as e:
-        console.print(f"[bold red]Error deploying ML Job:[/bold red] {str(e)}")
+    except Exception as exc:
+        exit_from_exception(exc, logger=logger, action="deploy ML job")

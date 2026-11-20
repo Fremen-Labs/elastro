@@ -2,19 +2,22 @@
 Painless scripting CLI commands.
 """
 
-import os
 import json
-import click
-import rich_click as rich_click
-from rich.console import Console
-from rich.markdown import Markdown
-from rich.panel import Panel
-from rich.syntax import Syntax
-from rich import print as rprint
-import rich.prompt
+import os
 from typing import Any, Dict
 
+import rich.prompt
+import rich_click as rich_click
+from rich.console import Console
+from rich.panel import Panel
+from rich.syntax import Syntax
+
+from elastro.cli.errors import exit_from_exception, usage_error
+from elastro.core.client import ElasticsearchClient
+from elastro.core.logger import get_logger
+
 console = Console()
+logger = get_logger(__name__)
 
 
 @rich_click.group(name="painless", invoke_without_command=False, no_args_is_help=True)
@@ -158,22 +161,19 @@ def scaffold() -> None:
     console.print(syntax)
 
 
-from elastro.core.client import ElasticsearchClient
-
-
 @painless_group.command(name="test")
-@click.argument("script_file", type=click.File("r"))
-@click.option("--doc", type=str, help="Mock JSON document string to test against.")
-@click.option(
+@rich_click.argument("script_file", type=rich_click.File("r"))
+@rich_click.option("--doc", type=str, help="Mock JSON document string to test against.")
+@rich_click.option(
     "--context",
     type=str,
     default="painless_test",
     help="Painless context to test within (e.g., painless_test, score, filter).",
 )
-@click.option(
+@rich_click.option(
     "--index", type=str, help="Optional index name if the context requires it."
 )
-@click.pass_obj
+@rich_click.pass_obj
 def test_command(
     client: ElasticsearchClient,
     script_file: Any,
@@ -193,6 +193,7 @@ def test_command(
     $ elastro painless test ./my_script.painless --doc '{"price": 10.50}'
     """
     script_source = script_file.read()
+    logger.info("painless.test context=%s", context)
 
     payload: Dict[str, Any] = {"script": {"source": script_source}, "context": context}
 
@@ -206,8 +207,7 @@ def test_command(
             payload["context_setup"] = payload.get("context_setup", {})
             payload["context_setup"]["document"] = parsed_doc
         except json.JSONDecodeError:
-            console.print("[red]Error: --doc must be a valid JSON string.[/red]")
-            return
+            usage_error("Error: --doc must be a valid JSON string.")
 
     try:
         es = client.get_client()
@@ -235,9 +235,5 @@ def test_command(
         # rich print the JSON body
         console.print_json(data=body)
 
-    except Exception as e:
-        console.print(
-            Panel("[bold red]✖ Execution Failed[/bold red]", border_style="red")
-        )
-        # Elastro custom error handling standard
-        rprint(e)
+    except Exception as exc:
+        exit_from_exception(exc, logger=logger, action="painless test")
