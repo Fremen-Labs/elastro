@@ -2,7 +2,6 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft } from 'lucide-vue-next'
-import { state } from '../store'
 import axios from 'axios'
 import { AnsiUp } from 'ansi_up'
 import PageHeader from '../components/ui/PageHeader.vue'
@@ -26,15 +25,11 @@ const activeModal = ref<'nodes' | 'indices' | 'ilm' | 'backups' | null>(null)
 const closeModal = () => { activeModal.value = null }
 
 const fetchClusterDetails = async () => {
-  if (!state.token) return
-  
   loading.value = true
   error.value = null
   
   try {
-    const res = await axios.get(`${apiBase}/api/cluster/${encodeURIComponent(clusterName.value)}`, {
-      headers: { Authorization: `Bearer ${state.token}` }
-    })
+    const res = await axios.get(`${apiBase}/api/cluster/${encodeURIComponent(clusterName.value)}`)
     details.value = res.data
   } catch (err: any) {
     if (err.response?.status === 401) {
@@ -50,16 +45,7 @@ const fetchClusterDetails = async () => {
 }
 
 onMounted(() => {
-  if (state.token) {
-    fetchClusterDetails()
-  } else {
-    const checkToken = setInterval(() => {
-      if (state.token) {
-        clearInterval(checkToken)
-        fetchClusterDetails()
-      }
-    }, 100)
-  }
+  fetchClusterDetails()
 })
 
 const getHealthColor = healthColor
@@ -71,12 +57,9 @@ const unhealthyLoading = ref(false)
 const activeFix = ref<string | null>(null)
 
 const fetchUnhealthyIndices = async () => {
-  if (!state.token) return
   unhealthyLoading.value = true
   try {
-    const res = await axios.get(`${apiBase}/api/clusters/${encodeURIComponent(clusterName.value)}/indices/unhealthy`, {
-      headers: { Authorization: `Bearer ${state.token}` }
-    })
+    const res = await axios.get(`${apiBase}/api/clusters/${encodeURIComponent(clusterName.value)}/indices/unhealthy`)
     unhealthyIndices.value = res.data.indices
   } catch (err) {
     console.error("Failed to fetch unhealthy indices", err)
@@ -86,8 +69,6 @@ const fetchUnhealthyIndices = async () => {
 }
 
 const executeFix = async (indexName: string, action: string) => {
-  if (!state.token) return
-
   if (action === 'reduce_replicas' && indexName.startsWith('.')) {
       const confirmMsg = `WARNING: '${indexName}' appears to be a system or internal index.\n\nElasticsearch heavily protects these indices using 'auto_expand_replicas'. To force the replicas to 0, Elastro must permanently disable auto-expansion for this index. Are you sure you want to proceed?`
       if (!window.confirm(confirmMsg)) return
@@ -99,8 +80,7 @@ const executeFix = async (indexName: string, action: string) => {
   try {
     const res = await axios.post(
       `${apiBase}/api/clusters/${encodeURIComponent(clusterName.value)}/indices/${encodeURIComponent(indexName)}/fix`,
-      { action, dry_run: false, force: true },
-      { headers: { Authorization: `Bearer ${state.token}` } }
+      { action, dry_run: false, force: true }
     )
 
     if (res.data?.status === 'dry_run') {
@@ -202,8 +182,7 @@ const terminalBody = ref<HTMLElement | null>(null)
 const postCli = (command: string, confirm: boolean) =>
   axios.post(
     `${apiBase}/api/cluster/${encodeURIComponent(clusterName.value)}/cli`,
-    { command, confirm },
-    { headers: { Authorization: `Bearer ${state.token}` } }
+    { command, confirm }
   )
 
 const pushCliResult = (data: { output?: string; exit_code?: number }) => {

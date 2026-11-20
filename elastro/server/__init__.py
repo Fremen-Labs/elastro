@@ -37,49 +37,13 @@ GUI_TOKEN_COOKIE = "elastro_gui_token"
 GUI_TOKEN_ENV = "ELASTRO_GUI_TOKEN"
 GUI_CLAIM_ENV = "ELASTRO_GUI_CLAIM"
 
-_TOKEN_SHIM = r"""<script>
-(function(){
-  function readCookie(name){
-    var parts = document.cookie.split(';');
-    for (var i = 0; i < parts.length; i++) {
-      var p = parts[i].replace(/^\s+/, '');
-      if (p.indexOf(name + '=') === 0) {
-        return decodeURIComponent(p.slice(name.length + 1));
-      }
-    }
-    return '';
-  }
-  var token = readCookie('elastro_gui_token');
-  if (token) {
-    var origGet = URLSearchParams.prototype.get;
-    URLSearchParams.prototype.get = function(key){
-      if (String(key) === 'token') {
-        var v = origGet.call(this, key);
-        return v || token;
-      }
-      return origGet.call(this, key);
-    };
-  }
-})();
-</script>
-"""
-
-
-def inject_gui_token_shim(html: str) -> str:
-    """Inject a cookie-based token shim so the compiled SPA does not need ?token=."""
-    if "URLSearchParams.prototype.get" in html and "elastro_gui_token" in html:
-        return html
-    if "</head>" in html:
-        return html.replace("</head>", _TOKEN_SHIM + "</head>", 1)
-    return _TOKEN_SHIM + html
-
 
 def set_gui_session_cookie(response: Response, token: str) -> None:
-    """Attach a host-only localhost session cookie (no Domain = host-only)."""
+    """Attach a host-only HttpOnly session cookie. No Domain attribute."""
     response.set_cookie(
         key=GUI_TOKEN_COOKIE,
         value=token,
-        httponly=False,
+        httponly=True,
         samesite="strict",
         path="/",
         max_age=86400,
@@ -399,7 +363,7 @@ class ElastroGUI:
                 index_path = self.static_dir / "index.html"
                 if index_path.exists():
                     with open(index_path, "r") as f:
-                        html = inject_gui_token_shim(f.read())
+                        html = f.read()
                     return HTMLResponse(content=html)
                 return HTMLResponse(
                     "GUI not built. Run npm run build in packages/gui.",

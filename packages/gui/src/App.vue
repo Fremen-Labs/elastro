@@ -1,45 +1,10 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { LayoutDashboard, BookOpen, FileCode2, Settings, AlertTriangle } from 'lucide-vue-next'
 import { state } from './store'
 
 const router = useRouter()
 const route = useRoute()
-
-const readCookie = (name: string): string => {
-  const parts = document.cookie.split(';')
-  for (const part of parts) {
-    const trimmed = part.trim()
-    if (trimmed.startsWith(name + '=')) {
-      return decodeURIComponent(trimmed.slice(name.length + 1))
-    }
-  }
-  return ''
-}
-
-onMounted(() => {
-  let token = new URLSearchParams(window.location.search).get('token') || ''
-  if (!token) {
-    const hashMatches = window.location.hash.match(/[?&]token=([^&]+)/)
-    if (hashMatches && hashMatches[1]) {
-      token = hashMatches[1]
-    }
-  }
-  if (!token) {
-    token = readCookie('elastro_gui_token')
-  }
-
-  if (token) {
-    state.token = token
-    document.cookie = `elastro_gui_token=${encodeURIComponent(token)}; path=/; SameSite=Strict`
-    const url = new URL(window.location.href)
-    if (url.searchParams.has('token')) {
-      url.searchParams.delete('token')
-      history.replaceState({}, '', url.pathname + url.search + url.hash)
-    }
-  }
-})
 
 const navigate = (path: string) => {
   router.push(path)
@@ -77,9 +42,9 @@ const navItems = [
         </button>
       </nav>
 
-      <div v-if="!state.token" class="token-warning animate-fade-in" role="status">
+      <div v-if="!state.authenticated" class="token-warning animate-fade-in" role="status">
         <AlertTriangle :size="16" />
-        <span>No security token found. Launch via <code>elastro gui</code>.</span>
+        <span>No GUI session. Launch via <code>elastro gui</code>.</span>
       </div>
     </aside>
 
