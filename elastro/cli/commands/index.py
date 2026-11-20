@@ -12,6 +12,9 @@ from elastro.cli.context import require_client
 from elastro.core.client import ElasticsearchClient
 from elastro.core.errors import OperationError
 from elastro.core.index import IndexManager
+from elastro.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 @click.command("create", no_args_is_help=True)
@@ -65,6 +68,7 @@ def create_index(
     ```
     """
     require_client()
+    logger.info("index.create name=%s shards=%s replicas=%s", name, shards, replicas)
     index_manager = IndexManager(client)
 
     # Prepare settings dictionary
@@ -109,6 +113,7 @@ def get_index(client: ElasticsearchClient, name: str) -> None:
     ```
     """
     require_client()
+    logger.info("index.get name=%s", name)
     index_manager = IndexManager(client)
 
     try:
@@ -136,6 +141,7 @@ def index_exists(client: ElasticsearchClient, name: str) -> None:
     ```
     """
     require_client()
+    logger.info("index.exists name=%s", name)
     index_manager = IndexManager(client)
 
     try:
@@ -170,6 +176,7 @@ def update_index(client: ElasticsearchClient, name: str, settings: Any) -> None:
     ```
     """
     require_client()
+    logger.info("index.update name=%s", name)
     index_manager = IndexManager(client)
 
     # Load settings from file
@@ -220,6 +227,7 @@ def delete_index(
     ```
     """
     require_client()
+    logger.info("index.delete name=%s force=%s dry_run=%s", name, force, dry_run)
     from elastro.cli.deletion import (
         emit_delete_preview,
         preview_index_delete,
@@ -264,6 +272,7 @@ def open_index(client: ElasticsearchClient, name: str) -> None:
     ```
     """
     require_client()
+    logger.info("index.open name=%s", name)
     index_manager = IndexManager(client)
 
     try:
@@ -293,6 +302,7 @@ def close_index(client: ElasticsearchClient, name: str) -> None:
     ```
     """
     require_client()
+    logger.info("index.close name=%s", name)
     index_manager = IndexManager(client)
 
     try:
@@ -327,6 +337,7 @@ def list_indices(client: ElasticsearchClient, pattern: str) -> None:
     ```
     """
     require_client()
+    logger.info("index.list pattern=%s", pattern)
     from rich import box
     from rich.console import Console
     from rich.table import Table
@@ -397,6 +408,7 @@ def find_indices(client: ElasticsearchClient, pattern: str) -> None:
     ```
     """
     require_client()
+    logger.info("index.find pattern=%s", pattern)
     # Simply delegate to the list implementation
     # We invoke it manually passing the context object 'client' and the pattern
     # But since Click commands are wrapped, it's easier to just call the logic directly or duplicating minimal logic.
@@ -425,6 +437,7 @@ def index_wizard(client: ElasticsearchClient) -> None:
     ```
     """
     require_client()
+    logger.info("index.wizard")
     from rich.console import Console
     from rich.panel import Panel
     from rich.prompt import Confirm, IntPrompt, Prompt
@@ -567,6 +580,7 @@ def fix_indices(client: ElasticsearchClient) -> None:
     ```
     """
     require_client()
+    logger.info("index.fix")
     from rich.console import Console
     from rich.panel import Panel
     from rich.prompt import Confirm, Prompt

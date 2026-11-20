@@ -1,11 +1,15 @@
 import os
 import sys
+
 import rich_click as click
 from rich.console import Console
 from rich.panel import Panel
+
 from elastro.config.loader import default_config, save_config
+from elastro.core.logger import get_logger
 
 console = Console()
+logger = get_logger(__name__)
 
 
 @click.command()
@@ -16,6 +20,7 @@ def gui() -> None:
     Starts a local web server in the background and prints the secure
     access URL for managing Elasticsearch clusters structurally via the Browser.
     """
+    logger.info("gui")
     try:
         from elastro.server import launch_gui_process
     except ImportError:

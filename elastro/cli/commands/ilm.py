@@ -12,8 +12,10 @@ from elastro.cli.context import require_client
 from elastro.core.client import ElasticsearchClient
 from elastro.core.errors import OperationError
 from elastro.core.ilm import IlmManager
+from elastro.core.logger import get_logger
 
 console = Console()
+logger = get_logger(__name__)
 
 
 @click.group("ilm")
@@ -46,6 +48,7 @@ def list_policies(client: ElasticsearchClient, full: bool) -> None:
     ```
     """
     require_client()
+    logger.info("ilm.list full=%s", full)
     manager = IlmManager(client)
     try:
         policies = manager.list_policies()
@@ -102,6 +105,7 @@ def get_policy(client: ElasticsearchClient, name: str) -> None:
     ```
     """
     require_client()
+    logger.info("ilm.get name=%s", name)
     manager = IlmManager(client)
     try:
         policy = manager.get_policy(name)
@@ -140,6 +144,7 @@ def create_policy(client: ElasticsearchClient, name: str, file: Optional[str]) -
     ```
     """
     require_client()
+    logger.info("ilm.create name=%s has_file=%s", name, bool(file))
     manager = IlmManager(client)
 
     try:
@@ -280,6 +285,7 @@ def delete_policy(
     ```
     """
     require_client()
+    logger.info("ilm.delete name=%s force=%s dry_run=%s", name, force, dry_run)
     from elastro.cli.deletion import (
         emit_delete_preview,
         preview_ilm_policy_delete,
@@ -323,6 +329,7 @@ def explain_lifecycle(client: ElasticsearchClient, index: str) -> None:
     ```
     """
     require_client()
+    logger.info("ilm.explain index=%s", index)
     manager = IlmManager(client)
     try:
         explanation = manager.explain_lifecycle(index)
@@ -362,6 +369,7 @@ def start_ilm(client: ElasticsearchClient) -> None:
     ```
     """
     require_client()
+    logger.info("ilm.start")
     manager = IlmManager(client)
     try:
         if manager.start_ilm():
@@ -389,6 +397,7 @@ def stop_ilm(client: ElasticsearchClient) -> None:
     ```
     """
     require_client()
+    logger.info("ilm.stop")
     manager = IlmManager(client)
     try:
         if manager.stop_ilm():

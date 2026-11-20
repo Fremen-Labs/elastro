@@ -17,8 +17,18 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 from rich.syntax import Syntax
 from rich.table import Table
 
+import rich_click as click
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
+from rich.syntax import Syntax
+from rich.table import Table
+
 from elastro.cli.context import require_client
 from elastro.core.client import ElasticsearchClient
+from elastro.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 @click.group(name="ingest")
@@ -45,6 +55,7 @@ def list_pipelines(client: ElasticsearchClient, id: str) -> None:
     List or fetch ingest pipelines.
     """
     require_client()
+    logger.info("ingest.pipelines id=%s", id or "*")
     console = Console()
     try:
         es = client.client
@@ -106,6 +117,7 @@ def simulate_pipeline(
     elastro ingest simulate my-pipeline --file ./sample.json
     ```
     """
+    logger.info("ingest.simulate id=%s", id)
     console = Console()
 
     if not doc and not file:
@@ -316,6 +328,13 @@ def import_data(
     ```
     """
     require_client()
+    logger.info(
+        "ingest.import index=%s format=%s has_dsn=%s validate=%s",
+        index,
+        fmt,
+        bool(dsn),
+        validate,
+    )
     from elastro.core.ingest.engine import IngestEngine
 
     console = Console()
@@ -486,6 +505,7 @@ def profile_data_cmd(
     elastro ingest profile events.ndjson --sample-size 5000
     ```
     """
+    logger.info("ingest.profile sample_size=%s format=%s", sample_size, fmt)
     from elastro.core.ingest.readers import read_source
     from elastro.core.ingest.validators import profile_data
 
@@ -584,6 +604,7 @@ def auto_map(
     elastro ingest auto-map events.ndjson --output mapping.json
     ```
     """
+    logger.info("ingest.auto-map sample_size=%s format=%s", sample_size, fmt)
     from elastro.core.ingest.readers import read_source
     from elastro.core.ingest.validators import infer_mapping
 
@@ -668,6 +689,12 @@ def validate_data(
     elastro ingest validate data.json --index logs --strict
     ```
     """
+    logger.info(
+        "ingest.validate index=%s sample_size=%s strict=%s",
+        index or "-",
+        sample_size,
+        strict,
+    )
     from elastro.core.ingest.readers import read_source
     from elastro.core.ingest.validators import SchemaValidator, infer_mapping
 
@@ -820,6 +847,7 @@ def pipeline_wizard(client: ElasticsearchClient) -> None:
     elastro ingest pipeline wizard
     ```
     """
+    logger.info("ingest.pipeline.wizard")
     import sys
 
     from rich.prompt import Confirm, Prompt
@@ -1033,6 +1061,7 @@ def pipeline_create(
     elastro ingest pipeline create web-logs --file ./pipeline.json
     ```
     """
+    logger.info("ingest.pipeline.create pipeline_id=%s", pipeline_id)
     console = Console()
     try:
         body = json.load(pipeline_file)
@@ -1076,6 +1105,12 @@ def pipeline_delete(
     elastro -o json ingest pipeline delete web-logs --dry-run
     ```
     """
+    logger.info(
+        "ingest.pipeline.delete pipeline_id=%s dry_run=%s yes=%s",
+        pipeline_id,
+        dry_run,
+        yes,
+    )
     from rich.prompt import Confirm
 
     from elastro.cli.deletion import emit_delete_preview, preview_pipeline_delete
@@ -1187,6 +1222,11 @@ def grok_builder_cmd(
     elastro ingest grok-builder --preset syslog
     ```
     """
+    logger.info(
+        "ingest.grok-builder preset=%s list_presets=%s",
+        preset or "-",
+        list_presets,
+    )
     from elastro.core.ingest.grok_builder import GrokBuilder
 
     console = Console()

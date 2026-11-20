@@ -9,9 +9,12 @@ from rich.table import Table
 from elastro.cli.context import require_client
 from elastro.core.client import ElasticsearchClient
 from elastro.core.errors import OperationError
+from elastro.core.logger import get_logger
 from elastro.core.snapshot import SnapshotManager
 
 console = Console()
+error_console = Console(stderr=True)
+logger = get_logger(__name__)
 
 
 @click.group("snapshot")
@@ -45,6 +48,7 @@ def list_repositories(client: ElasticsearchClient) -> None:
     ```
     """
     require_client()
+    logger.info("snapshot.repo.list")
     manager = SnapshotManager(client)
     try:
         repos = manager.list_repositories()
@@ -64,7 +68,7 @@ def list_repositories(client: ElasticsearchClient) -> None:
 
         console.print(table)
     except OperationError as e:
-        console.print(f"[bold red]Error listing repositories:[/] {str(e)}")
+        error_console.print(f"[bold red]Error listing repositories:[/] {str(e)}")
         exit(1)
 
 
@@ -99,6 +103,7 @@ def create_repository(
     ```
     """
     require_client()
+    logger.info("snapshot.repo.create name=%s type=%s", name, type)
     manager = SnapshotManager(client)
 
     # Parse settings
@@ -114,7 +119,7 @@ def create_repository(
         else:
             console.print("[yellow]Creation not acknowledged.[/]")
     except OperationError as e:
-        console.print(f"[bold red]Error creating repository:[/] {str(e)}")
+        error_console.print(f"[bold red]Error creating repository:[/] {str(e)}")
         exit(1)
 
 
@@ -145,6 +150,7 @@ def delete_repository(
     ```
     """
     require_client()
+    logger.info("snapshot.repo.delete name=%s dry_run=%s", name, dry_run)
     from elastro.cli.deletion import (
         emit_delete_preview,
         preview_snapshot_repository_delete,
@@ -164,7 +170,7 @@ def delete_repository(
         else:
             console.print("[yellow]Deletion not acknowledged.[/]")
     except OperationError as e:
-        console.print(f"[bold red]Error deleting repository:[/] {str(e)}")
+        error_console.print(f"[bold red]Error deleting repository:[/] {str(e)}")
         exit(1)
 
 
@@ -188,6 +194,7 @@ def list_snapshots(client: ElasticsearchClient, repository: str) -> None:
     ```
     """
     require_client()
+    logger.info("snapshot.list repository=%s", repository)
     manager = SnapshotManager(client)
     try:
         snapshots = manager.list_snapshots(repository)
@@ -210,7 +217,7 @@ def list_snapshots(client: ElasticsearchClient, repository: str) -> None:
 
         console.print(table)
     except OperationError as e:
-        console.print(f"[bold red]Error listing snapshots:[/] {str(e)}")
+        error_console.print(f"[bold red]Error listing snapshots:[/] {str(e)}")
         exit(1)
 
 
@@ -245,6 +252,13 @@ def create_snapshot(
     ```
     """
     require_client()
+    logger.info(
+        "snapshot.create repository=%s snapshot=%s indices=%s wait=%s",
+        repository,
+        snapshot,
+        indices,
+        wait,
+    )
     manager = SnapshotManager(client)
     try:
         resp = manager.create_snapshot(
@@ -261,7 +275,7 @@ def create_snapshot(
             # Basic accepted response
             console.print(f"[bold green]Snapshot '{snapshot}' creation started.[/]")
     except OperationError as e:
-        console.print(f"[bold red]Error creating snapshot:[/] {str(e)}")
+        error_console.print(f"[bold red]Error creating snapshot:[/] {str(e)}")
         exit(1)
 
 
@@ -291,6 +305,11 @@ def restore_snapshot(
     ```
     """
     require_client()
+    logger.info(
+        "snapshot.restore repository=%s snapshot=%s",
+        repository or "-",
+        snapshot or "-",
+    )
     manager = SnapshotManager(client)
     from rich.prompt import Confirm, Prompt
 
@@ -306,7 +325,7 @@ def restore_snapshot(
         try:
             repos_dict = manager.list_repositories()
         except Exception:
-            console.print("[red]Failed to list repositories.[/]")
+            error_console.print("[red]Failed to list repositories.[/]")
             return
 
         repo_names = list(repos_dict.keys())
@@ -329,7 +348,7 @@ def restore_snapshot(
             try:
                 snaps = manager.list_snapshots(repository)
             except Exception:
-                console.print("[red]Failed to list snapshots.[/]")
+                error_console.print("[red]Failed to list snapshots.[/]")
                 return
 
             if not snaps:
@@ -393,7 +412,7 @@ def restore_snapshot(
             console.print("[bold green]Restore started.[/]")
 
     except OperationError as e:
-        console.print(f"[bold red]Error restoring snapshot:[/] {str(e)}")
+        error_console.print(f"[bold red]Error restoring snapshot:[/] {str(e)}")
         exit(1)
 
 
@@ -426,6 +445,12 @@ def delete_snapshot(
     ```
     """
     require_client()
+    logger.info(
+        "snapshot.delete repository=%s snapshot=%s dry_run=%s",
+        repository,
+        snapshot,
+        dry_run,
+    )
     from elastro.cli.deletion import emit_delete_preview, preview_snapshot_delete
 
     if dry_run:
@@ -448,5 +473,5 @@ def delete_snapshot(
         else:
             console.print("[yellow]Deletion not acknowledged.[/]")
     except OperationError as e:
-        console.print(f"[bold red]Error deleting snapshot:[/] {str(e)}")
+        error_console.print(f"[bold red]Error deleting snapshot:[/] {str(e)}")
         exit(1)

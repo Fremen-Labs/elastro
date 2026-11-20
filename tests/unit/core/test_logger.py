@@ -39,3 +39,16 @@ class TestLoggerConfiguration:
         logger_module.configure_logging("INFO")
         child = logger_module.get_logger("elastro.test.module", log_level="DEBUG")
         assert child.level == logging.DEBUG
+
+    def test_client_logger_calls_use_percent_style(self):
+        from pathlib import Path
+
+        source = Path(logger_module.__file__).with_name("client.py").read_text()
+        assert 'logger.debug(f"' not in source
+        assert "logger.debug(f'" not in source
+        assert 'logger.info(f"' not in source
+        assert "logger.info(f'" not in source
+        assert 'logger.error(f"' not in source
+        assert "logger.error(f'" not in source
+        assert 'logger.exception(f"' not in source
+        assert "logger.exception(f'" not in source
