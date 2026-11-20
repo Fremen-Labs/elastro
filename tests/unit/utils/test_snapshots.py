@@ -138,7 +138,7 @@ class TestSnapshotManager:
         # Test error handling
         repo_config = RepositoryConfig(name="test-repo", type="fs")
         with pytest.raises(
-            OperationError, match="Failed to create repository test-repo: Test error"
+            OperationError, match="Failed to create repository 'test-repo': Test error"
         ):
             snapshot_manager.create_repository(repo_config)
 
@@ -163,7 +163,7 @@ class TestSnapshotManager:
         )
 
         with pytest.raises(
-            OperationError, match="Failed to delete repository test-repo: Test error"
+            OperationError, match="Failed to delete repository 'test-repo': Test error"
         ):
             snapshot_manager.delete_repository("test-repo")
 
@@ -201,7 +201,7 @@ class TestSnapshotManager:
 
         result = snapshot_manager.get_repository()
         assert result == mock_response
-        mock_elasticsearch.snapshot.get_repository.assert_called_once_with()
+        mock_elasticsearch.snapshot.get_repository.assert_called_once_with(name="_all")
 
     def test_get_repository_error(self, snapshot_manager, mock_elasticsearch):
         """Test error handling when getting repositories."""
@@ -209,7 +209,7 @@ class TestSnapshotManager:
         mock_elasticsearch.snapshot.get_repository.side_effect = Exception("Test error")
 
         with pytest.raises(
-            OperationError, match="Failed to get repository information: Test error"
+            OperationError, match="Failed to list repositories: Test error"
         ):
             snapshot_manager.get_repository()
 
@@ -278,7 +278,8 @@ class TestSnapshotManager:
 
         snapshot_config = SnapshotConfig(name="test-snapshot")
         with pytest.raises(
-            OperationError, match="Failed to create snapshot test-snapshot: Test error"
+            OperationError,
+            match="Failed to create snapshot 'test-snapshot': Test error",
         ):
             snapshot_manager.create_snapshot("test-repo", snapshot_config)
 
@@ -299,7 +300,8 @@ class TestSnapshotManager:
         mock_elasticsearch.snapshot.delete.side_effect = Exception("Test error")
 
         with pytest.raises(
-            OperationError, match="Failed to delete snapshot test-snapshot: Test error"
+            OperationError,
+            match="Failed to delete snapshot 'test-snapshot': Test error",
         ):
             snapshot_manager.delete_snapshot("test-repo", "test-snapshot")
 
@@ -365,7 +367,7 @@ class TestSnapshotManager:
         mock_elasticsearch.snapshot.restore.assert_called_once_with(
             repository="test-repo",
             snapshot="test-snapshot",
-            body={},
+            body={"indices": "_all"},
             wait_for_completion=False,
         )
 
@@ -399,7 +401,8 @@ class TestSnapshotManager:
         mock_elasticsearch.snapshot.restore.side_effect = Exception("Test error")
 
         with pytest.raises(
-            OperationError, match="Failed to restore snapshot test-snapshot: Test error"
+            OperationError,
+            match="Failed to restore snapshot 'test-snapshot': Test error",
         ):
             snapshot_manager.restore_snapshot("test-repo", "test-snapshot")
 
