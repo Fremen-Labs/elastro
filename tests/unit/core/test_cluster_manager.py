@@ -62,3 +62,41 @@ class TestClusterManager:
         assert result == payload
         es_client.client.cluster.allocation_explain.assert_called_once_with()
         es_client.client.cat.shards.assert_not_called()
+
+    def test_allocation_explain_no_unassigned_shards(self, es_client) -> None:
+        class BadRequest(Exception):
+            status_code = 400
+
+            def __str__(self) -> str:
+                return "No shard was specified"
+
+        es_client.client.cluster.allocation_explain.side_effect = BadRequest()
+
+        result = ClusterManager(es_client).allocation_explain()
+
+        assert result == {"message": "no unassigned shards to explain"}
+
+    def test_allocation_explain_other_400_is_error(self, es_client) -> None:
+        class BadRequest(Exception):
+            status_code = 400
+            body = {"error": {"reason": "invalid allocation request"}}
+
+            def __str__(self) -> str:
+                return "invalid allocation request"
+
+        es_client.client.cluster.allocation_explain.side_effect = BadRequest()
+
+        with pytest.raises(OperationError, match="Failed to explain allocation"):
+            ClusterManager(es_client).allocation_explain()
+
+    def test_allocation_explain_500_with_marker_still_fails(self, es_client) -> None:
+        class ServerError(Exception):
+            status_code = 500
+
+            def __str__(self) -> str:
+                return "No shard was specified"
+
+        es_client.client.cluster.allocation_explain.side_effect = ServerError()
+
+        with pytest.raises(OperationError, match="Failed to explain allocation"):
+            ClusterManager(es_client).allocation_explain()

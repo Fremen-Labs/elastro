@@ -10,6 +10,7 @@ from elastro.core.logger import get_logger
 logger = get_logger(__name__)
 
 _ROUTING_ENABLE_VALUES = frozenset({"all", "primaries", "new_primaries", "none"})
+_NO_SHARD_MARKERS = ("no shard was specified", "no unassigned shards")
 
 
 class ClusterManager(BaseManager):
@@ -56,5 +57,40 @@ class ClusterManager(BaseManager):
             response = self._client.get_client().cluster.allocation_explain()
             return self._handle_response(response)
         except Exception as exc:
+            if is_no_unassigned_shard(exc):
+                logger.info("No unassigned shards to explain")
+                return {"message": "no unassigned shards to explain"}
             logger.error("cluster allocation_explain failed: %s", exc, exc_info=True)
             raise OperationError(f"Failed to explain allocation: {exc}") from exc
+
+
+def is_no_unassigned_shard(exc: Exception) -> bool:
+    """Return True for ES 400 'No shard was specified' (green, nothing to explain)."""
+    if _http_status(exc) != 400:
+        return False
+    message = str(exc).lower()
+    if any(marker in message for marker in _NO_SHARD_MARKERS):
+        return True
+    body = getattr(exc, "body", None)
+    if isinstance(body, dict):
+        error = body.get("error") or {}
+        reason = str(error.get("reason") or "").lower()
+        if any(marker in reason for marker in _NO_SHARD_MARKERS):
+            return True
+    return False
+
+
+def _http_status(exc: Exception) -> Optional[int]:
+    status = getattr(exc, "status_code", None)
+    if status is None:
+        meta = getattr(exc, "meta", None)
+        if meta is not None:
+            status = getattr(meta, "status", None)
+    try:
+        return int(status) if status is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+# Backward-compatible alias used by allocation callers.
+_is_no_unassigned_shard = is_no_unassigned_shard

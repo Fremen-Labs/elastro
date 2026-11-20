@@ -64,6 +64,9 @@ class AgentStore(BaseManager):
         except ElasticModuleError:
             raise
         except Exception as exc:
+            if _is_missing_index(exc):
+                logger.info("Agent index %s is missing; returning empty result", index)
+                return {"hits": {"total": {"value": 0, "relation": "eq"}, "hits": []}}
             logger.error(
                 "agent store search failed index=%s: %s", index, exc, exc_info=True
             )
@@ -92,3 +95,40 @@ class AgentStore(BaseManager):
             raise OperationError(
                 f"Failed to delete_by_query on {index}: {exc}"
             ) from exc
+
+
+_MISSING_INDEX_MARKERS = (
+    "index_not_found",
+    "no such index",
+    "resource_not_found",
+    "not_found_exception",
+)
+
+
+def _is_missing_index(exc: Exception) -> bool:
+    message = str(exc).lower()
+    if any(marker in message for marker in _MISSING_INDEX_MARKERS):
+        return True
+    for candidate in (
+        getattr(exc, "error", None),
+        getattr(exc, "body", None),
+    ):
+        if _error_has_missing_index_marker(candidate):
+            return True
+    return False
+
+
+def _error_has_missing_index_marker(payload: Any) -> bool:
+    if isinstance(payload, dict):
+        error = payload.get("error") if "error" in payload else payload
+        if isinstance(error, dict):
+            blob = " ".join(
+                str(error.get(key) or "") for key in ("type", "reason", "caused_by")
+            ).lower()
+        else:
+            blob = str(error).lower()
+        return any(marker in blob for marker in _MISSING_INDEX_MARKERS)
+    if payload is None:
+        return False
+    text = str(payload).lower()
+    return any(marker in text for marker in _MISSING_INDEX_MARKERS)

@@ -9,6 +9,7 @@ from rich.table import Table
 
 from elastro.cli.completion import complete_indices, complete_policies
 from elastro.cli.context import require_client
+from elastro.cli.errors import confirm_or_exit
 from elastro.core.client import ElasticsearchClient
 from elastro.core.errors import OperationError
 from elastro.core.ilm import IlmManager
@@ -354,8 +355,18 @@ def explain_lifecycle(client: ElasticsearchClient, index: str) -> None:
 
 
 @ilm_group.command("start")
+@click.option(
+    "--yes",
+    is_flag=True,
+    help="Confirm without prompting (required when stdin is not a TTY)",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Print the planned ILM start call without executing",
+)
 @click.pass_obj
-def start_ilm(client: ElasticsearchClient) -> None:
+def start_ilm(client: ElasticsearchClient, yes: bool, dry_run: bool) -> None:
     """
     Start the ILM service.
 
@@ -365,9 +376,14 @@ def start_ilm(client: ElasticsearchClient) -> None:
 
     Start ILM service:
     ```bash
-    elastro ilm start
+    elastro ilm start --yes
+    elastro ilm start --dry-run
     ```
     """
+    if dry_run:
+        click.echo("POST /_ilm/start")
+        return
+    confirm_or_exit("Start the ILM service?", yes=yes)
     require_client()
     logger.info("ilm.start")
     manager = IlmManager(client)
@@ -382,8 +398,18 @@ def start_ilm(client: ElasticsearchClient) -> None:
 
 
 @ilm_group.command("stop")
+@click.option(
+    "--yes",
+    is_flag=True,
+    help="Confirm without prompting (required when stdin is not a TTY)",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Print the planned ILM stop call without executing",
+)
 @click.pass_obj
-def stop_ilm(client: ElasticsearchClient) -> None:
+def stop_ilm(client: ElasticsearchClient, yes: bool, dry_run: bool) -> None:
     """
     Stop the ILM service.
 
@@ -393,9 +419,14 @@ def stop_ilm(client: ElasticsearchClient) -> None:
 
     Stop ILM service:
     ```bash
-    elastro ilm stop
+    elastro ilm stop --yes
+    elastro ilm stop --dry-run
     ```
     """
+    if dry_run:
+        click.echo("POST /_ilm/stop")
+        return
+    confirm_or_exit("Stop the ILM service?", yes=yes)
     require_client()
     logger.info("ilm.stop")
     manager = IlmManager(client)

@@ -36,7 +36,7 @@ _HOT_LAG_DAYS = 2.0
 
 
 def finding_matches_feature(finding: Finding, feature: str) -> bool:
-    """Return True when a finding belongs to ``apm`` or ``beats``."""
+    """Return True when a finding belongs to ``feature`` (category, indicator, or id)."""
     key = feature.lower()
     if finding.category == key or finding.indicator == key:
         return True

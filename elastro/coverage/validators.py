@@ -222,8 +222,12 @@ class CoverageValidator:
                     ) from exc
 
         if search_body is not None:
-            doc_count = _hit_count(search_body)
             aggs = search_body.get("aggregations") or search_body.get("aggs") or {}
+            scoped = _scoped_aggs(aggs)
+            window_count = _in_window_doc_count(aggs)
+            hit_count = _hit_count(search_body)
+            # hits.total is capped by track_total_hits; in_window.doc_count is not
+            doc_count = window_count if window_count is not None else hit_count
             latest_timestamp, _latest_dt = _latest_from_agg(aggs)
             count_ok = doc_count >= min_docs
             checks.append(
@@ -256,14 +260,14 @@ class CoverageValidator:
             )
             checks.append(
                 _field_presence_check(
-                    aggs,
+                    scoped,
                     doc_count=doc_count,
                     require_service=service_name is not None,
                 )
             )
             if max_cardinality is not None:
                 cardinality = int(
-                    (aggs.get("service_cardinality") or {}).get("value") or 0
+                    (scoped.get("service_cardinality") or {}).get("value") or 0
                 )
                 checks.append(
                     CoverageCheck(
@@ -288,6 +292,15 @@ class CoverageValidator:
                     summary=f"No searchable documents for '{pattern}'",
                     metadata={"min_docs": min_docs},
                 )
+            )
+
+        if service_name:
+            _apply_service_streams_present(
+                checks,
+                present=present,
+                doc_count=doc_count,
+                service_name=service_name,
+                resource_names=resource_names,
             )
 
         return CoverageReport(
@@ -346,6 +359,7 @@ class CoverageValidator:
             window,
             track,
         )
+        scoped_filters = list(filters)
         response = self._documents.search(
             index=pattern,
             query={"bool": {"filter": filters}},
@@ -359,15 +373,22 @@ class CoverageValidator:
                             "range": {"@timestamp": {"gte": f"now-{freshness_window}"}}
                         }
                     },
-                    "has_service_name": {
-                        "filter": {"exists": {"field": "service.name"}}
-                    },
-                    "has_host_name": {"filter": {"exists": {"field": "host.name"}}},
-                    "service_cardinality": {
-                        "cardinality": {
-                            "field": "service.name",
-                            "precision_threshold": 100,
-                        }
+                    "in_window": {
+                        "filter": {"bool": {"filter": scoped_filters}},
+                        "aggs": {
+                            "has_service_name": {
+                                "filter": {"exists": {"field": "service.name"}}
+                            },
+                            "has_host_name": {
+                                "filter": {"exists": {"field": "host.name"}}
+                            },
+                            "service_cardinality": {
+                                "cardinality": {
+                                    "field": "service.name",
+                                    "precision_threshold": 100,
+                                }
+                            },
+                        },
                     },
                 },
             },
@@ -428,6 +449,63 @@ def _latest_from_agg(
     if parsed is not None:
         return parsed.isoformat(), parsed
     return None, None
+
+
+def _in_window_doc_count(aggs: Dict[str, Any]) -> Optional[int]:
+    """Return the filter-agg window size, which is not capped by track_total_hits."""
+    nested = aggs.get("in_window")
+    if not isinstance(nested, dict) or "doc_count" not in nested:
+        return None
+    try:
+        return int(nested.get("doc_count") or 0)
+    except (TypeError, ValueError):
+        return None
+
+
+def _has_presence_aggs(body: Dict[str, Any]) -> bool:
+    return (
+        "has_service_name" in body
+        or "has_host_name" in body
+        or "service_cardinality" in body
+    )
+
+
+def _scoped_aggs(aggs: Dict[str, Any]) -> Dict[str, Any]:
+    """Return field-presence aggregations nested under the time-window filter."""
+    nested = aggs.get("in_window")
+    if not isinstance(nested, dict):
+        return {}
+    inner = nested.get("aggs")
+    if isinstance(inner, dict) and _has_presence_aggs(inner):
+        return inner
+    if _has_presence_aggs(nested):
+        return nested
+    return {}
+
+
+def _apply_service_streams_present(
+    checks: List[CoverageCheck],
+    *,
+    present: bool,
+    doc_count: int,
+    service_name: str,
+    resource_names: List[str],
+) -> None:
+    """Do not treat stream-name matches as coverage when the service term is empty."""
+    if doc_count > 0:
+        return
+    for check in checks:
+        if check.name != "streams_present":
+            continue
+        check.passed = False
+        if present:
+            check.summary = (
+                f"Found {len(resource_names)} matching index/data stream(s) "
+                f"but 0 documents with service.name={service_name}"
+            )
+        check.metadata["service.name"] = service_name
+        check.metadata["doc_count"] = doc_count
+        return
 
 
 def _field_presence_check(

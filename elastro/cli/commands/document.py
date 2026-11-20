@@ -149,6 +149,13 @@ def get_document(client: ElasticsearchClient, index: str, id: str) -> None:
 @click.command("search")
 @click.argument("index", type=str, shell_complete=complete_indices)
 @click.argument("query", type=str, required=False)
+@click.option(
+    "--query",
+    "query_option",
+    type=str,
+    default=None,
+    help="Query string (alias for the QUERY argument)",
+)
 @click.option("--size", type=int, default=10, help="Maximum number of results")
 @click.option("--from", "from_", type=int, default=0, help="Starting offset")
 @click.option(
@@ -173,6 +180,7 @@ def search_documents(
     client: ElasticsearchClient,
     index: str,
     query: Optional[str],
+    query_option: Optional[str],
     size: int,
     from_: int,
     file: Any,
@@ -197,6 +205,11 @@ def search_documents(
 
     Examples:
 
+    Query string:
+    ```bash
+    elastro doc search my-logs --query 'status:error'
+    ```
+
     Simple match query:
     ```bash
     elastro doc search my-logs --match status=error
@@ -215,6 +228,7 @@ def search_documents(
     require_client()
     logger.info("doc.search index=%s size=%s from=%s", index, size, from_)
     document_manager = DocumentManager(client)
+    query = query_option if query_option is not None else query
 
     # Determine query source
     if file:

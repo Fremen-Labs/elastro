@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from elastro.core.cluster import ClusterManager
 from elastro.core.errors import OperationError
 from elastro.core.index import IndexManager
 from elastro.core.logger import get_logger
@@ -103,11 +104,7 @@ def explain_allocation(
     if index_name:
         manager = IndexManager(ctx.client)
         return manager.allocation_explain(index_name)
-    try:
-        return dict(ctx.client.client.cluster.allocation_explain())
-    except Exception as exc:
-        logger.error("cluster.allocation_explain failed: %s", exc, exc_info=True)
-        raise OperationError(f"Failed to explain allocation: {exc}") from exc
+    return ClusterManager(ctx.client).allocation_explain()
 
 
 def _analysis_to_dict(analysis: ShardAnalysis) -> Dict[str, Any]:

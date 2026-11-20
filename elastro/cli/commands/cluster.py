@@ -8,11 +8,22 @@ from rich.table import Table
 
 from elastro.cli.context import require_client
 from elastro.cli.errors import confirm_or_exit, exit_from_exception
+from elastro.cli.output import format_output
 from elastro.core.client import ElasticsearchClient
 from elastro.core.cluster import ClusterManager
 from elastro.core.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _output_format() -> str:
+    ctx = click.get_current_context(silent=True)
+    if ctx is None:
+        return "json"
+    root = ctx
+    while root.parent is not None:
+        root = root.parent
+    return str(root.params.get("output") or "json")
 
 
 @click.group(name="cluster")
@@ -45,6 +56,9 @@ def explain_allocation(client: ElasticsearchClient, index: str) -> None:
     logger.info("cluster.allocation index=%s", index or "*")
     try:
         res = ClusterManager(client).allocation_explain(index=index)
+        if "index" not in res and res.get("message"):
+            click.echo(format_output(res, output_format=_output_format()), nl=False)
+            return
 
         console.print(f"[bold cyan]Index:[/bold cyan] {res.get('index', 'N/A')}")
         console.print(f"[bold cyan]Shard:[/bold cyan] {res.get('shard', 'N/A')}")

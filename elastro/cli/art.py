@@ -1,6 +1,5 @@
-from rich.text import Text
-from rich.panel import Panel
-from rich.align import Align
+import os
+import sys
 
 ELASTRO_ART = r"""
 ```text
@@ -15,11 +14,25 @@ ELASTRO_ART = r"""
 """
 
 
+def banner_enabled() -> bool:
+    """Return True when the CLI ASCII banner should be printed."""
+    if os.environ.get("ELASTRO_GUI_MODE") == "1":
+        return False
+    if os.environ.get("ELASTRO_NO_ART"):
+        return False
+    try:
+        return sys.stdout.isatty()
+    except (ValueError, OSError):
+        return False
+
+
 def get_banner() -> str:
     return ELASTRO_ART
 
 
 def print_banner() -> None:
+    if not banner_enabled():
+        return
     from rich.console import Console
 
     console = Console()

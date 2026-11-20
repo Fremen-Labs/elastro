@@ -3,6 +3,7 @@
 from typing import Any, Dict, List, Optional
 
 from elastro.core.client import ElasticsearchClient
+from elastro.core.cluster import is_no_unassigned_shard
 from elastro.core.errors import OperationError
 from elastro.core.logger import get_logger
 
@@ -140,6 +141,9 @@ class HealthManager:
                 return dict(self._es.cluster.allocation_explain(body=body))
             return dict(self._es.cluster.allocation_explain())
         except Exception as e:
+            if is_no_unassigned_shard(e):
+                logger.info("No unassigned shards to explain")
+                return {"message": "no unassigned shards to explain"}
             logger.error("Allocation explain request failed: %s", e, exc_info=True)
             raise OperationError(f"Failed to explain allocation: {str(e)}")
 

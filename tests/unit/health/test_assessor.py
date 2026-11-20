@@ -361,6 +361,143 @@ class TestHealthAssessor(unittest.TestCase):
         self.assertEqual(len(missing), 1)
         self.assertEqual(missing[0].status, FindingStatus.FAIL)
 
+    def test_feature_disk_excludes_security_and_cluster_blocks(self):
+        from elastro.health.models import Finding, Severity
+
+        class _CaptureCollector:
+            name = "health_report"
+            feature = "unset"
+
+            def collect(self, ctx: CollectContext) -> CollectorResult:
+                _CaptureCollector.feature = ctx.options.get("feature")
+                return CollectorResult(
+                    name=self.name,
+                    status="ok",
+                    data={
+                        "report": {},
+                        "findings": [],
+                        "cluster_name": "c",
+                        "status": "green",
+                        "indicators": {},
+                    },
+                )
+
+        class _DiskStub:
+            name = "disk"
+
+            def collect(self, ctx: CollectContext) -> CollectorResult:
+                finding = Finding(
+                    id="disk.high.node-a",
+                    category="disk",
+                    title="Disk high watermark on node-a",
+                    status=FindingStatus.WARN,
+                    severity=Severity.HIGH,
+                    score_impact=8,
+                    summary="Node disk usage is 92%",
+                    source="collector",
+                )
+                return CollectorResult(
+                    name=self.name,
+                    status="ok",
+                    data={"findings": [finding], "nodes": []},
+                )
+
+        registry = CollectorRegistry()
+        registry.register(_CaptureCollector())
+        registry.register(_DiskStub())
+        with unittest.mock.patch("elastro.health.assessor.RuleEngine") as engine:
+            engine.return_value.evaluate.return_value = [
+                Finding(
+                    id="security.tls.plain_http",
+                    category="security",
+                    title="plain http",
+                    status=FindingStatus.WARN,
+                    severity=Severity.HIGH,
+                    score_impact=10,
+                    summary="http",
+                    source="collector",
+                ),
+                Finding(
+                    id="cluster.block.indices",
+                    category="cluster",
+                    title="block",
+                    status=FindingStatus.FAIL,
+                    severity=Severity.CRITICAL,
+                    score_impact=12,
+                    summary="block",
+                    source="rule",
+                ),
+            ]
+            report = HealthAssessor(self.mock_client, registry=registry).run(
+                feature="disk"
+            )
+        self.assertEqual(_CaptureCollector.feature, "disk")
+        ids = {item.id for item in report.findings}
+        self.assertEqual(ids, {"disk.high.node-a"})
+        self.assertEqual(report.overall_score, 92)
+
+    def test_feature_apm_keeps_cluster_fail_findings(self):
+        from elastro.health.models import Finding, Severity
+
+        class _CaptureCollector:
+            name = "health_report"
+
+            def collect(self, ctx: CollectContext) -> CollectorResult:
+                return CollectorResult(
+                    name=self.name,
+                    status="ok",
+                    data={
+                        "report": {},
+                        "findings": [],
+                        "cluster_name": "c",
+                        "status": "green",
+                        "indicators": {},
+                    },
+                )
+
+        registry = CollectorRegistry()
+        registry.register(_CaptureCollector())
+        with unittest.mock.patch("elastro.health.assessor.RuleEngine") as engine:
+            engine.return_value.evaluate.return_value = [
+                Finding(
+                    id="apm.datastream.missing",
+                    category="apm",
+                    title="missing",
+                    status=FindingStatus.FAIL,
+                    severity=Severity.HIGH,
+                    score_impact=15,
+                    summary="missing",
+                    source="rule",
+                    indicator="apm",
+                ),
+                Finding(
+                    id="cluster.block.indices",
+                    category="cluster",
+                    title="block",
+                    status=FindingStatus.FAIL,
+                    severity=Severity.CRITICAL,
+                    score_impact=12,
+                    summary="block",
+                    source="rule",
+                ),
+                Finding(
+                    id="jvm.heap_pressure.n1",
+                    category="jvm",
+                    title="heap",
+                    status=FindingStatus.WARN,
+                    severity=Severity.HIGH,
+                    score_impact=5,
+                    summary="heap",
+                    source="rule",
+                ),
+            ]
+            report = HealthAssessor(self.mock_client, registry=registry).run(
+                feature="apm"
+            )
+        ids = {item.id for item in report.findings}
+        self.assertEqual(ids, {"apm.datastream.missing", "cluster.block.indices"})
+        self.assertEqual(report.overall_score, 73)
+
 
 if __name__ == "__main__":
     unittest.main()

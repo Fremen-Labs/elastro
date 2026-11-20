@@ -59,12 +59,11 @@ if len(sys.argv) >= 3 and sys.argv[1] == "doc" and sys.argv[2] == "search":
             sys.exit(0)
 # --- END FAST PATH INTERCEPTOR ---
 
-import os
 from typing import Optional
 
 import rich_click as click
 
-from elastro.cli.art import ELASTRO_ART
+from elastro.cli.art import ELASTRO_ART, banner_enabled
 
 # Configure rich-click
 click.rich_click.USE_RICH_MARKUP = True
@@ -76,10 +75,16 @@ click.rich_click.ERRORS_SUGGESTION = (
     "Missing arguments? Run with --help to see examples and usage."
 )
 click.rich_click.ERRORS_EPILOGUE = "To find out more, visit [link=https://github.com/Fremen-Labs/elastro]https://github.com/Fremen-Labs/elastro[/link]"
-if os.environ.get("ELASTRO_GUI_MODE") == "1":
-    click.rich_click.HEADER_TEXT = None
-else:
-    click.rich_click.HEADER_TEXT = ELASTRO_ART
+
+
+def _apply_header_text() -> None:
+    if banner_enabled():
+        click.rich_click.HEADER_TEXT = ELASTRO_ART
+    else:
+        click.rich_click.HEADER_TEXT = None
+
+
+_apply_header_text()
 
 from elastro import __version__
 from elastro.cli.commands.cluster import cluster_group
@@ -178,6 +183,7 @@ def cli(
     This CLI provides commands for managing Elasticsearch indices, documents, and
     datastreams.
     """
+    _apply_header_text()
     # Load configuration
     cfg = load_config(config, profile)
 
@@ -191,23 +197,14 @@ def cli(
     if verbose:
         cfg["cli"]["verbose"] = verbose
 
-    # Initialize client
-    client = ElasticsearchClient(
+    # Construct only. Client-using callbacks call require_client, which connects.
+    ctx.obj = ElasticsearchClient(
         hosts=cfg["elasticsearch"]["hosts"],
         auth=cfg["elasticsearch"]["auth"],
         timeout=cfg["elasticsearch"]["timeout"],
         retry_on_timeout=cfg["elasticsearch"]["retry_on_timeout"],
         max_retries=cfg["elasticsearch"]["max_retries"],
     )
-
-    # Establish connection. Do not exit here: config/gui/daemon still run
-    # when the cluster is down. Client-using callbacks call require_client.
-    try:
-        client.connect()
-    except Exception as exc:
-        ctx.meta["connection_error"] = exc
-
-    ctx.obj = client
 
 
 @cli.group()

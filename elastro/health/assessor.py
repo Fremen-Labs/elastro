@@ -87,12 +87,14 @@ class HealthAssessor:
         ctx = CollectContext(client=self._client, timeout=timeout)
         ctx.options["verbose_report"] = verbose_report
         custom_feature: Optional[str] = None
+        native_feature: Optional[str] = None
         if feature:
             lowered = feature.lower()
             if lowered in COVERAGE_FEATURES:
                 custom_feature = lowered
             else:
                 ctx.options["feature"] = feature
+                native_feature = lowered
         strict_coverage = coverage_strict or custom_feature == "apm"
         if assessment_history:
             ctx.options["assessment_history"] = assessment_history
@@ -270,12 +272,12 @@ class HealthAssessor:
             deduction = sum(item.score_impact for item in rule_findings)
             overall_score = max(0, overall_score - deduction)
 
-        if custom_feature:
-            findings = [
-                item
-                for item in findings
-                if finding_matches_feature(item, custom_feature)
-            ]
+        if custom_feature or native_feature:
+            findings = _filter_feature_findings(
+                findings,
+                coverage_feature=custom_feature,
+                native_feature=native_feature,
+            )
             overall_score = max(0, 100 - sum(item.score_impact for item in findings))
 
         duration_ms = int((time.monotonic() - start) * 1000)
@@ -352,6 +354,27 @@ def _load_assessment_history(
             exc,
         )
         return []
+
+
+def _filter_feature_findings(
+    findings: List[Finding],
+    *,
+    coverage_feature: Optional[str],
+    native_feature: Optional[str],
+) -> List[Finding]:
+    """Keep findings for the selected feature; coverage views also keep FAIL."""
+    if coverage_feature:
+        return [
+            item
+            for item in findings
+            if finding_matches_feature(item, coverage_feature)
+            or item.status == FindingStatus.FAIL
+        ]
+    if native_feature:
+        return [
+            item for item in findings if finding_matches_feature(item, native_feature)
+        ]
+    return findings
 
 
 def _resolve_client_host(client: ElasticsearchClient) -> str:

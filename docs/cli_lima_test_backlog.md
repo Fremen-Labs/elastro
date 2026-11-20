@@ -6,7 +6,7 @@
 | Elastro | **1.14.0** installed from local `main` (`e092360`, pipx + Python 3.13.5) |
 | Previous install | pipx `elastro-client` **1.13.1** |
 | Target cluster | Lima k3s `elastic-telemetry` ES 8.19.25 (`docker-cluster`, 2 nodes, **green**, 247 shards) |
-| Access | `kubectl -n elastic-telemetry port-forward svc/elasticsearch 9205:9200` (NodePort 30920 is not reachable from this Mac). Default `~/.elastic/config.yaml` password does **not** match Lima; tests used a 0600 temp config. |
+| Access | **LIMA-2:** `kubectl -n elastic-telemetry port-forward --address 127.0.0.1 svc/elasticsearch 9205:9200` (NodePort 30920 is not reachable from this Mac). Do not assume laptop `~/.elastic/config.yaml` matches the Lima `elastic-credentials` / `elastic-password` secret; tests used a 0600 temp config. |
 | Result | **Live tests ran.** 54 CLI commands: **41 exit 0**, **13 non-zero**. Scratch index `elastro-cli-smoke-20261120` created and force-deleted. |
 
 Evidence: `/tmp/elastro_lima_live.jsonl` (live) and `/tmp/elastro_cli_matrix.jsonl` (offline).
