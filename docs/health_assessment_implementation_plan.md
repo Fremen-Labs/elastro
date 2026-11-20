@@ -1,9 +1,9 @@
 # Elastro Health Assessment — Technical Implementation Plan
 
-**Status:** Active — PR-4a shipped (v1.9.0)  
-**Version target:** 1.4.x → 1.9.0
+**Status:** Historical — health assessment is shipped. Package version is `pyproject.toml`. Collectors remain sequential until PR 13.  
+**Version:** `pyproject.toml` (this document's 1.9.0 target is stale)  
 **Author:** Engineering (derived from strategic health assessment report)  
-**Last updated:** 2026-06-15
+**Last updated:** 2026-11-20
 
 ---
 

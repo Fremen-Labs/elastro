@@ -74,8 +74,7 @@ exclude = ["tests*", "examples*"]
 
 [tool.ruff]
 line-length = 88
-target-version = "py39"
-extend-exclude = ["elastro/core/daemon.py"]
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]

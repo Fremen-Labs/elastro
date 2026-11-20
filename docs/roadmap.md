@@ -2,6 +2,8 @@
 
 This document outlines planned and potential future features for the `elastro` package. These features are designed to enhance the functionality and usability of the package for working with Elasticsearch.
 
+Cluster health monitoring has already shipped under `elastro health` (`assess`, `fix`, `shards`, `nodes`, `score`, `trends`, ILM, lint, and rollback). The Cluster Health Monitor item below is historical wishlist, not a remaining gap.
+
 ## Advanced Features
 
 ### Reindex Helper
