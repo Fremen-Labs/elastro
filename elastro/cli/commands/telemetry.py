@@ -2,9 +2,11 @@
 Telemetry ingest command for Elastro CLI.
 """
 
-import rich_click as click
 from datetime import datetime, timezone
 
+import rich_click as click
+
+from elastro.cli.context import require_client
 from elastro.core.client import ElasticsearchClient
 
 
@@ -83,6 +85,7 @@ def ingest_telemetry(
     This command enforces the schema for the Deep Agent Telemetry visualization,
     submitting the performance vector into target index 'agent_telemetry_deep'.
     """
+    require_client()
     index_name = "agent_telemetry_deep"
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 

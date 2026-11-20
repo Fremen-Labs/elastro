@@ -11,6 +11,7 @@ from typing import Any
 import rich_click as click
 from rich.console import Console
 
+from elastro.cli.context import require_client
 from elastro.cli.errors import confirm_or_exit, exit_from_exception, usage_error
 from elastro.cli.output import format_output
 from elastro.core.client import ElasticsearchClient
@@ -37,6 +38,7 @@ def list_scripts(client: ElasticsearchClient) -> None:
     Warning: Elasticsearch does not natively provide an endpoint to list all
     scripts. This fetches cluster state metadata, which may be heavy.
     """
+    require_client()
     logger.info("script.list")
     try:
         # Pull cluster state selecting only metadata.stored_scripts
@@ -61,6 +63,7 @@ def get_script(client: ElasticsearchClient, id: str) -> None:
     """
     Get a stored Painless script by its ID.
     """
+    require_client()
     logger.info("script.get id=%s", id)
     try:
         response = client.client.get_script(id=id)
@@ -88,6 +91,7 @@ def delete_script(
     """
     Delete a stored Painless script.
     """
+    require_client()
     from elastro.cli.deletion import emit_delete_preview, preview_script_delete
 
     if dry_run:
@@ -126,6 +130,7 @@ def create_script(
 
     You can optionally open your default local editor to compose the script interactively.
     """
+    require_client()
     script_source = ""
 
     if file:
@@ -195,6 +200,7 @@ def execute_script(
     This heavily relies on the _scripts/painless/_execute endpoint to test syntax
     without permanently altering production data structures.
     """
+    require_client()
     if not source and not id:
         usage_error("Error: Must provide either --source or --id.")
 

@@ -2,16 +2,19 @@
 Document management commands for the CLI.
 """
 
-import rich_click as click
 import json
 import sys
-from typing import Optional, Tuple, Any
+from typing import Any, Optional, Tuple
+
+import rich_click as click
+
+from elastro.cli.completion import complete_indices
+from elastro.cli.context import require_client
+from elastro.cli.output import format_output
 from elastro.core.client import ElasticsearchClient
 from elastro.core.document import DocumentManager
 from elastro.core.errors import OperationError
 from elastro.core.query_builder import SearchFilterParser
-from elastro.cli.output import format_output
-from elastro.cli.completion import complete_indices
 
 
 @click.command("index", no_args_is_help=True)
@@ -46,6 +49,7 @@ def index_document(
     elastro doc index my-logs --id 123 --file ./user.json
     ```
     """
+    require_client()
     document_manager = DocumentManager(client)
 
     # Load document data
@@ -87,6 +91,7 @@ def bulk_index(client: ElasticsearchClient, index: str, file: Any) -> None:
     elastro doc bulk my-logs --file ./bulk_data.json
     ```
     """
+    require_client()
     document_manager = DocumentManager(client)
 
     # Load documents data
@@ -123,6 +128,7 @@ def get_document(client: ElasticsearchClient, index: str, id: str) -> None:
     elastro doc get my-logs 123
     ```
     """
+    require_client()
     document_manager = DocumentManager(client)
 
     try:
@@ -200,6 +206,7 @@ def search_documents(
     elastro doc search my-logs --file ./advanced_query.json
     ```
     """
+    require_client()
     document_manager = DocumentManager(client)
 
     # Determine query source
@@ -272,6 +279,7 @@ def update_document(
     elastro doc update my-logs 123 --file ./fields.json --partial
     ```
     """
+    require_client()
     document_manager = DocumentManager(client)
 
     # Load document data
@@ -315,6 +323,7 @@ def delete_document(
     elastro -o json doc delete my-logs 123 --dry-run
     ```
     """
+    require_client()
     from elastro.cli.deletion import emit_delete_preview, preview_document_delete
 
     if dry_run:
@@ -366,6 +375,7 @@ def bulk_delete(
     elastro -o json doc bulk-delete my-logs --file ./ids.json --dry-run
     ```
     """
+    require_client()
     from elastro.cli.deletion import emit_delete_preview, preview_bulk_document_delete
 
     ids = json.load(file)

@@ -2,13 +2,14 @@
 Graph RAG Commands for Code Flow Mapping.
 """
 
-import rich_click as click
 import os
-from typing import Optional
+
+import rich_click as click
+from rich.console import Console
+
+from elastro.cli.context import require_client
 from elastro.core.client import ElasticsearchClient
 from elastro.core.rag.ingestor import GraphRAGManager
-from elastro.cli.output import format_output
-from rich.console import Console
 
 console = Console()
 
@@ -49,6 +50,7 @@ def ingest_repo(client: ElasticsearchClient, repo_path: str, index: str) -> None
     elastro rag ingest /path/to/my/go-repo
     ```
     """
+    require_client()
     repo_name = os.path.basename(os.path.abspath(repo_path))
     console.print(
         f"[bold cyan]🔍 Initializing Graph RAG AST Parsing for '{repo_name}'[/bold cyan]"
@@ -96,6 +98,7 @@ def update_file(client: ElasticsearchClient, file_path: str, index: str) -> None
     elastro rag update elastro/core/rag/ingestor.py
     ```
     """
+    require_client()
     file_name = os.path.basename(file_path)
     console.print(
         f"[bold cyan]🔍 Surgically syncing AST Graph RAG for '{file_name}'[/bold cyan]"

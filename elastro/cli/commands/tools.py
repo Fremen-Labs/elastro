@@ -2,9 +2,11 @@
 Tools registry command group for Elastro CLI.
 """
 
-import rich_click as click
 from datetime import datetime, timezone
 
+import rich_click as click
+
+from elastro.cli.context import require_client
 from elastro.core.client import ElasticsearchClient
 
 
@@ -32,11 +34,12 @@ def register_tool(
     """
     Register a custom pipeline script or CLI into the tools registry.
     """
+    require_client()
     index_name = "flow_tools"
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    import os
     import hashlib
+    import os
 
     file_hash = "unknown"
     if os.path.isfile(file_path):
@@ -81,6 +84,7 @@ def search_tools(
     """
     Search the flow_tools custom tool registry.
     """
+    require_client()
     index_name = "flow_tools"
 
     search_body = {
@@ -111,8 +115,8 @@ def search_tools(
             click.echo(f"  Purpose: {source.get('purpose', '')}")
             click.echo(f"  Parameters: {source.get('parameters', '')}")
 
-            import os
             import hashlib
+            import os
 
             if file_path != "unknown" and os.path.isfile(file_path):
                 with open(file_path, "rb") as f:

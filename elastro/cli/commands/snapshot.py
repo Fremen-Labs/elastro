@@ -1,13 +1,15 @@
+from typing import Any, Optional
+
 import rich_click as click
-import json
-from typing import Dict, Any, List, Optional
-from rich.console import Console
-from rich.table import Table
 from rich import box
+from rich.console import Console
 from rich.panel import Panel
+from rich.table import Table
+
+from elastro.cli.context import require_client
 from elastro.core.client import ElasticsearchClient
-from elastro.core.snapshot import SnapshotManager
 from elastro.core.errors import OperationError
+from elastro.core.snapshot import SnapshotManager
 
 console = Console()
 
@@ -42,6 +44,7 @@ def list_repositories(client: ElasticsearchClient) -> None:
     elastro snapshot repo list
     ```
     """
+    require_client()
     manager = SnapshotManager(client)
     try:
         repos = manager.list_repositories()
@@ -95,6 +98,7 @@ def create_repository(
     elastro snapshot repo create s3_backup s3 --setting bucket=my-bucket --setting region=us-east-1
     ```
     """
+    require_client()
     manager = SnapshotManager(client)
 
     # Parse settings
@@ -140,6 +144,7 @@ def delete_repository(
     elastro -o json snapshot repo delete my_backup --dry-run
     ```
     """
+    require_client()
     from elastro.cli.deletion import (
         emit_delete_preview,
         preview_snapshot_repository_delete,
@@ -182,6 +187,7 @@ def list_snapshots(client: ElasticsearchClient, repository: str) -> None:
     elastro snapshot list my_backup
     ```
     """
+    require_client()
     manager = SnapshotManager(client)
     try:
         snapshots = manager.list_snapshots(repository)
@@ -238,6 +244,7 @@ def create_snapshot(
     elastro snapshot create my_backup snap_users --indices "users,logs-*"
     ```
     """
+    require_client()
     manager = SnapshotManager(client)
     try:
         resp = manager.create_snapshot(
@@ -283,8 +290,9 @@ def restore_snapshot(
     elastro snapshot restore my_backup snap_1
     ```
     """
+    require_client()
     manager = SnapshotManager(client)
-    from rich.prompt import Prompt, Confirm
+    from rich.prompt import Confirm, Prompt
 
     # WIZARD MODE if args missing
     if not repository or not snapshot:
@@ -379,10 +387,10 @@ def restore_snapshot(
         )
         accepted = resp.get("accepted", False)
         if accepted:
-            console.print(f"[bold green]Restore operation accepted.[/]")
+            console.print("[bold green]Restore operation accepted.[/]")
         else:
             # Sometimes restores return full info if wait=True, but we default wait=False here
-            console.print(f"[bold green]Restore started.[/]")
+            console.print("[bold green]Restore started.[/]")
 
     except OperationError as e:
         console.print(f"[bold red]Error restoring snapshot:[/] {str(e)}")
@@ -417,6 +425,7 @@ def delete_snapshot(
     elastro -o json snapshot delete my_backup snap_old --dry-run
     ```
     """
+    require_client()
     from elastro.cli.deletion import emit_delete_preview, preview_snapshot_delete
 
     if dry_run:

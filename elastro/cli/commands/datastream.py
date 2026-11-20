@@ -2,13 +2,16 @@
 Datastream management commands for the CLI.
 """
 
-import rich_click as click
 import json
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
+import rich_click as click
+
+from elastro.cli.completion import complete_datastreams
+from elastro.cli.context import require_client
 from elastro.core.client import ElasticsearchClient
 from elastro.core.datastream import DatastreamManager
 from elastro.core.errors import OperationError
-from elastro.cli.completion import complete_datastreams
 
 
 @click.command("create", no_args_is_help=True)
@@ -34,6 +37,7 @@ def create_datastream(
     elastro datastream create logs-my-app-prod
     ```
     """
+    require_client()
     datastream_manager = DatastreamManager(client)
 
     # Load settings if provided
@@ -67,6 +71,7 @@ def list_datastreams(client: ElasticsearchClient) -> None:
     elastro datastream list
     ```
     """
+    require_client()
     datastream_manager = DatastreamManager(client)
 
     try:
@@ -93,6 +98,7 @@ def get_datastream(client: ElasticsearchClient, name: str) -> None:
     elastro datastream get logs-*
     ```
     """
+    require_client()
     datastream_manager = DatastreamManager(client)
 
     try:
@@ -131,6 +137,7 @@ def delete_datastream(
     elastro -o json datastream delete logs-my-app-debug --dry-run
     ```
     """
+    require_client()
     from elastro.cli.deletion import (
         emit_delete_preview,
         preview_datastream_delete,
@@ -189,6 +196,7 @@ def rollover_datastream(
     elastro datastream rollover logs-my-app-prod --max-size 50gb
     ```
     """
+    require_client()
     datastream_manager = DatastreamManager(client)
 
     # Prepare conditions

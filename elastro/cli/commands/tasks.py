@@ -8,6 +8,7 @@ import rich_click as click
 from rich.console import Console
 from rich.table import Table
 
+from elastro.cli.context import require_client
 from elastro.cli.errors import confirm_or_exit, exit_from_exception
 from elastro.core.client import ElasticsearchClient
 from elastro.core.errors import OperationError
@@ -59,6 +60,7 @@ def list_tasks(client: ElasticsearchClient, action: str, detailed: bool) -> None
     """
     List active node tasks.
     """
+    require_client()
     console = Console()
     logger.info("tasks.list action=%s detailed=%s", action or "*", detailed)
     try:
@@ -117,6 +119,7 @@ def cancel_task(client: ElasticsearchClient, task_id: str, yes: bool) -> None:
 
     TASK_ID must be in format <node_id>:<task_id>.
     """
+    require_client()
     confirm_or_exit(f"Cancel task '{task_id}'?", yes=yes)
     console = Console()
     logger.info("tasks.cancel task_id=%s", task_id)

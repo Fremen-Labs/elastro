@@ -2,9 +2,11 @@
 Memory command group for Elastro CLI.
 """
 
-import rich_click as click
 from datetime import datetime, timezone
 
+import rich_click as click
+
+from elastro.cli.context import require_client
 from elastro.core.client import ElasticsearchClient
 
 
@@ -32,6 +34,7 @@ def ingest_memory(
 
     NOTE_TYPE must be 'strategic' (telemetry/heuristics) or 'tactical' (handoffs).
     """
+    require_client()
     index_name = "agent_semantic_memory"
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -75,9 +78,10 @@ def search_memory(
     """
     Search semantic memory notes via vector/BM25 retrieval.
     """
+    require_client()
     index_name = "agent_semantic_memory"
 
-    from typing import Dict, Any, List
+    from typing import Any, Dict, List
 
     bool_clause: Dict[str, List[Any]] = {
         "must": [
@@ -131,9 +135,10 @@ def prune_memory(
     """
     Prune 'tactical' memory notes older than the specified threshold.
     """
+    require_client()
     index_name = "agent_semantic_memory"
 
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     cutoff_str = cutoff.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -188,9 +193,10 @@ def wake_memory(
     Uses exponential decay (TTL) on timestamps and strictly bounds the subgraph
     context to slash API latency.
     """
+    require_client()
     index_name = index
 
-    from typing import Dict, Any, List
+    from typing import Any, Dict, List
 
     # Core textual RAG retrieval
     fields = ["subject^3", "content", "tags"]

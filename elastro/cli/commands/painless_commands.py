@@ -12,6 +12,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
 
+from elastro.cli.context import require_client
 from elastro.cli.errors import exit_from_exception, usage_error
 from elastro.core.client import ElasticsearchClient
 from elastro.core.logger import get_logger
@@ -192,6 +193,7 @@ def test_command(
     Test a script field calculation:
     $ elastro painless test ./my_script.painless --doc '{"price": 10.50}'
     """
+    require_client()
     script_source = script_file.read()
     logger.info("painless.test context=%s", context)
 

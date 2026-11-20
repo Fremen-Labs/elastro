@@ -12,12 +12,13 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import rich_click as click
+from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
 from rich.table import Table
-from rich import box
 
+from elastro.cli.context import require_client
 from elastro.core.client import ElasticsearchClient
 
 
@@ -96,6 +97,7 @@ def esql_query(
     elastro esql query "FROM metrics-* | STATS avg(cpu) BY host" --format csv
     ```
     """
+    require_client()
     console = Console()
 
     # Resolve query source
@@ -286,6 +288,7 @@ def esql_build(
     elastro esql build -s "logs-*" -w "status >= 400" --limit 5 --execute
     ```
     """
+    require_client()
     from elastro.core.esql import ESQLQuery
 
     console = Console()

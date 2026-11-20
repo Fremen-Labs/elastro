@@ -6,6 +6,7 @@ import rich_click as click
 from rich.console import Console
 from rich.table import Table
 
+from elastro.cli.context import require_client
 from elastro.cli.errors import exit_from_exception
 from elastro.core.client import ElasticsearchClient
 from elastro.core.logger import get_logger
@@ -28,6 +29,7 @@ def list_users(client: ElasticsearchClient, username: str) -> None:
     """
     List or fetch native realm users.
     """
+    require_client()
     console = Console()
     logger.info("security.users username=%s", username or "*")
     try:
@@ -66,6 +68,7 @@ def list_roles(client: ElasticsearchClient, name: str) -> None:
     """
     List or fetch cluster mapping roles.
     """
+    require_client()
     console = Console()
     logger.info("security.roles name=%s", name or "*")
     try:

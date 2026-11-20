@@ -2,15 +2,18 @@
 Utility commands for the CLI.
 """
 
-import rich_click as click
 import json
 from typing import Optional
+
+import rich_click as click
+
+from elastro.cli.context import require_client
+from elastro.cli.output import format_output
 from elastro.core.client import ElasticsearchClient
-from elastro.utils.templates import TemplateManager
+from elastro.core.errors import OperationError
 from elastro.utils.aliases import AliasManager
 from elastro.utils.health import HealthManager
-from elastro.core.errors import OperationError
-from elastro.cli.output import format_output
+from elastro.utils.templates import TemplateManager
 
 
 @click.command("health")
@@ -51,6 +54,7 @@ def health(
     elastro utils health --wait green --timeout 60s
     ```
     """
+    require_client()
     click.echo(
         click.style(
             "Deprecation: use 'elastro health status' instead (removal in 2.0)",
@@ -91,6 +95,7 @@ def templates() -> None:
 @click.pass_obj
 def list_templates(client: ElasticsearchClient, type: str, name: str) -> None:
     """List index templates."""
+    require_client()
     template_manager = TemplateManager(client)
 
     try:
@@ -112,6 +117,7 @@ def list_templates(client: ElasticsearchClient, type: str, name: str) -> None:
 @click.pass_obj
 def get_template(client: ElasticsearchClient, name: str, type: str) -> None:
     """Get an index template."""
+    require_client()
     template_manager = TemplateManager(client)
 
     try:
@@ -141,6 +147,7 @@ def create_template(
     client: ElasticsearchClient, name: str, file: str, type: str
 ) -> None:
     """Create an index template."""
+    require_client()
     template_manager = TemplateManager(client)
 
     # Load template definition
@@ -179,6 +186,7 @@ def delete_template(
     dry_run: bool,
 ) -> None:
     """Delete an index template."""
+    require_client()
     from elastro.cli.deletion import (
         emit_delete_preview,
         preview_template_delete,
@@ -234,6 +242,7 @@ def list_aliases(client: ElasticsearchClient, index: str, name: str) -> None:
     elastro utils aliases list --index "logs-*"
     ```
     """
+    require_client()
     alias_manager = AliasManager(client)
 
     try:
@@ -276,6 +285,7 @@ def create_alias(
     elastro utils aliases create logs-write logs-00001 --is-write-index
     ```
     """
+    require_client()
     alias_manager = AliasManager(client)
 
     # Parse filter if provided
@@ -332,6 +342,7 @@ def delete_alias(
     elastro -o json utils aliases delete my-alias my-index --dry-run
     ```
     """
+    require_client()
     from elastro.cli.deletion import (
         emit_delete_preview,
         preview_alias_delete,

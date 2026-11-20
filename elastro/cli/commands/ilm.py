@@ -1,14 +1,17 @@
-import rich_click as click
 import json
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
+import rich_click as click
+from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich import box
+
+from elastro.cli.completion import complete_indices, complete_policies
+from elastro.cli.context import require_client
 from elastro.core.client import ElasticsearchClient
-from elastro.core.ilm import IlmManager
 from elastro.core.errors import OperationError
-from elastro.cli.completion import complete_policies, complete_indices
+from elastro.core.ilm import IlmManager
 
 console = Console()
 
@@ -42,6 +45,7 @@ def list_policies(client: ElasticsearchClient, full: bool) -> None:
     elastro ilm list --full
     ```
     """
+    require_client()
     manager = IlmManager(client)
     try:
         policies = manager.list_policies()
@@ -97,6 +101,7 @@ def get_policy(client: ElasticsearchClient, name: str) -> None:
     elastro ilm get my-lifecycle-policy
     ```
     """
+    require_client()
     manager = IlmManager(client)
     try:
         policy = manager.get_policy(name)
@@ -134,6 +139,7 @@ def create_policy(client: ElasticsearchClient, name: str, file: Optional[str]) -
     elastro ilm create my-policy --file ./policy.json
     ```
     """
+    require_client()
     manager = IlmManager(client)
 
     try:
@@ -156,7 +162,7 @@ def create_policy(client: ElasticsearchClient, name: str, file: Optional[str]) -
 
 def run_ilm_wizard(name: str) -> Optional[Dict[str, Any]]:
     """Run interactive wizard to build ILM policy."""
-    from rich.prompt import Prompt, Confirm, IntPrompt
+    from rich.prompt import Confirm, IntPrompt, Prompt
 
     console.print(
         Panel(
@@ -273,6 +279,7 @@ def delete_policy(
     elastro -o json ilm delete my-old-policy --dry-run
     ```
     """
+    require_client()
     from elastro.cli.deletion import (
         emit_delete_preview,
         preview_ilm_policy_delete,
@@ -315,6 +322,7 @@ def explain_lifecycle(client: ElasticsearchClient, index: str) -> None:
     elastro ilm explain my-logs-00001
     ```
     """
+    require_client()
     manager = IlmManager(client)
     try:
         explanation = manager.explain_lifecycle(index)
@@ -353,6 +361,7 @@ def start_ilm(client: ElasticsearchClient) -> None:
     elastro ilm start
     ```
     """
+    require_client()
     manager = IlmManager(client)
     try:
         if manager.start_ilm():
@@ -379,6 +388,7 @@ def stop_ilm(client: ElasticsearchClient) -> None:
     elastro ilm stop
     ```
     """
+    require_client()
     manager = IlmManager(client)
     try:
         if manager.stop_ilm():

@@ -8,6 +8,7 @@ import rich_click as click
 from rich.console import Console
 from rich.table import Table
 
+from elastro.cli.context import require_client
 from elastro.cli.errors import confirm_or_exit, exit_from_exception
 from elastro.core.client import ElasticsearchClient
 from elastro.core.logger import get_logger
@@ -33,6 +34,7 @@ def explain_allocation(client: ElasticsearchClient, index: str) -> None:
     Runs GET _cluster/allocation/explain to diagnose exactly why a shard is
     sitting in an unassigned (UNASSIGNED) state, returning the node decision logic.
     """
+    require_client()
     click.echo(
         click.style(
             "Deprecation: use 'elastro health shards --explain' instead (removal in 2.0)",
@@ -108,6 +110,7 @@ def cluster_settings(
 
     If no options are passed, prints the current persistent and transient settings.
     """
+    require_client()
     if enable_routing:
         confirm_or_exit(
             f"Set cluster.routing.allocation.enable to '{enable_routing}'?",

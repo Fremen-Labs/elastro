@@ -8,6 +8,7 @@ import rich_click as click
 from rich.console import Console
 from rich.prompt import Confirm, Prompt
 
+from elastro.cli.context import require_client
 from elastro.cli.errors import exit_from_exception, stdin_is_tty, usage_error
 from elastro.cli.output import format_output
 from elastro.core.client import ElasticsearchClient
@@ -34,6 +35,7 @@ def init_job(client: ElasticsearchClient) -> None:
     This command guides you through deploying a single-metric ML job
     over an existing Index or Datastream without hand-writing JSON.
     """
+    require_client()
     if not stdin_is_tty():
         usage_error("interactive wizard requires a TTY")
     logger.info("ml.init-job")
