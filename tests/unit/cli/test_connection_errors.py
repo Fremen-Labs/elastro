@@ -175,6 +175,16 @@ def test_esql_build_without_execute_when_connect_fails(monkeypatch) -> None:
     assert result.exit_code == 0, result.output
 
 
+def test_esql_query_connect_failure_does_not_print_panel(monkeypatch) -> None:
+    _patch_connect_auth(monkeypatch)
+    result = CliRunner().invoke(cli, ["esql", "query", "FROM logs-* | LIMIT 1"])
+
+    assert result.exit_code == 1
+    assert "authentication" in result.stderr.lower()
+    assert result.stdout == ""
+    assert "ES|QL Query" not in result.output
+
+
 def test_ml_init_job_non_tty_exits_2_when_connect_fails(monkeypatch) -> None:
     _patch_connect_auth(monkeypatch)
     result = CliRunner().invoke(cli, ["ml", "init-job"])

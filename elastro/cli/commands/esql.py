@@ -118,6 +118,8 @@ def esql_query(
         console.print("[bold red]Error:[/bold red] Empty query.")
         raise SystemExit(1)
 
+    require_client()
+
     # Append limit override if requested
     if limit is not None:
         # Remove existing LIMIT if present, then append
@@ -136,8 +138,6 @@ def esql_query(
         )
     )
 
-    # Execute
-    require_client()
     try:
         body: Dict[str, Any] = {"query": query_text}
         if columnar:
