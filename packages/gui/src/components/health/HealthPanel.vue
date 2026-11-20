@@ -321,9 +321,15 @@ const applyFix = async (
   finding: HealthFinding,
   action: string,
   indexName?: string,
-  dryRun = false
+  dryRun = true
 ) => {
   if (!state.token) return
+  if (!dryRun) {
+    const target = indexName ? ` to '${indexName}'` : ''
+    if (!window.confirm(`Apply ${action}${target}? This will mutate the cluster.`)) {
+      return
+    }
+  }
   const key = `${finding.id}:${action}`
   activeFix.value = key
   try {
@@ -334,6 +340,7 @@ const applyFix = async (
         action,
         index_name: indexName,
         dry_run: dryRun,
+        force: !dryRun,
       },
       { headers: authHeaders(), timeout: 60000 }
     )

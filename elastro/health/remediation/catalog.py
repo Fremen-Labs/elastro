@@ -54,7 +54,7 @@ class RemediationCatalog:
             execute=lambda mgr, index_name, **kwargs: reduce_replicas(
                 mgr,
                 index_name,
-                api_mode=kwargs.get("api_mode", False),
+                api_payload=kwargs.get("api_payload", False),
                 target_replicas=kwargs.get("target_replicas"),
             ),
         ),
@@ -117,7 +117,7 @@ class RemediationCatalog:
         action_id: str,
         index_name: Optional[str] = None,
         *,
-        api_mode: bool = False,
+        api_payload: bool = False,
         target_replicas: Optional[int] = None,
     ) -> str:
         entry = cls._ENTRIES[action_id]
@@ -127,7 +127,7 @@ class RemediationCatalog:
             if action_id == "reduce_replicas":
                 return entry.planned(
                     index_name,
-                    api_mode=api_mode,
+                    api_payload=api_payload,
                     target_replicas=target_replicas,
                 )
             return entry.planned(index_name)
@@ -140,7 +140,7 @@ class RemediationCatalog:
         index_manager: IndexManager,
         index_name: Optional[str] = None,
         *,
-        api_mode: bool = False,
+        api_payload: bool = False,
         target_replicas: Optional[int] = None,
     ) -> str:
         entry = cls._ENTRIES[action_id]
@@ -150,13 +150,13 @@ class RemediationCatalog:
             return entry.execute(
                 index_manager,
                 index_name,
-                api_mode=api_mode,
+                api_payload=api_payload,
                 target_replicas=target_replicas,
             )
         return entry.execute(
             index_manager,
             index_name or "",
-            api_mode=api_mode,
+            api_payload=api_payload,
             target_replicas=target_replicas,
         )
 

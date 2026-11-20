@@ -14,17 +14,17 @@ logger = get_logger(__name__)
 def planned_reduce_replicas(
     index_name: str,
     *,
-    api_mode: bool = False,
+    api_payload: bool = False,
     target_replicas: Optional[int] = None,
 ) -> str:
     target = target_replicas if target_replicas is not None else 0
-    payload = _payload(api_mode=api_mode, target_replicas=target)
+    payload = _payload(api_payload=api_payload, target_replicas=target)
     return f"PUT /{index_name}/_settings body={payload}"
 
 
-def _payload(*, api_mode: bool, target_replicas: int) -> Dict[str, Any]:
+def _payload(*, api_payload: bool, target_replicas: int) -> Dict[str, Any]:
     settings: Dict[str, Any] = {"number_of_replicas": target_replicas}
-    if api_mode:
+    if api_payload:
         settings["auto_expand_replicas"] = "false"
     return {"index": settings}
 
@@ -85,7 +85,7 @@ def reduce_replicas(
     index_manager: IndexManager,
     index_name: str,
     *,
-    api_mode: bool = False,
+    api_payload: bool = False,
     target_replicas: Optional[int] = None,
 ) -> str:
     """Reduce replicas to a computed or explicit target."""
@@ -94,12 +94,12 @@ def reduce_replicas(
         index_name,
         explicit_target=target_replicas,
     )
-    payload = _payload(api_mode=api_mode, target_replicas=target)
+    payload = _payload(api_payload=api_payload, target_replicas=target)
     logger.info(
-        "Reducing replicas for index=%s target=%s api_mode=%s",
+        "Reducing replicas for index=%s target=%s api_payload=%s",
         index_name,
         target,
-        api_mode,
+        api_payload,
     )
     try:
         index_manager.update(index_name, payload)
@@ -117,6 +117,6 @@ def reduce_replicas(
             expand_wildcards="all",
             ignore_unavailable=True,
         )
-    if api_mode:
+    if api_payload:
         return f"Replicas reduced to {target} and auto-expand disabled for {index_name}"
     return f"Replicas reduced to {target} for {index_name}"

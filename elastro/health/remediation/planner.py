@@ -35,7 +35,7 @@ class RemediationPlanner:
         index_pattern: Optional[str] = None,
         action_filter: Optional[str] = None,
         target_replicas: Optional[int] = None,
-        api_mode: bool = False,
+        api_payload: bool = False,
     ) -> List[PlannedAction]:
         """Map diagnoses to catalog actions with impact text and API previews."""
         planned: List[PlannedAction] = []
@@ -82,7 +82,7 @@ class RemediationPlanner:
                 planned_call = RemediationCatalog.planned_call(
                     action_id,
                     index_name,
-                    api_mode=api_mode,
+                    api_payload=api_payload,
                     target_replicas=resolved_target,
                 )
             except ValueError as exc:
@@ -164,7 +164,7 @@ class RemediationPlanner:
         *,
         index_pattern: Optional[str] = None,
         target_replicas: Optional[int] = None,
-        api_mode: bool = False,
+        api_payload: bool = False,
     ) -> List[PlannedAction]:
         """Build a remediation plan for an explicit catalog action."""
         entry = RemediationCatalog.get(action_id)
@@ -208,7 +208,7 @@ class RemediationPlanner:
                 planned_call = RemediationCatalog.planned_call(
                     action_id,
                     index_name,
-                    api_mode=api_mode,
+                    api_payload=api_payload,
                     target_replicas=resolved_target,
                 )
             except ValueError as exc:

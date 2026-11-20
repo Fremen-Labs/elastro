@@ -2,10 +2,13 @@
 Index routes — /api/clusters/{cluster_name}/indices endpoints.
 """
 
-from typing import Dict, Any
+from typing import Any, Dict
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from elastro.core.logger import get_logger
+from elastro.health.models import RemediationSafety
+from elastro.health.remediation.catalog import RemediationCatalog
 from elastro.server.schemas import IndexFixRequestSchema
 from elastro.server.services import build_es_client
 
@@ -138,15 +141,55 @@ def index_routes(read_config: Any, verify_token: Any) -> APIRouter:
         req: IndexFixRequestSchema,
         token: str = Depends(verify_token),
     ) -> Dict[str, Any]:
+        """Apply a catalog remediation to one index.
+
+        CLI health fix uses --yes for CONFIRM and --yes --force for DESTRUCTIVE.
+        This route has no TTY: both CONFIRM and DESTRUCTIVE require dry_run=false
+        and force=true. auto_yes is not read. Missing force returns 409 before
+        execute_action.
+        """
         target_c = _find_cluster(cluster_name)
+
+        action = req.action
+        if action == "reroute":
+            action = "reroute_failed"
+
+        entry = RemediationCatalog.get(action)
+        if (
+            entry is not None
+            and entry.safety
+            in {RemediationSafety.CONFIRM, RemediationSafety.DESTRUCTIVE}
+            and not req.dry_run
+            and not req.force
+        ):
+            logger.warning(
+                "GUI index fix rejected for missing force cluster=%s action=%s",
+                cluster_name,
+                action,
+            )
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "confirmation_required",
+                    "action": action,
+                    "safety": entry.safety.value,
+                    "planned_api_call": RemediationCatalog.planned_call(
+                        action,
+                        index_name,
+                        api_payload=True,
+                    ),
+                },
+            )
 
         try:
             logger.info(
-                "GUI index fix requested cluster=%s index=%s action=%s dry_run=%s",
+                "GUI index fix requested cluster=%s index=%s action=%s "
+                "dry_run=%s force=%s",
                 cluster_name,
                 index_name,
                 req.action,
                 req.dry_run,
+                req.force,
             )
             from elastro.health.audit import HealthAuditLogger
 
@@ -155,15 +198,12 @@ def index_routes(read_config: Any, verify_token: Any) -> APIRouter:
 
             from elastro.health.remediation.executor import RemediationExecutor
 
-            action = req.action
-            if action == "reroute":
-                action = "reroute_failed"
-
             executor = RemediationExecutor(
                 client,
                 dry_run=req.dry_run,
                 interactive=False,
-                api_mode=True,
+                force=req.force,
+                api_payload=True,
                 audit_logger=audit,
                 cluster_name=cluster_name,
             )

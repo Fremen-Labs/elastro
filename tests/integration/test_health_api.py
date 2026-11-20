@@ -352,6 +352,7 @@ class TestHealthFixAPI:
                 "action": "reduce_replicas",
                 "index_name": "logs-000001",
                 "dry_run": False,
+                "force": True,
             },
         )
 
@@ -382,6 +383,7 @@ class TestHealthFixAPI:
                 "action": "reduce_replicas",
                 "index_name": "logs-000001",
                 "dry_run": False,
+                "force": True,
             },
         )
 
@@ -578,7 +580,7 @@ class TestIndexFixAPI:
         response = client.post(
             "/api/clusters/docker-cluster/indices/logs-000001/fix",
             headers={"Authorization": "Bearer test-token"},
-            json={"action": "reduce_replicas", "dry_run": False},
+            json={"action": "reduce_replicas", "dry_run": False, "force": True},
         )
 
         assert response.status_code == 200
@@ -602,7 +604,7 @@ class TestIndexFixAPI:
         response = client.post(
             "/api/clusters/docker-cluster/indices/logs-000001/fix",
             headers={"Authorization": "Bearer test-token"},
-            json={"action": "reroute", "dry_run": False},
+            json={"action": "reroute", "dry_run": False, "force": True},
         )
 
         assert response.status_code == 500

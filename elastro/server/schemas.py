@@ -26,6 +26,7 @@ class ClusterCLIRequestSchema(BaseModel):
 class IndexFixRequestSchema(BaseModel):
     action: str
     dry_run: bool = True
+    force: bool = False
 
 
 class HealthFixRequestSchema(BaseModel):

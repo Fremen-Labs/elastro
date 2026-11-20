@@ -74,11 +74,8 @@ def can_auto_confirm(
     *,
     auto_yes: bool,
     force: bool,
-    api_mode: bool = False,
 ) -> bool:
     """Return True when confirmation can be skipped safely."""
-    if api_mode:
-        return True
     if safety in {RemediationSafety.OBSERVE, RemediationSafety.SUGGEST}:
         return True
     if safety == RemediationSafety.CONFIRM:
@@ -136,7 +133,6 @@ class RemediationSafetyGate:
         interactive: bool,
         auto_yes: bool = False,
         force: bool = False,
-        api_mode: bool = False,
         confirm: Optional[ConfirmFn] = None,
         prompt: Optional[PromptFn] = None,
     ) -> None:
@@ -144,7 +140,6 @@ class RemediationSafetyGate:
         self.interactive = interactive
         self.auto_yes = auto_yes
         self.force = force
-        self.api_mode = api_mode
         self._confirm = confirm
         self._prompt = prompt
 
@@ -166,7 +161,6 @@ class RemediationSafetyGate:
             planned.safety,
             auto_yes=self.auto_yes,
             force=self.force,
-            api_mode=self.api_mode,
         ):
             return ConfirmDecision(execute=True)
 

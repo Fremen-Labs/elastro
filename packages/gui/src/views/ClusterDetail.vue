@@ -87,35 +87,45 @@ const fetchUnhealthyIndices = async () => {
 
 const executeFix = async (indexName: string, action: string) => {
   if (!state.token) return
-  
+
   if (action === 'reduce_replicas' && indexName.startsWith('.')) {
       const confirmMsg = `WARNING: '${indexName}' appears to be a system or internal index.\n\nElasticsearch heavily protects these indices using 'auto_expand_replicas'. To force the replicas to 0, Elastro must permanently disable auto-expansion for this index. Are you sure you want to proceed?`
       if (!window.confirm(confirmMsg)) return
+  } else if (!window.confirm(`Apply ${action} to '${indexName}'? This will mutate the cluster.`)) {
+      return
   }
-  
+
   activeFix.value = indexName
   try {
-    await axios.post(
+    const res = await axios.post(
       `${apiBase}/api/clusters/${encodeURIComponent(clusterName.value)}/indices/${encodeURIComponent(indexName)}/fix`,
-      { action },
+      { action, dry_run: false, force: true },
       { headers: { Authorization: `Bearer ${state.token}` } }
     )
-    
-    // Optimistic UI: Immediately remove the index from the unhealthy list to provide instant tactile feedback
+
+    if (res.data?.status === 'dry_run') {
+      alert(`Dry run: ${res.data.planned_api_call || res.data.message || 'No changes applied.'}`)
+      return
+    }
+
+    if (res.data?.status !== 'success') {
+      alert(res.data?.message || 'Failed to apply fix.')
+      return
+    }
+
     if (unhealthyIndices.value) {
       unhealthyIndices.value = unhealthyIndices.value.filter(idx => idx.index !== indexName)
     }
-    
-    // The Elasticsearch background thread takes a moment to process the cluster state change
-    // Wait slightly so the newly polled cluster state reflects the green health
+
     setTimeout(() => {
       fetchUnhealthyIndices()
       fetchClusterDetails()
     }, 1500)
-    
+
   } catch(err: any) {
     console.error("Fix failed", err)
-    alert(err.response?.data?.detail || "Failed to apply fix.")
+    const detail = err.response?.data?.detail
+    alert(typeof detail === 'string' ? detail : 'Failed to apply fix.')
   } finally {
     activeFix.value = null
   }
