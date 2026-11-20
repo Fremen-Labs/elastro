@@ -116,7 +116,9 @@ elastro/
 
 ### 2.3 Collector concurrency
 
-`CollectorRegistry.run` uses a `concurrent.futures.ThreadPoolExecutor` when `ELASTRO_HEALTH_COLLECTOR_WORKERS` is greater than 1 (default **4**). Results are joined in registration order (`_order`), not completion order. A collector that raises becomes `CollectorResult(status="error")`; sibling results are kept. `HealthAssessor.run` records `collectors_failed`. `ELASTRO_HEALTH_COLLECTOR_WORKERS=1` keeps the sequential `for` loop (rollback). There is no `Future.result` timeout and in-flight Elasticsearch HTTP calls are not cancelled. `CollectContext.timeout` is the ES request timeout string (`"30s"`), not a thread deadline. Current collectors are read-only; the rule engine still runs after all collectors return.
+`CollectorRegistry.run` uses a `concurrent.futures.ThreadPoolExecutor` when `ELASTRO_HEALTH_COLLECTOR_WORKERS` is greater than 1 (default **4**). Results are joined in registration order (`_order`), not completion order. A collector that raises becomes `CollectorResult(status="error")`; sibling results are kept. `HealthAssessor.run` records `collectors_failed`. `ELASTRO_HEALTH_COLLECTOR_WORKERS=1` keeps the sequential `for` loop (rollback). There is no `Future.result` timeout and in-flight Elasticsearch HTTP calls are not cancelled. `CollectContext.timeout` is the ES request timeout string (`"30s"`), not a thread deadline.
+
+When `health_report` is selected, it runs to completion on the caller thread and publishes `ctx.options["health_report"]` before the remaining collectors are submitted, so ILM can read stagnating-index hints. Workers > 1 assume an already-connected client; collector threads must not reconnect (`ElasticsearchClient.connect` is not thread-safe). Current collectors are read-only; the rule engine still runs after all collectors return.
 
 ```python
 # elastro/health/collectors/base.py

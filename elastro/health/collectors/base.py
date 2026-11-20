@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import time
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import (
     Any,
@@ -13,7 +13,6 @@ from typing import (
     Optional,
     Protocol,
     Sequence,
-    Tuple,
     runtime_checkable,
 )
 
@@ -108,7 +107,7 @@ def _invoke_collector(
         result.status,
         result.duration_ms,
     )
-    # Sequential workers=1 runs health_report first; ILM reads this hint.
+    # Caller-thread health_report (sequential or pooled barrier) for ILM.
     if result.name == "health_report" and result.status == "ok":
         ctx.options["health_report"] = result.data.get("report")
     return result
@@ -144,6 +143,14 @@ class CollectorRegistry:
         ``ELASTRO_HEALTH_COLLECTOR_WORKERS`` > 1 (default 4) uses a thread
         pool. Results are joined in registration / ``names`` order. There is
         no Future timeout; in-flight HTTP calls are not cancelled.
+
+        When ``health_report`` is selected, it runs to completion on this
+        thread and publishes ``ctx.options["health_report"]`` before the
+        remaining collectors are submitted.
+
+        Workers > 1 assume ``ctx.client`` is already connected. Collector
+        threads must not reconnect (``ElasticsearchClient.connect`` is not
+        thread-safe). Use workers=1 if reconnect is required.
         """
         targets = names if names is not None else self.list()
         workers = collector_worker_count()
@@ -151,19 +158,18 @@ class CollectorRegistry:
             return self._run_sequential(ctx, targets)
         return self._run_pooled(ctx, targets, workers)
 
+    def _run_one(self, ctx: CollectContext, name: str) -> CollectorResult:
+        collector = self._collectors.get(name)
+        if collector is None:
+            return _unknown_result(name)
+        return _invoke_collector(collector, ctx, name)
+
     def _run_sequential(
         self,
         ctx: CollectContext,
         targets: Sequence[str],
     ) -> List[CollectorResult]:
-        results: List[CollectorResult] = []
-        for name in targets:
-            collector = self._collectors.get(name)
-            if collector is None:
-                results.append(_unknown_result(name))
-                continue
-            results.append(_invoke_collector(collector, ctx, name))
-        return results
+        return [self._run_one(ctx, name) for name in targets]
 
     def _run_pooled(
         self,
@@ -171,44 +177,30 @@ class CollectorRegistry:
         targets: Sequence[str],
         workers: int,
     ) -> List[CollectorResult]:
-        max_workers = max(1, min(workers, len(targets) or 1))
-        logger.debug(
-            "Collector pool max_workers=%s count=%s",
-            max_workers,
-            len(targets),
+        rest = [name for name in targets if name != "health_report"]
+        health_result = (
+            self._run_one(ctx, "health_report") if "health_report" in targets else None
         )
-        ordered: List[Tuple[str, Optional[Future[CollectorResult]]]] = []
-        with ThreadPoolExecutor(
-            max_workers=max_workers,
-            thread_name_prefix="elastro-health",
-        ) as executor:
-            for name in targets:
-                collector = self._collectors.get(name)
-                if collector is None:
-                    ordered.append((name, None))
-                    continue
-                ordered.append(
-                    (name, executor.submit(_invoke_collector, collector, ctx, name))
-                )
-            results: List[CollectorResult] = []
-            for name, future in ordered:
-                if future is None:
-                    results.append(_unknown_result(name))
-                    continue
-                try:
-                    results.append(future.result())
-                except Exception as exc:
-                    logger.warning(
-                        "Collector %s failed: %s",
-                        name,
-                        exc,
-                        exc_info=True,
-                    )
-                    results.append(
-                        CollectorResult(
-                            name=name,
-                            status="error",
-                            error=str(exc),
-                        )
-                    )
+        rest_results: List[CollectorResult] = []
+        if rest:
+            max_workers = max(1, min(workers, len(rest)))
+            logger.debug(
+                "Collector pool max_workers=%s count=%s",
+                max_workers,
+                len(rest),
+            )
+            with ThreadPoolExecutor(
+                max_workers=max_workers,
+                thread_name_prefix="elastro-health",
+            ) as executor:
+                futures = [executor.submit(self._run_one, ctx, name) for name in rest]
+                rest_results = [future.result() for future in futures]
+        rest_iter = iter(rest_results)
+        results: List[CollectorResult] = []
+        for name in targets:
+            if name == "health_report":
+                assert health_result is not None
+                results.append(health_result)
+            else:
+                results.append(next(rest_iter))
         return results

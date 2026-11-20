@@ -98,6 +98,7 @@ class HealthAssessor:
         ctx.es_version = es_version
 
         logger.info("Starting health assessment (es_version=%s)", es_version)
+        # info() above requires a live client; the collector pool must not reconnect.
         results = self._registry.run(ctx, names=collectors)
 
         cluster_name = "unknown"
