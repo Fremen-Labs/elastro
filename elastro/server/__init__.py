@@ -27,6 +27,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from elastro import __version__
+from elastro.config.loader import restrict_secret_file_mode, write_secret_file
 from elastro.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -203,6 +204,7 @@ class ElastroGUI:
         cli_config_path = self.config_dir / "config.yaml"
         if not cli_config_path.exists():
             return {}
+        restrict_secret_file_mode(cli_config_path)
         try:
             import yaml
 
@@ -228,6 +230,7 @@ class ElastroGUI:
             # Try to auto-import from CLI config for a smooth UX
             cli_config_path = self.config_dir / "config.yaml"
             if cli_config_path.exists():
+                restrict_secret_file_mode(cli_config_path)
                 try:
                     import yaml
 
@@ -248,12 +251,14 @@ class ElastroGUI:
                 except Exception:
                     pass
 
-            with open(self.config_file, "w") as f:
-                json.dump({"clusters": initial_clusters}, f)
+            write_secret_file(
+                self.config_file, json.dumps({"clusters": initial_clusters})
+            )
         else:
             # Back-fill: if gui_config.json exists but clusters have empty auth,
             # attempt to populate from CLI config.yaml so the GUI self-heals
             # when security is enabled or credentials change.
+            restrict_secret_file_mode(self.config_file)
             self._backfill_auth_from_cli()
 
     def _backfill_auth_from_cli(self) -> None:
@@ -284,11 +289,11 @@ class ElastroGUI:
                 )
 
         if changed:
-            with open(self.config_file, "w") as f:
-                json.dump(gui_cfg, f, indent=4)
+            write_secret_file(self.config_file, json.dumps(gui_cfg, indent=4))
 
     def _read_config(self) -> Dict[str, Any]:
         self._ensure_config()
+        restrict_secret_file_mode(self.config_file)
         try:
             with open(self.config_file, "r") as f:
                 return json.load(f)
@@ -297,8 +302,7 @@ class ElastroGUI:
 
     def _write_config(self, config: Dict[str, Any]) -> None:
         self._ensure_config()
-        with open(self.config_file, "w") as f:
-            json.dump(config, f, indent=4)
+        write_secret_file(self.config_file, json.dumps(config, indent=4))
 
     def verify_token(self, request: Request) -> str:
         """Authenticate via Bearer header or localhost session cookie.
@@ -426,6 +430,7 @@ def launch_gui_process() -> str:
 
     # Reuse only a compatible, healthy GUI server process
     if state_file.exists():
+        restrict_secret_file_mode(state_file)
         try:
             with open(state_file, "r") as f:
                 state = json.load(f)
@@ -491,16 +496,17 @@ def launch_gui_process() -> str:
                 "Elastro GUI server failed to start. Check that port "
                 f"{port} is available and retry `elastro gui`."
             )
-        with open(state_file, "w") as f:
-            json.dump(
+        write_secret_file(
+            state_file,
+            json.dumps(
                 {
                     "pid": p.pid,
                     "port": port,
                     "token": gui.token,
                     "version": __version__,
-                },
-                f,
-            )
+                }
+            ),
+        )
 
     return gui_claim_url(port, claim_code)
 

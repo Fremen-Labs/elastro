@@ -199,6 +199,35 @@ const cliHistory = ref<HistoryItem[]>([
 const cliLoading = ref(false)
 const terminalBody = ref<HTMLElement | null>(null)
 
+const postCli = (command: string, confirm: boolean) =>
+  axios.post(
+    `${apiBase}/api/cluster/${encodeURIComponent(clusterName.value)}/cli`,
+    { command, confirm },
+    { headers: { Authorization: `Bearer ${state.token}` } }
+  )
+
+const pushCliResult = (data: { output?: string; exit_code?: number }) => {
+  const ansiUp = new AnsiUp()
+  if (data.output) {
+    cliHistory.value.push({
+      type: data.exit_code === 0 ? 'output' : 'error',
+      text: ansiUp.ansi_to_html(data.output)
+    })
+  } else {
+    cliHistory.value.push({ type: 'system', text: '[Command completed with no output]' })
+  }
+}
+
+const formatCliError = (err: any): string => {
+  const detail = err.response?.data?.detail
+  if (typeof detail === 'string') return detail
+  if (detail && typeof detail === 'object') {
+    if (Array.isArray(detail.argv)) return detail.argv.join(' ')
+    if (typeof detail.code === 'string') return detail.code
+  }
+  return err.message || 'Unknown execution error'
+}
+
 const executeCommand = async () => {
   const cmd = cliInput.value.trim()
   if (!cmd || cliLoading.value) return
@@ -216,28 +245,25 @@ const executeCommand = async () => {
   }, 10)
 
   try {
-    const res = await axios.post(
-      `${apiBase}/api/cluster/${encodeURIComponent(clusterName.value)}/cli`,
-      { command: cmd },
-      { headers: { Authorization: `Bearer ${state.token}` } }
-    )
-    
-    // Convert Typer/Rich VT100 ANSI codes into colorful HTML spans natively 
-    const ansiUp = new AnsiUp()
-    
-    if (res.data.output) {
-       const htmlOutput = ansiUp.ansi_to_html(res.data.output)
-       
-       cliHistory.value.push({ 
-         type: res.data.exit_code === 0 ? 'output' : 'error', 
-         text: htmlOutput 
-       })
-    } else {
-       cliHistory.value.push({ type: 'system', text: '[Command completed with no output]' })
-    }
+    const res = await postCli(cmd, false)
+    pushCliResult(res.data)
   } catch (err: any) {
-    const errorMsg = err.response?.data?.detail || err.message || 'Unknown execution error'
-    cliHistory.value.push({ type: 'error', text: `Error: ${errorMsg}` })
+    if (err.response?.status === 409) {
+      const detail = err.response?.data?.detail
+      const argvLabel = Array.isArray(detail?.argv) ? detail.argv.join(' ') : cmd
+      if (window.confirm(`This command is destructive:\n\n${argvLabel}\n\nConfirm execution?`)) {
+        try {
+          const res = await postCli(cmd, true)
+          pushCliResult(res.data)
+        } catch (retryErr: any) {
+          cliHistory.value.push({ type: 'error', text: `Error: ${formatCliError(retryErr)}` })
+        }
+      } else {
+        cliHistory.value.push({ type: 'system', text: 'Aborted' })
+      }
+    } else {
+      cliHistory.value.push({ type: 'error', text: `Error: ${formatCliError(err)}` })
+    }
   } finally {
     cliLoading.value = false
     

@@ -21,6 +21,7 @@ class ClusterConfigSchema(BaseModel):
 class ClusterCLIRequestSchema(BaseModel):
     command: str
     stdin: Optional[str] = None
+    confirm: bool = False
 
 
 class IndexFixRequestSchema(BaseModel):
