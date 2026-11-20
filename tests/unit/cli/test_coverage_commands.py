@@ -7,6 +7,7 @@ from click.testing import CliRunner
 from elastro.cli.cli import cli
 from elastro.cli.commands.coverage import coverage_group
 from elastro.core.errors import OperationError
+from elastro.coverage.readiness import ReadinessReport
 from elastro.coverage.templates import TemplateApplyResult, TemplateInfo
 from elastro.coverage.validators import CoverageCheck, CoverageReport
 
@@ -163,6 +164,20 @@ def test_root_cli_check_honors_output_json() -> None:
             )
     assert result.exit_code == 0, result.output
     assert '"passed"' in result.output
+
+
+def test_coverage_report_failed_exits_2() -> None:
+    client = _client()
+    failed = ReadinessReport(
+        passed=False,
+        templates=[],
+        coverage=_fail_report(),
+        health_findings=[],
+    )
+    with patch("elastro.coverage.readiness.ReadinessReporter") as cls:
+        cls.return_value.report.return_value = failed
+        result = CliRunner().invoke(coverage_group, ["report"], obj=client)
+    assert result.exit_code == 2
 
 
 def test_fleet_status_imports_on_demand() -> None:

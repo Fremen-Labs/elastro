@@ -79,6 +79,8 @@ class HealthAssessor:
         profile: str = "default",
         host: Optional[str] = None,
         audit_logger: Optional[HealthAuditLogger] = None,
+        audit: bool = True,
+        coverage_strict: bool = False,
     ) -> AssessmentReport:
         """Run registered collectors and build an assessment report."""
         start = time.monotonic()
@@ -91,6 +93,7 @@ class HealthAssessor:
                 custom_feature = lowered
             else:
                 ctx.options["feature"] = feature
+        strict_coverage = coverage_strict or custom_feature == "apm"
         if assessment_history:
             ctx.options["assessment_history"] = assessment_history
 
@@ -258,6 +261,8 @@ class HealthAssessor:
             collector_data=collector_data,
             assessment_history=assessment_history,
             es_version=es_version,
+            feature=custom_feature,
+            coverage_strict=strict_coverage,
         )
         rule_findings = RuleEngine().evaluate(rule_ctx)
         if rule_findings:
@@ -296,12 +301,13 @@ class HealthAssessor:
         )
 
         resolved_host = host or _resolve_client_host(self._client)
-        auditor = audit_logger or HealthAuditLogger(
-            self._client,
-            profile=profile,
-            host=resolved_host,
-        )
-        auditor.log_assess(report)
+        if audit:
+            auditor = audit_logger or HealthAuditLogger(
+                self._client,
+                profile=profile,
+                host=resolved_host,
+            )
+            auditor.log_assess(report)
 
         if enable_history:
             index_assessment(

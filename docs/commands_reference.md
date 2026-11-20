@@ -127,7 +127,7 @@ See [Health Commands](./health_commands.md) for full option reference.
 See [Coverage & Readiness](./coverage.md) for the full command and Python API reference.
 
 - **`templates list` / `templates apply`**: Ship and apply opinionated ILM + index templates (`apm-traces`, `apm-metrics`, `filebeat-logs`, `metricbeat-metrics`). `--dry-run` prints planned bodies; apply requires `--yes` (or an interactive confirm).
-- **`check`**: Validate document counts, freshness, stream presence, and basic field presence (`--service`, `--pattern`, or `--all`). Failed checks exit `2` for CI.
+- **`check`**: Validate document counts, freshness, stream presence, and basic field presence (`--service`, `--pattern`, or `--all`). `--all` is a full APM+Beats gate (every default pattern must pass). Failed checks exit `2` for CI.
 - **`report`**: Combined readiness report (template apply status + coverage checks + APM/Beats health findings).
 - **`fleet status` / `fleet agents`**: Optional read-only Fleet helpers (Kibana API). Not imported unless the command runs.
 

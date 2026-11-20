@@ -321,6 +321,46 @@ class TestHealthAssessor(unittest.TestCase):
             HealthAssessor(self.mock_client, registry=registry).run(feature="disk")
         self.assertEqual(_CaptureCollector.feature, "disk")
 
+    def test_missing_apm_is_skipped_on_default_assess(self):
+        class _ApmStub:
+            name = "apm_beats"
+
+            def collect(self, ctx: CollectContext) -> CollectorResult:
+                return CollectorResult(
+                    name=self.name,
+                    status="ok",
+                    data={"indices": [], "data_streams": []},
+                )
+
+        registry = CollectorRegistry()
+        registry.register(_ApmStub())
+        report = HealthAssessor(self.mock_client, registry=registry).run()
+        missing = [
+            item for item in report.findings if item.id == "apm.datastream.missing"
+        ]
+        self.assertEqual(len(missing), 1)
+        self.assertEqual(missing[0].status, FindingStatus.SKIPPED)
+
+    def test_missing_apm_fails_when_feature_apm(self):
+        class _ApmStub:
+            name = "apm_beats"
+
+            def collect(self, ctx: CollectContext) -> CollectorResult:
+                return CollectorResult(
+                    name=self.name,
+                    status="ok",
+                    data={"indices": [], "data_streams": []},
+                )
+
+        registry = CollectorRegistry()
+        registry.register(_ApmStub())
+        report = HealthAssessor(self.mock_client, registry=registry).run(feature="apm")
+        missing = [
+            item for item in report.findings if item.id == "apm.datastream.missing"
+        ]
+        self.assertEqual(len(missing), 1)
+        self.assertEqual(missing[0].status, FindingStatus.FAIL)
+
 
 if __name__ == "__main__":
     unittest.main()

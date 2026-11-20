@@ -3,7 +3,6 @@ description: ILM and index template for Filebeat / logs-filebeat data streams
 aliases:
   - filebeat
 index_patterns:
-  - filebeat-*
   - logs-filebeat*
 ilm:
   policy_name: elastro-filebeat-logs
@@ -31,10 +30,9 @@ ilm:
           delete: {}
 template:
   index_patterns:
-    - filebeat-*
     - logs-filebeat*
   data_stream: {}
-  priority: 180
+  priority: 100
   _meta:
     managed_by: elastro
     coverage_template: filebeat-logs
@@ -42,7 +40,6 @@ template:
     settings:
       index.lifecycle.name: elastro-filebeat-logs
       index.number_of_shards: 1
-      index.number_of_replicas: 1
       index.refresh_interval: 5s
     mappings:
       properties:

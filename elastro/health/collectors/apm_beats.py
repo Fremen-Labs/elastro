@@ -24,8 +24,13 @@ _INDEX_PATTERNS = (
 )
 _APM_SEARCH = "traces-apm*,metrics-apm*,logs-apm*"
 _BEATS_SEARCH = "filebeat-*,metricbeat-*"
-_MAX_EXPLAIN = 20
-_MISSING_INDEX_MARKERS = ("index_not_found", "no such index")
+_MAX_EXPLAIN = 100
+_MISSING_INDEX_MARKERS = (
+    "index_not_found",
+    "no such index",
+    "resource_not_found",
+    "not_found_exception",
+)
 
 
 class ApmBeatsCollector:
@@ -60,15 +65,19 @@ def _collect(ctx: CollectContext) -> Dict[str, Any]:
     streams = _unique_streams(
         [_list_streams(datastreams, pattern) for pattern in _INDEX_PATTERNS]
     )
+    ranked = sorted(indices, key=_index_doc_count, reverse=True)
+    truncated = len(ranked) > _MAX_EXPLAIN
     explains: Dict[str, Any] = {}
-    for entry in indices[:_MAX_EXPLAIN]:
+    explain_failed: List[str] = []
+    for entry in ranked[:_MAX_EXPLAIN]:
         name = str(entry.get("index") or "").strip()
         if not name:
             continue
         try:
             explains[name] = ilm_manager.explain_lifecycle(name)
         except OperationError as exc:
-            logger.debug("Skipping ILM explain for %s: %s", name, exc)
+            logger.debug("ILM explain failed for %s: %s", name, exc)
+            explain_failed.append(name)
 
     stats: Dict[str, Any] = {}
     try:
@@ -85,6 +94,9 @@ def _collect(ctx: CollectContext) -> Dict[str, Any]:
         "indices": indices,
         "data_streams": streams,
         "ilm": explains,
+        "ilm_explained": len(explains),
+        "ilm_truncated": truncated,
+        "ilm_explain_failed": explain_failed,
         "stats": stats,
         "freshness": {
             "apm": _freshness(documents, _APM_SEARCH),
@@ -97,8 +109,10 @@ def _list_indices(manager: IndexManager, pattern: str) -> List[Dict[str, Any]]:
     try:
         rows = manager.list(pattern)
     except Exception as exc:
-        logger.debug("Index list failed for %s: %s", pattern, exc)
-        return []
+        if _is_missing_index(exc):
+            return []
+        logger.error("Index list failed for %s: %s", pattern, exc, exc_info=True)
+        raise OperationError(f"Failed to list indices for '{pattern}': {exc}") from exc
     return [row for row in rows if isinstance(row, dict)]
 
 
@@ -106,8 +120,12 @@ def _list_streams(manager: DatastreamManager, pattern: str) -> List[Dict[str, An
     try:
         rows = manager.list(pattern)
     except Exception as exc:
-        logger.debug("Data stream list failed for %s: %s", pattern, exc)
-        return []
+        if _is_missing_index(exc):
+            return []
+        logger.error("Data stream list failed for %s: %s", pattern, exc, exc_info=True)
+        raise OperationError(
+            f"Failed to list data streams for '{pattern}': {exc}"
+        ) from exc
     return [row for row in rows if isinstance(row, dict)]
 
 
@@ -165,6 +183,20 @@ def _freshness(documents: DocumentManager, pattern: str) -> Dict[str, Any]:
     return {"doc_count": count}
 
 
+def _index_doc_count(entry: Dict[str, Any]) -> int:
+    raw = entry.get("docs.count", entry.get("docs_count", 0))
+    try:
+        return int(str(raw).replace(",", ""))
+    except (TypeError, ValueError):
+        return 0
+
+
 def _is_missing_index(exc: Exception) -> bool:
+    status = getattr(exc, "status_code", None)
+    meta = getattr(exc, "meta", None)
+    if status is None and meta is not None:
+        status = getattr(meta, "status", None)
+    if status == 404:
+        return True
     message = str(exc).lower()
     return any(marker in message for marker in _MISSING_INDEX_MARKERS)

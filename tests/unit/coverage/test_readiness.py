@@ -61,6 +61,9 @@ def test_report_happy_path(es_client) -> None:
                 report = ReadinessReporter(es_client).report()
     assert report.passed is True
     assert [item.id for item in report.health_findings] == ["apm.datastream.stale"]
+    kwargs = assessor_cls.return_value.run.call_args.kwargs
+    assert kwargs.get("audit") is False
+    assert kwargs.get("coverage_strict") is True
 
 
 def test_report_fails_when_coverage_fails(es_client) -> None:
@@ -75,3 +78,49 @@ def test_report_fails_when_coverage_fails(es_client) -> None:
                 report = ReadinessReporter(es_client).report(service="checkout")
     assert report.passed is False
     val_cls.return_value.check_service.assert_called_once()
+
+
+def test_report_fails_when_apm_finding_is_fail(es_client) -> None:
+    assessment = AssessmentReport(
+        findings=[
+            Finding(
+                id="apm.datastream.missing",
+                category="apm",
+                title="missing",
+                status=FindingStatus.FAIL,
+                severity=Severity.HIGH,
+                summary="missing",
+                source="rule",
+                indicator="apm",
+            )
+        ]
+    )
+    with patch("elastro.coverage.readiness.TemplateManager") as tmpl_cls:
+        with patch("elastro.coverage.readiness.CoverageValidator") as val_cls:
+            with patch("elastro.health.assessor.HealthAssessor") as assessor_cls:
+                tmpl_cls.return_value.list.return_value = []
+                val_cls.return_value.check_all.return_value = _coverage_report(
+                    passed=True
+                )
+                assessor_cls.return_value.run.return_value = assessment
+                report = ReadinessReporter(es_client).report()
+    assert report.passed is False
+    assert report.health_findings[0].status == FindingStatus.FAIL
+
+
+def test_coverage_package_does_not_import_fleet() -> None:
+    import sys
+
+    saved = {
+        name: module
+        for name, module in sys.modules.items()
+        if name.startswith("elastro.coverage")
+    }
+    for name in list(saved):
+        del sys.modules[name]
+    try:
+        import elastro.coverage  # noqa: F401
+
+        assert "elastro.coverage.fleet" not in sys.modules
+    finally:
+        sys.modules.update(saved)

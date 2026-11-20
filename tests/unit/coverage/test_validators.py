@@ -5,7 +5,12 @@ from unittest.mock import patch
 
 import pytest
 
-from elastro.core.errors import DocumentError, OperationError, ValidationError
+from elastro.core.errors import (
+    DocumentError,
+    ElasticIndexError,
+    OperationError,
+    ValidationError,
+)
 from elastro.coverage.validators import CoverageValidator
 
 
@@ -26,6 +31,7 @@ def _search_hits(
                 "value": latest_ms,
                 "value_as_string": "2026-11-20T00:00:00.000Z",
             },
+            "fresh": {"doc_count": count},
             "has_service_name": {"doc_count": service_docs},
             "has_host_name": {"doc_count": host_docs},
             "service_cardinality": {"value": cardinality},
@@ -105,6 +111,73 @@ def test_check_all_aggregates_patterns(es_client) -> None:
     assert report.passed is False
     assert len(report.checks) >= 5
     docs.return_value.search.assert_not_called()
+
+
+def test_list_connection_error_is_operation_error(es_client) -> None:
+    with patch("elastro.coverage.validators.IndexManager") as idx:
+        with patch("elastro.coverage.validators.DatastreamManager") as ds:
+            idx.return_value.list.side_effect = ElasticIndexError("connection refused")
+            ds.return_value.list.return_value = []
+            with pytest.raises(OperationError, match="Failed to list indices"):
+                CoverageValidator(es_client).check_pattern("traces-apm*")
+
+
+def test_list_missing_index_is_empty_not_error(es_client) -> None:
+    with patch("elastro.coverage.validators.IndexManager") as idx:
+        with patch("elastro.coverage.validators.DatastreamManager") as ds:
+            idx.return_value.list.side_effect = ElasticIndexError(
+                "index_not_found_exception"
+            )
+            ds.return_value.list.return_value = []
+            report = CoverageValidator(es_client).check_pattern("traces-apm*")
+    assert report.passed is False
+    assert report.checks[0].name == "streams_present"
+
+
+def test_search_missing_index_has_single_doc_count_row(es_client) -> None:
+    with patch("elastro.coverage.validators.IndexManager") as idx:
+        with patch("elastro.coverage.validators.DatastreamManager") as ds:
+            with patch("elastro.coverage.validators.DocumentManager") as docs:
+                idx.return_value.list.return_value = [{"index": "traces-apm-default"}]
+                ds.return_value.list.return_value = []
+                docs.return_value.search.side_effect = DocumentError(
+                    "index_not_found_exception"
+                )
+                report = CoverageValidator(es_client).check_pattern("traces-apm*")
+    doc_rows = [item for item in report.checks if item.name == "doc_count"]
+    assert len(doc_rows) == 1
+    assert doc_rows[0].passed is False
+
+
+def test_search_uses_es_now_freshness_agg(es_client) -> None:
+    with patch("elastro.coverage.validators.IndexManager") as idx:
+        with patch("elastro.coverage.validators.DatastreamManager") as ds:
+            with patch("elastro.coverage.validators.DocumentManager") as docs:
+                idx.return_value.list.return_value = [{"index": "traces-apm-default"}]
+                ds.return_value.list.return_value = []
+                docs.return_value.search.return_value = _search_hits()
+                CoverageValidator(es_client).check_pattern(
+                    "traces-apm*", window="15m", max_age="5m"
+                )
+    options = docs.return_value.search.call_args.kwargs["options"]
+    fresh = options["aggs"]["fresh"]["filter"]["range"]["@timestamp"]["gte"]
+    assert fresh == "now-5m"
+
+
+def test_check_all_is_full_gate(es_client) -> None:
+    with patch("elastro.coverage.validators.IndexManager") as idx:
+        with patch("elastro.coverage.validators.DatastreamManager") as ds:
+            with patch("elastro.coverage.validators.DocumentManager") as docs:
+                idx.return_value.list.side_effect = lambda pattern: (
+                    [{"index": "traces-apm-default"}]
+                    if pattern.startswith("traces-apm")
+                    else []
+                )
+                ds.return_value.list.return_value = []
+                docs.return_value.search.return_value = _search_hits()
+                report = CoverageValidator(es_client).check_all()
+    assert report.passed is False
+    assert report.target == "all"
 
 
 def test_invalid_window_raises_validation_error(es_client) -> None:

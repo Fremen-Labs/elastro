@@ -21,12 +21,13 @@ elastro coverage templates apply metricbeat --policy-name custom-metrics --yes
 # Data arrival / freshness
 elastro coverage check --service my-app --window 15m
 elastro coverage check --pattern "traces-apm*" --min-docs 100 --max-age 5m
+# --all is a full APM+Beats gate: every default pattern must pass
 elastro -o table coverage check --all
 
 # Combined readiness report
 elastro -o json coverage report
 
-# Optional Fleet (requires coverage.fleet.kibana_url + api_key)
+# Optional Fleet (requires coverage.fleet.enabled: true plus kibana_url + api_key)
 elastro coverage fleet status
 elastro coverage fleet agents --policy apm-apps
 ```
@@ -78,6 +79,10 @@ coverage:
     api_key: null        # or ELASTIC_COVERAGE_FLEET_API_KEY
 ```
 
-Set Fleet via env using the existing `ELASTIC_` override path, for example `ELASTIC_COVERAGE_FLEET_API_KEY` and `ELASTIC_COVERAGE_FLEET_KIBANA_URL`. The API key is never logged.
+Set `coverage.fleet.enabled: true` before `elastro coverage fleet …`. Env overrides use the existing `ELASTIC_` path, for example `ELASTIC_COVERAGE_FLEET_API_KEY` and `ELASTIC_COVERAGE_FLEET_KIBANA_URL`. The API key is never logged.
 
-Shipped templates: `apm-traces`, `apm-metrics`, `filebeat-logs` (alias `filebeat`), `metricbeat-metrics` (alias `metricbeat`). Apply overrides: `--retention-days`, `--rollover-size`, `--hot-max-age`, `--warm-min-age`, `--policy-name`.
+`elastro coverage check --all` (and the default `elastro coverage report` coverage section) is a **full APM+Beats gate**: every default pattern (`traces-apm*`, `metrics-apm*`, `logs-apm*`, `filebeat-*`, `metricbeat-*`) must pass. Use `--pattern` or `--service` when you only instrumented one group.
+
+Shipped templates: `apm-traces`, `apm-metrics`, `filebeat-logs` (alias `filebeat`, pattern `logs-filebeat*`), `metricbeat-metrics` (alias `metricbeat`, pattern `metrics-metricbeat*`). They use priority `100` (below typical Fleet/integration templates), omit replica counts, and do **not** match classic `filebeat-*` / `metricbeat-*` daily indices. `apply` is for clusters without Fleet-managed APM/Beats templates; do not apply on top of Elastic Agent integrations. Overrides: `--retention-days`, `--rollover-size`, `--hot-max-age`, `--warm-min-age`, `--policy-name`.
+
+`elastro coverage report` is read-only: it does not write `elastro-health-audit`.

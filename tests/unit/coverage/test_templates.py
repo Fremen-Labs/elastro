@@ -8,6 +8,17 @@ from elastro.core.errors import OperationError, ValidationError
 from elastro.coverage.templates import TemplateManager
 
 
+def test_beats_templates_omit_classic_index_patterns() -> None:
+    filebeat = TemplateManager().apply("filebeat-logs", dry_run=True)
+    metricbeat = TemplateManager().apply("metricbeat-metrics", dry_run=True)
+    assert filebeat.index_template["index_patterns"] == ["logs-filebeat*"]
+    assert metricbeat.index_template["index_patterns"] == ["metrics-metricbeat*"]
+    assert filebeat.index_template["priority"] == 100
+    assert "index.number_of_replicas" not in (
+        filebeat.index_template.get("template") or {}
+    ).get("settings", {})
+
+
 def test_list_includes_shipped_templates() -> None:
     names = {info.name for info in TemplateManager().list()}
     assert names >= {

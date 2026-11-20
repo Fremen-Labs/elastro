@@ -24,7 +24,12 @@ DEFAULT_APM_PATTERNS = ("traces-apm*", "metrics-apm*", "logs-apm*")
 DEFAULT_BEATS_PATTERNS = ("filebeat-*", "metricbeat-*")
 DEFAULT_ALL_PATTERNS = DEFAULT_APM_PATTERNS + DEFAULT_BEATS_PATTERNS
 _TRACK_TOTAL_HITS_CAP = 10000
-_MISSING_INDEX_MARKERS = ("index_not_found", "no such index")
+_MISSING_INDEX_MARKERS = (
+    "index_not_found",
+    "no such index",
+    "resource_not_found",
+    "not_found_exception",
+)
 
 
 class CoverageCheck(BaseModel):
@@ -112,7 +117,7 @@ class CoverageValidator:
         max_age: Optional[str] = None,
         max_cardinality: Optional[int] = None,
     ) -> CoverageReport:
-        """Check default APM and Beats patterns."""
+        """Check every default APM and Beats pattern (full coverage gate)."""
         reports = [
             self.check_pattern(
                 pattern,
@@ -178,6 +183,7 @@ class CoverageValidator:
         doc_count = 0
         latest_timestamp: Optional[str] = None
         search_body: Optional[Dict[str, Any]] = None
+        search_missing = False
         if present:
             try:
                 search_body = self._search(
@@ -185,11 +191,13 @@ class CoverageValidator:
                     window=window,
                     min_docs=min_docs,
                     service_name=service_name,
+                    freshness_window=freshness_window,
                 )
             except DocumentError as exc:
                 if _is_missing_index(exc):
                     logger.info("Coverage search found no index for %s", pattern)
                     search_body = None
+                    search_missing = True
                     checks.append(
                         CoverageCheck(
                             name="doc_count",
@@ -211,7 +219,7 @@ class CoverageValidator:
         if search_body is not None:
             doc_count = _hit_count(search_body)
             aggs = search_body.get("aggregations") or search_body.get("aggs") or {}
-            latest_timestamp, latest_dt = _latest_from_agg(aggs)
+            latest_timestamp, _latest_dt = _latest_from_agg(aggs)
             count_ok = doc_count >= min_docs
             checks.append(
                 CoverageCheck(
@@ -225,10 +233,8 @@ class CoverageValidator:
                     metadata={"min_docs": min_docs, "window": window},
                 )
             )
-            fresh_ok = False
-            if latest_dt is not None:
-                age = datetime.now(timezone.utc) - latest_dt
-                fresh_ok = age <= _parse_duration(freshness_window)
+            fresh_count = int((aggs.get("fresh") or {}).get("doc_count") or 0)
+            fresh_ok = fresh_count > 0
             checks.append(
                 CoverageCheck(
                     name="freshness",
@@ -240,7 +246,7 @@ class CoverageValidator:
                     ),
                     doc_count=doc_count,
                     latest_timestamp=latest_timestamp,
-                    metadata={"max_age": freshness_window},
+                    metadata={"max_age": freshness_window, "fresh_docs": fresh_count},
                 )
             )
             checks.append(
@@ -269,7 +275,7 @@ class CoverageValidator:
                         },
                     )
                 )
-        elif present:
+        elif present and not search_missing:
             checks.append(
                 CoverageCheck(
                     name="doc_count",
@@ -292,16 +298,26 @@ class CoverageValidator:
         try:
             rows = self._indices.list(pattern)
         except Exception as exc:
-            logger.debug("Index list failed for %s: %s", pattern, exc)
-            return []
+            if _is_missing_index(exc):
+                return []
+            logger.error("Index list failed for %s: %s", pattern, exc, exc_info=True)
+            raise OperationError(
+                f"Failed to list indices for '{pattern}': {exc}"
+            ) from exc
         return [row for row in rows if isinstance(row, dict)]
 
     def _list_datastreams(self, pattern: str) -> List[Dict[str, Any]]:
         try:
             rows = self._datastreams.list(pattern)
         except Exception as exc:
-            logger.debug("Data stream list failed for %s: %s", pattern, exc)
-            return []
+            if _is_missing_index(exc):
+                return []
+            logger.error(
+                "Data stream list failed for %s: %s", pattern, exc, exc_info=True
+            )
+            raise OperationError(
+                f"Failed to list data streams for '{pattern}': {exc}"
+            ) from exc
         return [row for row in rows if isinstance(row, dict)]
 
     def _search(
@@ -311,6 +327,7 @@ class CoverageValidator:
         window: str,
         min_docs: int,
         service_name: Optional[str],
+        freshness_window: str,
     ) -> Dict[str, Any]:
         filters: List[Dict[str, Any]] = [
             {"range": {"@timestamp": {"gte": f"now-{window}"}}}
@@ -332,6 +349,11 @@ class CoverageValidator:
                 "track_total_hits": track,
                 "aggs": {
                     "latest": {"max": {"field": "@timestamp"}},
+                    "fresh": {
+                        "filter": {
+                            "range": {"@timestamp": {"gte": f"now-{freshness_window}"}}
+                        }
+                    },
                     "has_service_name": {
                         "filter": {"exists": {"field": "service.name"}}
                     },
@@ -440,6 +462,12 @@ def _field_presence_check(
 
 
 def _is_missing_index(exc: Exception) -> bool:
+    status = getattr(exc, "status_code", None)
+    meta = getattr(exc, "meta", None)
+    if status is None and meta is not None:
+        status = getattr(meta, "status", None)
+    if status == 404:
+        return True
     message = str(exc).lower()
     return any(marker in message for marker in _MISSING_INDEX_MARKERS)
 

@@ -14,13 +14,31 @@ from elastro.health.rules.engine import RuleContext
 
 
 class TestApmBeatsRules(unittest.TestCase):
-    def test_apm_missing_stream(self) -> None:
+    def test_apm_missing_stream_is_skipped_by_default(self) -> None:
         ctx = RuleContext(
             collector_data={"apm_beats": {"indices": [], "data_streams": []}}
         )
         findings = apm_data_stream_findings(ctx)
         self.assertEqual(len(findings), 1)
         self.assertEqual(findings[0].id, "apm.datastream.missing")
+        self.assertEqual(findings[0].status, FindingStatus.SKIPPED)
+        self.assertEqual(findings[0].score_impact, 0)
+
+    def test_apm_missing_stream_fails_when_strict(self) -> None:
+        ctx = RuleContext(
+            collector_data={"apm_beats": {"indices": [], "data_streams": []}},
+            coverage_strict=True,
+        )
+        findings = apm_data_stream_findings(ctx)
+        self.assertEqual(findings[0].status, FindingStatus.FAIL)
+        self.assertEqual(findings[0].score_impact, 15)
+
+    def test_apm_missing_stream_fails_for_feature_apm(self) -> None:
+        ctx = RuleContext(
+            collector_data={"apm_beats": {"indices": [], "data_streams": []}},
+            feature="apm",
+        )
+        findings = apm_data_stream_findings(ctx)
         self.assertEqual(findings[0].status, FindingStatus.FAIL)
 
     def test_apm_stale_stream(self) -> None:
@@ -59,6 +77,20 @@ class TestApmBeatsRules(unittest.TestCase):
         )
         findings = beats_ilm_findings(ctx)
         self.assertEqual(findings[0].id, "beats.ilm.missing")
+
+    def test_beats_missing_explain_is_unmanaged(self) -> None:
+        ctx = RuleContext(
+            collector_data={
+                "apm_beats": {
+                    "indices": [{"index": "filebeat-8.15.0"}],
+                    "ilm": {},
+                    "ilm_truncated": True,
+                }
+            }
+        )
+        findings = beats_ilm_findings(ctx)
+        self.assertEqual(findings[0].id, "beats.ilm.missing")
+        self.assertTrue(findings[0].metadata["ilm_truncated"])
 
     def test_beats_managed_no_finding(self) -> None:
         ctx = RuleContext(
@@ -137,6 +169,23 @@ class TestApmBeatsRules(unittest.TestCase):
         )
         findings = apm_ilm_phase_lag_findings(ctx)
         self.assertEqual(findings[0].id, "apm.ilm.hot_lag")
+        self.assertIn("ilm explain", findings[0].remediation.command)
+
+    def test_ilm_numeric_age_is_ignored(self) -> None:
+        ctx = RuleContext(
+            collector_data={
+                "apm_beats": {
+                    "ilm": {
+                        "traces-apm-default": {
+                            "managed": True,
+                            "phase": "hot",
+                            "age": 200000,
+                        }
+                    }
+                }
+            }
+        )
+        self.assertEqual(apm_ilm_phase_lag_findings(ctx), [])
 
     def test_empty_collector_data_no_findings(self) -> None:
         ctx = RuleContext(collector_data={})

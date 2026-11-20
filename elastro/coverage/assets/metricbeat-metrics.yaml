@@ -3,7 +3,6 @@ description: ILM and index template for Metricbeat / metrics-metricbeat data str
 aliases:
   - metricbeat
 index_patterns:
-  - metricbeat-*
   - metrics-metricbeat*
 ilm:
   policy_name: elastro-metricbeat-metrics
@@ -31,10 +30,9 @@ ilm:
           delete: {}
 template:
   index_patterns:
-    - metricbeat-*
     - metrics-metricbeat*
   data_stream: {}
-  priority: 180
+  priority: 100
   _meta:
     managed_by: elastro
     coverage_template: metricbeat-metrics
@@ -42,7 +40,6 @@ template:
     settings:
       index.lifecycle.name: elastro-metricbeat-metrics
       index.number_of_shards: 1
-      index.number_of_replicas: 1
       index.refresh_interval: 10s
     mappings:
       properties:

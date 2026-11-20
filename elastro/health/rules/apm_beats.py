@@ -75,14 +75,15 @@ def apm_data_stream_findings(ctx: RuleContext) -> List[Finding]:
     ]
     if not streams and not indices:
         logger.info("APM data streams missing cluster=%s", ctx.cluster_name)
+        strict = ctx.coverage_strict or ctx.feature == "apm"
         return [
             Finding(
                 id="apm.datastream.missing",
                 category="apm",
                 title="APM data stream missing",
-                status=FindingStatus.FAIL,
-                severity=Severity.HIGH,
-                score_impact=15,
+                status=FindingStatus.FAIL if strict else FindingStatus.SKIPPED,
+                severity=Severity.HIGH if strict else Severity.INFO,
+                score_impact=15 if strict else 0,
                 summary=(
                     "No traces-apm*, metrics-apm*, or logs-apm* data streams "
                     "or indices were found."
@@ -92,8 +93,9 @@ def apm_data_stream_findings(ctx: RuleContext) -> List[Finding]:
                 remediation=_observe(
                     "coverage.check",
                     "Validate APM coverage",
-                    "elastro -o table coverage check --all",
+                    "elastro -o table coverage check --pattern 'traces-apm*'",
                 ),
+                metadata={"strict": strict},
             )
         ]
 
@@ -141,9 +143,7 @@ def beats_ilm_findings(ctx: RuleContext) -> List[Finding]:
         if not name or not is_beats_index(name):
             continue
         explain = explains.get(name)
-        if not isinstance(explain, dict):
-            continue
-        if explain.get("managed") is False:
+        if not isinstance(explain, dict) or explain.get("managed") is False:
             unmanaged.append(name)
     if not unmanaged:
         return []
@@ -167,7 +167,12 @@ def beats_ilm_findings(ctx: RuleContext) -> List[Finding]:
                 "Apply Beats ILM templates",
                 "elastro coverage templates apply filebeat --dry-run",
             ),
-            metadata={"count": len(unmanaged)},
+            metadata={
+                "count": len(unmanaged),
+                "ilm_truncated": bool(data.get("ilm_truncated")),
+                "ilm_explained": data.get("ilm_explained"),
+                "ilm_explain_failed": data.get("ilm_explain_failed") or [],
+            },
         )
     ]
 
@@ -339,9 +344,12 @@ def apm_ilm_phase_lag_findings(ctx: RuleContext) -> List[Finding]:
             remediation=_observe(
                 "ilm.explain",
                 "Inspect ILM lifecycle",
-                f"elastro ilm get {stuck[0]}" if stuck else "elastro ilm list",
+                (f"elastro ilm explain {stuck[0]}" if stuck else "elastro ilm list"),
             ),
-            metadata={"count": len(stuck)},
+            metadata={
+                "count": len(stuck),
+                "ilm_truncated": bool(data.get("ilm_truncated")),
+            },
         )
     ]
 
@@ -375,15 +383,9 @@ def _indexing_stats(body: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _age_exceeds(age: Any, *, days: float) -> bool:
-    if age is None:
+    if not isinstance(age, str):
         return False
-    if isinstance(age, (int, float)):
-        # ILM may return milliseconds since creation.
-        millis = float(age)
-        if millis > days * 86400 * 10:
-            return millis >= days * 86400 * 1000
-        return millis >= days * 86400
-    match = _AGE_PATTERN.match(str(age).strip())
+    match = _AGE_PATTERN.match(age.strip())
     if not match:
         return False
     amount = float(match.group(1))

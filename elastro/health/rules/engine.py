@@ -21,6 +21,8 @@ class RuleContext:
     collector_data: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     assessment_history: List[Dict[str, Any]] = field(default_factory=list)
     es_version: Optional[str] = None
+    feature: Optional[str] = None
+    coverage_strict: bool = False
 
 
 class RuleEngine:

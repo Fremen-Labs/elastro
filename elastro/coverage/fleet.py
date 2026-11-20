@@ -15,6 +15,12 @@ from elastro.core.logger import get_logger
 
 logger = get_logger(__name__)
 
+_AGENT_STATUS_PATH = "/api/fleet/agent_status"
+_AGENTS_PATH = "/api/fleet/agents"
+_POLICIES_PATH = "/api/fleet/agent_policies"
+_PER_PAGE = 100
+_MAX_PAGES = 50
+
 
 class FleetAgent(BaseModel):
     """A single Fleet agent row."""
@@ -68,6 +74,11 @@ class FleetClient:
         """Build a client from ``coverage.fleet`` config (never logs the key)."""
         coverage = get_config().get("coverage") or {}
         fleet = coverage.get("fleet") or {}
+        if not fleet.get("enabled"):
+            raise ValidationError(
+                "Fleet is disabled. Set coverage.fleet.enabled: true "
+                "and coverage.fleet.kibana_url / api_key."
+            )
         return cls(
             kibana_url=str(fleet.get("kibana_url") or ""),
             api_key=str(fleet.get("api_key") or ""),
@@ -76,32 +87,79 @@ class FleetClient:
     def status(self) -> FleetStatus:
         """Return agent status counts, falling back to listing agents."""
         try:
-            data = self._request("GET", "/api/fleet/agent-status")
+            data = self._request("GET", _AGENT_STATUS_PATH)
             counts = _status_from_payload(data)
             counts.agents = []
             return counts
         except OperationError as exc:
             if "HTTP 404" not in str(exc):
                 raise
-            logger.info("Fleet agent-status endpoint missing; aggregating agents")
+            logger.info("Fleet agent_status endpoint missing; aggregating agents")
             agents = self.list_agents()
             return _status_from_agents(agents)
 
     def list_agents(self, policy_id: Optional[str] = None) -> List[FleetAgent]:
-        """List Fleet agents, optionally filtered by policy id."""
-        params: Dict[str, Any] = {"perPage": 100, "showInactive": "true"}
-        if policy_id:
-            params["policyId"] = policy_id
-        data = self._request("GET", "/api/fleet/agents", params=params)
-        items = data.get("items") or data.get("list") or []
+        """List Fleet agents, optionally filtered by policy id or name."""
+        resolved = self._resolve_policy(policy_id) if policy_id else None
+        kuery = None
+        if resolved:
+            kuery = f'policy_id:"{_escape_kql(resolved)}"'
         agents: List[FleetAgent] = []
-        if not isinstance(items, list):
-            return agents
-        for item in items:
-            agent = _agent_from_item(item)
-            if agent is not None:
-                agents.append(agent)
+        page = 1
+        total = 0
+        while page <= _MAX_PAGES:
+            params: Dict[str, Any] = {
+                "perPage": _PER_PAGE,
+                "page": page,
+                "showInactive": "true",
+            }
+            if kuery:
+                params["kuery"] = kuery
+            data = self._request("GET", _AGENTS_PATH, params=params)
+            items = data.get("items") or data.get("list") or []
+            if not isinstance(items, list):
+                break
+            try:
+                total = int(data.get("total") or total)
+            except (TypeError, ValueError):
+                total = total
+            for item in items:
+                agent = _agent_from_item(item)
+                if agent is not None:
+                    agents.append(agent)
+            if not items or len(items) < _PER_PAGE:
+                break
+            if total and len(agents) >= total:
+                break
+            page += 1
         return agents
+
+    def _resolve_policy(self, policy: str) -> str:
+        value = (policy or "").strip()
+        if not value:
+            return value
+        try:
+            data = self._request(
+                "GET",
+                _POLICIES_PATH,
+                params={"perPage": 1000},
+            )
+        except OperationError as exc:
+            logger.debug("Fleet policy lookup failed; using %s as id", value)
+            if "HTTP 404" in str(exc):
+                return value
+            raise
+        items = data.get("items") or []
+        if not isinstance(items, list):
+            return value
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            item_id = str(item.get("id") or "")
+            name = str(item.get("name") or "")
+            if value in {item_id, name}:
+                return item_id or value
+        return value
 
     def _request(
         self,
@@ -145,6 +203,10 @@ class FleetClient:
         }
 
 
+def _escape_kql(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
 def _agent_from_item(item: Any) -> Optional[FleetAgent]:
     if not isinstance(item, dict):
         return None
@@ -175,13 +237,16 @@ def _agent_from_item(item: Any) -> Optional[FleetAgent]:
 
 
 def _status_from_payload(data: Dict[str, Any]) -> FleetStatus:
-    online = int(data.get("online") or 0)
-    offline = int(data.get("offline") or 0)
-    error = int(data.get("error") or 0)
-    updating = int(data.get("updating") or 0)
-    inactive = int(data.get("inactive") or 0)
-    unenrolled = int(data.get("unenrolled") or 0)
-    total = int(data.get("total") or 0)
+    body = data.get("results")
+    if not isinstance(body, dict):
+        body = data
+    online = int(body.get("online") or 0)
+    offline = int(body.get("offline") or 0)
+    error = int(body.get("error") or 0)
+    updating = int(body.get("updating") or 0)
+    inactive = int(body.get("inactive") or 0)
+    unenrolled = int(body.get("unenrolled") or 0)
+    total = int(body.get("total") or data.get("total") or 0)
     if total <= 0:
         total = online + offline + error + updating + inactive + unenrolled
     return FleetStatus(

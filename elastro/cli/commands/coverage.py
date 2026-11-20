@@ -131,7 +131,10 @@ def templates_apply(
     "check_all",
     is_flag=True,
     default=False,
-    help="Check default APM and Beats patterns",
+    help=(
+        "Full APM+Beats gate: fail unless every default pattern "
+        "(traces-apm*, metrics-apm*, logs-apm*, filebeat-*, metricbeat-*) passes"
+    ),
 )
 @click.option(
     "--window",
@@ -317,7 +320,12 @@ def fleet_status(ctx: click.Context) -> None:
 
 
 @fleet_group.command("agents")
-@click.option("--policy", type=str, default=None, help="Filter by Fleet policy id")
+@click.option(
+    "--policy",
+    type=str,
+    default=None,
+    help="Filter by Fleet policy id or name",
+)
 @click.pass_context
 def fleet_agents(ctx: click.Context, policy: Optional[str]) -> None:
     """

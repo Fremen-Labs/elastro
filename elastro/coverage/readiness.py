@@ -78,7 +78,10 @@ class ReadinessReporter:
 
         from elastro.health.assessor import HealthAssessor
 
-        assessment = HealthAssessor(self._client).run()
+        assessment = HealthAssessor(self._client).run(
+            audit=False,
+            coverage_strict=True,
+        )
         findings = [
             finding for finding in assessment.findings if is_apm_beats_finding(finding)
         ]
