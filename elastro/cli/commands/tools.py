@@ -2,12 +2,26 @@
 Tools registry command group for Elastro CLI.
 """
 
-from datetime import datetime, timezone
+from __future__ import annotations
+
+import hashlib
+import os
 
 import rich_click as click
 
+from elastro.agent.models import (
+    FLOW_TOOLS,
+    ToolRecord,
+    tools_search_body,
+    utc_timestamp,
+)
+from elastro.agent.store import AgentStore
 from elastro.cli.context import require_client
+from elastro.cli.errors import exit_from_exception
 from elastro.core.client import ElasticsearchClient
+from elastro.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 @click.group(name="tools")
@@ -34,42 +48,34 @@ def register_tool(
     """
     Register a custom pipeline script or CLI into the tools registry.
     """
-    require_client()
-    index_name = "flow_tools"
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    import hashlib
-    import os
-
+    logger.info("tools.register tool_name=%s", tool_name)
     file_hash = "unknown"
     if os.path.isfile(file_path):
-        with open(file_path, "rb") as f:
-            file_hash = hashlib.sha256(f.read()).hexdigest()
+        with open(file_path, "rb") as handle:
+            file_hash = hashlib.sha256(handle.read()).hexdigest()
     else:
         click.secho(
             f"Warning: File '{file_path}' not found at registration time.", fg="yellow"
         )
 
-    payload = {
-        "timestamp": timestamp,
-        "tool_name": tool_name,
-        "file_path": file_path,
-        "purpose": purpose,
-        "parameters": parameters,
-        "file_hash": file_hash,
-    }
+    payload = ToolRecord(
+        timestamp=utc_timestamp(),
+        tool_name=tool_name,
+        file_path=file_path,
+        purpose=purpose,
+        parameters=parameters,
+        file_hash=file_hash,
+    )
 
+    require_client()
     try:
-        response = client.client.index(index=index_name, id=tool_name, document=payload)
+        AgentStore(client).index(FLOW_TOOLS, payload, id=tool_name)
         click.secho(
             f">> Tool '{tool_name}' registered successfully.",
             fg="green",
         )
-    except Exception as e:
-        click.secho(f"Failed to register tool payload: {e}", fg="red", err=True)
-        import sys
-
-        sys.exit(1)
+    except Exception as exc:
+        exit_from_exception(exc, logger=logger, action="register tool")
 
 
 @tools_group.command("search")
@@ -84,21 +90,12 @@ def search_tools(
     """
     Search the flow_tools custom tool registry.
     """
+    logger.info("tools.search size=%s", size)
     require_client()
-    index_name = "flow_tools"
-
-    search_body = {
-        "size": size,
-        "query": {
-            "multi_match": {
-                "query": query,
-                "fields": ["tool_name^3", "purpose^2", "parameters"],
-            }
-        },
-    }
-
     try:
-        response = client.client.search(index=index_name, body=search_body)
+        response = AgentStore(client).search(
+            FLOW_TOOLS, tools_search_body(query, size=size)
+        )
         hits = response.get("hits", {}).get("hits", [])
 
         click.secho(f"Found {len(hits)} registered tools:", fg="blue")
@@ -115,12 +112,9 @@ def search_tools(
             click.echo(f"  Purpose: {source.get('purpose', '')}")
             click.echo(f"  Parameters: {source.get('parameters', '')}")
 
-            import hashlib
-            import os
-
             if file_path != "unknown" and os.path.isfile(file_path):
-                with open(file_path, "rb") as f:
-                    current_hash = hashlib.sha256(f.read()).hexdigest()
+                with open(file_path, "rb") as handle:
+                    current_hash = hashlib.sha256(handle.read()).hexdigest()
 
                 if indexed_hash == "unknown":
                     click.secho(
@@ -129,7 +123,8 @@ def search_tools(
                     )
                 elif current_hash != indexed_hash:
                     click.secho(
-                        "  Hash Status: [STALE] Local file modified since registration!",
+                        "  Hash Status: [STALE] Local file modified"
+                        " since registration!",
                         fg="red",
                         bold=True,
                     )
@@ -143,8 +138,5 @@ def search_tools(
                     "  Hash Status: [MISSING] File not found on disk.", fg="red"
                 )
 
-    except Exception as e:
-        click.secho(f"Search failed: {e}", fg="red", err=True)
-        import sys
-
-        sys.exit(1)
+    except Exception as exc:
+        exit_from_exception(exc, logger=logger, action="search tools")

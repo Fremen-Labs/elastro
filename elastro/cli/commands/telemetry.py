@@ -2,12 +2,24 @@
 Telemetry ingest command for Elastro CLI.
 """
 
-from datetime import datetime, timezone
+from __future__ import annotations
 
 import rich_click as click
 
+from elastro.agent.models import (
+    AGENT_TELEMETRY_DEEP,
+    OsiLatencyBreakdown,
+    TelemetryDocument,
+    TokenCountQuery,
+    utc_timestamp,
+)
+from elastro.agent.store import AgentStore
 from elastro.cli.context import require_client
+from elastro.cli.errors import exit_from_exception
 from elastro.core.client import ElasticsearchClient
+from elastro.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 @click.group(name="telemetry")
@@ -85,48 +97,46 @@ def ingest_telemetry(
     This command enforces the schema for the Deep Agent Telemetry visualization,
     submitting the performance vector into target index 'agent_telemetry_deep'.
     """
+    logger.info("telemetry.ingest workload_reference=%s", workload_reference)
     require_client()
-    index_name = "agent_telemetry_deep"
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    payload = {
-        "timestamp": timestamp,
-        "workload_reference": workload_reference,
-        "execution_time_minutes": exec_mins,
-        "t_elastro_query_ms": elastro_q_ms,
-        "t_question_to_reasoning_ms": q2r_ms,
-        "t_reasoning_to_launch_ms": r2l_ms,
-        "t_planning_ms": plan_ms,
-        "ast_hit_ratio": ast_ratio,
-        "context_efficiency": ctx_eff,
-        "first_pass_reliability_rate": rel_rate,
-        "trajectory_depth": depth,
-        "retry_count": retry,
-        "osi_latency_breakdown": {
-            "l7_application_ms": l7_ms,
-            "l4_transport_ms": l4_ms,
-            "l3_network_ms": l3_ms,
-            "l2_l1_physical_ms": l1_ms,
-        },
-        "token_count_query": {"input_tokens": in_tokens, "output_tokens": out_tokens},
-        "provider_model_string": llm_model,
-        "tools_invoked_array": (
+    payload = TelemetryDocument(
+        timestamp=utc_timestamp(),
+        workload_reference=workload_reference,
+        execution_time_minutes=exec_mins,
+        t_elastro_query_ms=elastro_q_ms,
+        t_question_to_reasoning_ms=q2r_ms,
+        t_reasoning_to_launch_ms=r2l_ms,
+        t_planning_ms=plan_ms,
+        ast_hit_ratio=ast_ratio,
+        context_efficiency=ctx_eff,
+        first_pass_reliability_rate=rel_rate,
+        trajectory_depth=depth,
+        retry_count=retry,
+        osi_latency_breakdown=OsiLatencyBreakdown(
+            l7_application_ms=l7_ms,
+            l4_transport_ms=l4_ms,
+            l3_network_ms=l3_ms,
+            l2_l1_physical_ms=l1_ms,
+        ),
+        token_count_query=TokenCountQuery(
+            input_tokens=in_tokens, output_tokens=out_tokens
+        ),
+        provider_model_string=llm_model,
+        tools_invoked_array=(
             [t.strip() for t in tools_invoked.split(",")] if tools_invoked else []
         ),
-        "rollback_undo_count": rollback_count,
-        "diff_drift_ratio": diff_drift,
-        "deterministic_fallback_rate": fallback_rate,
-        "complexity_score": complexity,
-    }
+        rollback_undo_count=rollback_count,
+        diff_drift_ratio=diff_drift,
+        deterministic_fallback_rate=fallback_rate,
+        complexity_score=complexity,
+    )
 
     try:
-        response = client.client.index(index=index_name, document=payload)
+        response = AgentStore(client).index(AGENT_TELEMETRY_DEEP, payload)
+        doc_id = response.get("_id", "unknown")
         click.secho(
-            f">> Sink execution complete for [{workload_reference}]. ID: {response.get('_id', 'unknown')}",
+            f">> Sink execution complete for [{workload_reference}]. ID: {doc_id}",
             fg="green",
         )
-    except Exception as e:
-        click.secho(f"Failed to ingest telemetry payload: {e}", fg="red", err=True)
-        import sys
-
-        sys.exit(1)
+    except Exception as exc:
+        exit_from_exception(exc, logger=logger, action="ingest telemetry")

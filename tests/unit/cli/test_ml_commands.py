@@ -7,6 +7,13 @@ from click.testing import CliRunner
 from elastro.cli.commands.ml import ml_group
 
 
+def _client() -> MagicMock:
+    client = MagicMock()
+    client.is_connected.return_value = True
+    client.get_client.return_value = client.client
+    return client
+
+
 def test_init_job_deploy_failure_exits_1(monkeypatch) -> None:
     monkeypatch.setattr("elastro.cli.commands.ml.stdin_is_tty", lambda: True)
 
@@ -16,7 +23,7 @@ def test_init_job_deploy_failure_exits_1(monkeypatch) -> None:
 
     monkeypatch.setattr("elastro.cli.commands.ml.Prompt.ask", fake_prompt)
     monkeypatch.setattr("elastro.cli.commands.ml.Confirm.ask", lambda *_a, **_k: True)
-    client = MagicMock()
+    client = _client()
     client.client.ml.put_job.side_effect = Exception("No node reached")
     result = CliRunner().invoke(ml_group, ["init-job"], obj=client)
 
@@ -27,7 +34,7 @@ def test_init_job_deploy_failure_exits_1(monkeypatch) -> None:
 
 
 def test_init_job_non_tty_exits_2() -> None:
-    client = MagicMock()
+    client = _client()
     result = CliRunner().invoke(ml_group, ["init-job"], obj=client)
 
     assert result.exit_code == 2
@@ -35,3 +42,4 @@ def test_init_job_non_tty_exits_2() -> None:
     assert result.stdout == ""
     client.client.ml.put_job.assert_not_called()
     client.client.ml.put_datafeed.assert_not_called()
+    client.get_client.assert_not_called()
