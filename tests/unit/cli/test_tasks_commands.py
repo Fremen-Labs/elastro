@@ -40,6 +40,28 @@ def test_cancel_with_yes_calls_cancel_once() -> None:
     client.client.tasks.cancel.assert_called_once_with(task_id="node-1:42")
 
 
+def test_cancel_node_failures_exits_1() -> None:
+    client = MagicMock()
+    client.client.tasks.cancel.return_value = {
+        "node_failures": [
+            {
+                "node_id": "node-a",
+                "status": 500,
+                "reason": "task cancelled",
+            }
+        ]
+    }
+    result = CliRunner().invoke(
+        tasks_group, ["cancel", "node-1:42", "--yes"], obj=client
+    )
+
+    assert result.exit_code == 1
+    assert result.stdout == ""
+    assert "node-a" in result.stderr
+    assert "500" in result.stderr
+    assert "task cancelled" in result.stderr
+
+
 def test_list_transport_error_exits_1() -> None:
     client = MagicMock()
     client.client.tasks.list.side_effect = Exception("No node reached")

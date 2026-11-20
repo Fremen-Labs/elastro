@@ -23,12 +23,9 @@ def render_error(exc: ElasticModuleError) -> int:
 
 def stdin_is_tty() -> bool:
     """Return True when stdin is an interactive terminal."""
-    isatty = getattr(sys.stdin, "isatty", None)
-    if not callable(isatty):
-        return False
     try:
-        return bool(isatty())
-    except ValueError:
+        return sys.stdin.isatty()
+    except (ValueError, OSError):
         return False
 
 
@@ -36,12 +33,6 @@ def usage_error(message: str) -> NoReturn:
     """Write a usage message to stderr and exit 2."""
     click.echo(message, err=True)
     raise SystemExit(2)
-
-
-def require_tty(message: str = "interactive wizard requires a TTY") -> None:
-    """Exit 2 when a wizard is invoked without a TTY."""
-    if not stdin_is_tty():
-        usage_error(message)
 
 
 def confirm_or_exit(prompt: str, *, yes: bool) -> None:

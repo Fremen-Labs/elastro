@@ -2,6 +2,8 @@
 Tasks management commands.
 """
 
+from typing import Any
+
 import rich_click as click
 from rich.console import Console
 from rich.table import Table
@@ -12,6 +14,31 @@ from elastro.core.errors import OperationError
 from elastro.core.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _node_failure_summary(failures: Any) -> str:
+    """Compact node/status/reason text from a tasks.cancel node_failures list."""
+    items = failures if isinstance(failures, list) else [failures]
+    parts: list[str] = []
+    for item in items:
+        if not isinstance(item, dict):
+            parts.append(str(item))
+            continue
+        node = item.get("node_id") or item.get("node") or item.get("node_name")
+        status = item.get("status")
+        reason = item.get("reason")
+        caused = item.get("caused_by")
+        if not reason and isinstance(caused, dict):
+            reason = caused.get("reason")
+        bits = []
+        if node:
+            bits.append(f"node={node}")
+        if status is not None:
+            bits.append(f"status={status}")
+        if reason:
+            bits.append(f"reason={reason}")
+        parts.append(" ".join(bits) if bits else str(item))
+    return "; ".join(parts)
 
 
 @click.group(name="tasks")
@@ -98,9 +125,10 @@ def cancel_task(client: ElasticsearchClient, task_id: str, yes: bool) -> None:
         res = es.tasks.cancel(task_id=task_id)
 
         if res.get("node_failures"):
-            logger.error("task cancel node_failures task_id=%s", task_id)
+            summary = _node_failure_summary(res["node_failures"])
+            logger.error("task cancel node_failures task_id=%s %s", task_id, summary)
             raise OperationError(
-                f"Task cancellation encountered node failures for {task_id}"
+                f"Task cancellation encountered node failures for {task_id}: {summary}"
             )
 
         console.print(

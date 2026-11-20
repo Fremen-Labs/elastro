@@ -45,6 +45,18 @@ def test_enable_routing_with_yes_calls_put_settings() -> None:
     client.client.cluster.put_settings.assert_called_once()
 
 
+def test_enable_routing_transport_error_exits_1() -> None:
+    client = MagicMock()
+    client.client.cluster.put_settings.side_effect = Exception("No node reached")
+    result = CliRunner().invoke(
+        cluster_group, ["settings", "--enable-routing", "all", "--yes"], obj=client
+    )
+
+    assert result.exit_code == 1
+    assert result.stdout == ""
+    assert "No node reached" in result.stderr
+
+
 def test_settings_view_does_not_require_yes() -> None:
     client = MagicMock()
     client.client.cluster.get_settings.return_value = {
