@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional
 
 from elastro.core.base import BaseManager
 from elastro.core.errors import OperationError, ValidationError
+from elastro.core.index import IndexManager
 from elastro.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -44,23 +45,16 @@ class ClusterManager(BaseManager):
     def allocation_explain(self, index: Optional[str] = None) -> Dict[str, Any]:
         """Explain shard allocation.
 
-        Delegates to the health shards explain path so ``cluster allocation``
-        and ``health shards --explain`` share one implementation.
+        When ``index`` is set, reuses ``IndexManager.allocation_explain`` so the
+        index path matches health shards. The cluster-wide call is owned here.
         """
         logger.debug("cluster.allocation_explain index=%s", index or "*")
+        if index:
+            return IndexManager(self._client).allocation_explain(index)
         try:
-            from elastro.health.collectors.base import CollectContext
-            from elastro.health.collectors.shards import (
-                explain_allocation as health_explain,
-            )
-
-            ctx = CollectContext(
-                client=self._client,
-                options={"index": index} if index else {},
-            )
-            return health_explain(ctx, index_name=index)
-        except OperationError:
-            raise
+            self._ensure_connected()
+            response = self._client.get_client().cluster.allocation_explain()
+            return self._handle_response(response)
         except Exception as exc:
             logger.error("cluster allocation_explain failed: %s", exc, exc_info=True)
             raise OperationError(f"Failed to explain allocation: {exc}") from exc

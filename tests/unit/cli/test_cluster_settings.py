@@ -51,7 +51,9 @@ def test_enable_routing_with_yes_calls_put_settings() -> None:
     )
 
     assert result.exit_code == 0, result.stderr
-    client.client.cluster.put_settings.assert_called_once()
+    client.client.cluster.put_settings.assert_called_once_with(
+        body={"transient": {"cluster.routing.allocation.enable": "all"}}
+    )
 
 
 def test_enable_routing_transport_error_exits_1() -> None:
