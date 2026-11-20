@@ -60,20 +60,21 @@ def _output_format(ctx: click.Context) -> str:
     return str(root.params.get("output") or "json")
 
 
-def _render_cluster_health(result: dict) -> None:
-    status = result.get("status", "unknown")
-    status_colors = {"green": "green", "yellow": "yellow", "red": "red"}
+def _render_cluster_health(result: dict, output_format: str) -> None:
+    if output_format not in ("json", "yaml"):
+        status = result.get("status", "unknown")
+        status_colors = {"green": "green", "yellow": "yellow", "red": "red"}
 
-    click.echo(
-        click.style(
-            f"Cluster: {result.get('cluster_name', 'unknown')} | "
-            f"Status: {status} | "
-            f"Nodes: {result.get('number_of_nodes', 0)} | "
-            f"Data nodes: {result.get('number_of_data_nodes', 0)}",
-            fg=status_colors.get(status, "white"),
+        click.echo(
+            click.style(
+                f"Cluster: {result.get('cluster_name', 'unknown')} | "
+                f"Status: {status} | "
+                f"Nodes: {result.get('number_of_nodes', 0)} | "
+                f"Data nodes: {result.get('number_of_data_nodes', 0)}",
+                fg=status_colors.get(status, "white"),
+            )
         )
-    )
-    click.echo(format_output(result, output_format="json"))
+    click.echo(format_output(result, output_format=output_format))
 
 
 def _client_host(client: ElasticsearchClient) -> str:
@@ -1365,7 +1366,7 @@ def health_status(
             timeout=timeout,
             wait_for_status=wait,
         )
-        _render_cluster_health(result)
+        _render_cluster_health(result, output_format=_output_format(ctx))
 
         exit_code = resolve_exit_code(
             fail_on=_resolve_fail_on(fail_on),

@@ -77,7 +77,12 @@ def health(
             timeout=timeout,
             wait_for_status=wait,
         )
-        _render_cluster_health(result)
+        ctx = click.get_current_context()
+        root = ctx
+        while root.parent is not None:
+            root = root.parent
+        output_fmt = str(root.params.get("output") or "json")
+        _render_cluster_health(result, output_format=output_fmt)
     except OperationError as e:
         click.echo(f"Error checking health: {str(e)}", err=True)
         exit(1)

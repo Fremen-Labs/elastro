@@ -34,7 +34,18 @@ elastro coverage fleet agents --policy apm-apps
 
 Exit codes: `0` success (or all checks pass); `1` operational failure; `2` usage error or a failed coverage/readiness check. Declining an interactive apply confirm exits `0`.
 
-`elastro health assess --feature apm` and `--feature beats` filter custom APM/Beats findings. They are **not** passed to Elasticsearch `_health_report` (unlike `--feature disk`).
+`elastro health assess --feature apm` and `--feature beats` filter to those coverage rules **and keep cluster-wide FAIL findings** (for example `cluster.block.*`). They are **not** passed to Elasticsearch `_health_report`. `--feature disk` is forwarded to `_health_report` and does **not** include custom security / cluster-block / APM / Beats findings.
+
+## Lima / local k3s access
+
+The Lima `elastic-telemetry` Elasticsearch NodePort is not reachable from the Mac. Port-forward the service, and do **not** assume `~/.elastic/config.yaml` matches the Lima password:
+
+```bash
+kubectl --kubeconfig ~/.kube/config-lima-k3s -n elastic-telemetry \
+  port-forward --address 127.0.0.1 svc/elasticsearch 9205:9200
+```
+
+Use a 0600 temp config (or the `elastic-credentials` / `elastic-password` kube secret). Laptop profile credentials will 401 against Lima.
 
 ## Python API
 

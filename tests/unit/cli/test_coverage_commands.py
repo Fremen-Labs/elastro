@@ -180,6 +180,19 @@ def test_coverage_report_failed_exits_2() -> None:
     assert result.exit_code == 2
 
 
+def test_check_all_help_documents_and_gate() -> None:
+    result = CliRunner().invoke(coverage_group, ["check", "--help"])
+    assert result.exit_code == 0, result.output
+    help_text = result.output
+    assert "AND-gate" in help_text or "AND-gate" in help_text.replace("`", "")
+    assert "traces-apm*" in help_text
+    assert "metrics-apm*" in help_text
+    assert "filebeat-*" in help_text
+    assert "metricbeat-*" in help_text
+    assert "logs-filebeat*" in help_text
+    assert "metrics-metricbeat*" in help_text
+
+
 def test_fleet_status_imports_on_demand() -> None:
     from elastro.coverage.fleet import FleetStatus
 

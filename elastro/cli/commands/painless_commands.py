@@ -13,7 +13,7 @@ from rich.panel import Panel
 from rich.syntax import Syntax
 
 from elastro.cli.context import require_client
-from elastro.cli.errors import exit_from_exception, usage_error
+from elastro.cli.errors import exit_from_exception, stdin_is_tty, usage_error
 from elastro.core.client import ElasticsearchClient
 from elastro.core.logger import get_logger
 from elastro.core.script import ScriptManager
@@ -41,6 +41,8 @@ def scaffold() -> None:
     Generates a strongly typed `.painless` file locally, specifically tailored
     to your target context (Runtime Field, Ingest Pipeline, Update, etc).
     """
+    if not stdin_is_tty():
+        usage_error("interactive wizard requires a TTY")
     console.print(
         Panel(
             "[bold cyan]Elastro Painless Scaffolder[/bold cyan]\nLet's generate a bullet-proof script.",

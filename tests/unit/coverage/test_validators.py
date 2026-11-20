@@ -36,9 +36,12 @@ def _search_hits(
                 "value_as_string": "2026-11-20T00:00:00.000Z",
             },
             "fresh": {"doc_count": count},
-            "has_service_name": {"doc_count": service_docs},
-            "has_host_name": {"doc_count": host_docs},
-            "service_cardinality": {"value": cardinality},
+            "in_window": {
+                "doc_count": count,
+                "has_service_name": {"doc_count": service_docs},
+                "has_host_name": {"doc_count": host_docs},
+                "service_cardinality": {"value": cardinality},
+            },
         },
     }
 
@@ -203,3 +206,85 @@ def test_check_all_is_full_gate(es_client) -> None:
 def test_invalid_window_raises_validation_error(es_client) -> None:
     with pytest.raises(ValidationError, match="Invalid window"):
         CoverageValidator(es_client).check_pattern("traces-apm*", window="15x")
+
+
+def test_check_service_zero_docs_fails_streams_present(es_client) -> None:
+    with patch("elastro.coverage.validators.IndexManager") as idx:
+        with patch("elastro.coverage.validators.DatastreamManager") as ds:
+            with patch("elastro.coverage.validators.DocumentManager") as docs:
+                idx.return_value.list.return_value = [{"index": "traces-apm-default"}]
+                ds.return_value.list.return_value = [{"name": "traces-apm-default"}]
+                docs.return_value.search.return_value = _search_hits(
+                    count=0, service_docs=0, host_docs=0
+                )
+                report = CoverageValidator(es_client).check_service("elasticsearch")
+    streams = next(item for item in report.checks if item.name == "streams_present")
+    assert streams.passed is False
+    assert report.passed is False
+    assert "elasticsearch" in streams.summary
+    assert streams.metadata.get("resources")
+
+
+def test_check_pattern_zero_docs_keeps_streams_present(es_client) -> None:
+    with patch("elastro.coverage.validators.IndexManager") as idx:
+        with patch("elastro.coverage.validators.DatastreamManager") as ds:
+            with patch("elastro.coverage.validators.DocumentManager") as docs:
+                idx.return_value.list.return_value = [{"index": "filebeat-8.15.0"}]
+                ds.return_value.list.return_value = []
+                docs.return_value.search.return_value = _search_hits(
+                    count=0, service_docs=0, host_docs=0
+                )
+                report = CoverageValidator(es_client).check_pattern("filebeat-*")
+    streams = next(item for item in report.checks if item.name == "streams_present")
+    assert streams.passed is True
+    assert report.passed is False
+
+
+def test_check_service_window_agg_includes_service_term(es_client) -> None:
+    with patch("elastro.coverage.validators.IndexManager") as idx:
+        with patch("elastro.coverage.validators.DatastreamManager") as ds:
+            with patch("elastro.coverage.validators.DocumentManager") as docs:
+                idx.return_value.list.return_value = [{"index": "traces-apm-default"}]
+                ds.return_value.list.return_value = []
+                docs.return_value.search.return_value = _search_hits()
+                CoverageValidator(es_client).check_service(
+                    "checkout-service", window="15m"
+                )
+    options = docs.return_value.search.call_args.kwargs["options"]
+    filters = options["aggs"]["in_window"]["filter"]["bool"]["filter"]
+    assert {"range": {"@timestamp": {"gte": "now-15m"}}} in filters
+    assert {"term": {"service.name": "checkout-service"}} in filters
+
+
+def test_field_presence_aggs_are_window_scoped(es_client) -> None:
+    with patch("elastro.coverage.validators.IndexManager") as idx:
+        with patch("elastro.coverage.validators.DatastreamManager") as ds:
+            with patch("elastro.coverage.validators.DocumentManager") as docs:
+                idx.return_value.list.return_value = [{"index": "filebeat-8.15.0"}]
+                ds.return_value.list.return_value = []
+                docs.return_value.search.return_value = _search_hits()
+                CoverageValidator(es_client).check_pattern("filebeat-*", window="15m")
+    options = docs.return_value.search.call_args.kwargs["options"]
+    in_window = options["aggs"]["in_window"]
+    assert in_window["filter"]["bool"]["filter"][0]["range"]["@timestamp"]["gte"] == (
+        "now-15m"
+    )
+    assert "has_host_name" in in_window["aggs"]
+    assert "has_service_name" in in_window["aggs"]
+    assert "service_cardinality" in in_window["aggs"]
+
+
+def test_field_presence_ignores_unscoped_host_count(es_client) -> None:
+    body = _search_hits(count=2, service_docs=2, host_docs=2)
+    body["aggregations"]["has_host_name"] = {"doc_count": 35757}
+    with patch("elastro.coverage.validators.IndexManager") as idx:
+        with patch("elastro.coverage.validators.DatastreamManager") as ds:
+            with patch("elastro.coverage.validators.DocumentManager") as docs:
+                idx.return_value.list.return_value = [{"index": "filebeat-8.15.0"}]
+                ds.return_value.list.return_value = []
+                docs.return_value.search.return_value = body
+                report = CoverageValidator(es_client).check_pattern("filebeat-*")
+    field = next(item for item in report.checks if item.name == "field_presence")
+    assert "35757" not in field.summary
+    assert field.metadata["host.name"] == 2
+    assert field.metadata["host.name"] <= report.doc_count

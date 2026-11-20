@@ -132,9 +132,9 @@ def templates_apply(
     is_flag=True,
     default=False,
     help=(
-        "Full APM+Beats gate: fail unless every default pattern "
-        "(traces-apm*, metrics-apm*, logs-apm*, filebeat-*, metricbeat-*, "
-        "logs-filebeat*, metrics-metricbeat*) passes"
+        "AND-gate: fail unless all of traces-apm*, metrics-apm*, logs-apm*, "
+        "filebeat-*, metricbeat-* and data-stream aliases logs-filebeat*, "
+        "metrics-metricbeat* are present and passing"
     ),
 )
 @click.option(
@@ -169,6 +169,10 @@ def coverage_check(
 ) -> None:
     """
     Validate that APM or Beats data is arriving.
+
+    `--all` is an AND-gate: every default pattern must be present and pass
+    (`traces-apm*`, `metrics-apm*`, `logs-apm*`, `filebeat-*`, `metricbeat-*`,
+    and data-stream aliases `logs-filebeat*`, `metrics-metricbeat*`).
 
     Examples:
 

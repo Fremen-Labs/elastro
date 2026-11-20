@@ -12,7 +12,7 @@ from elasticsearch.exceptions import (
     ApiError,
 )
 
-from elastro.core.client import ElasticsearchClient
+from elastro.core.client import ElasticsearchClient, hosts_for_log
 from elastro.core.errors import ConnectionError, AuthenticationError, OperationError
 
 
@@ -137,6 +137,44 @@ class TestElasticsearchClient:
             # Verify connection status
             assert client._connected is True
             assert client._client is not None
+
+    def test_connect_logs_host_at_debug_without_auth(self):
+        with (
+            patch("elastro.core.client.Elasticsearch") as mock_es_class,
+            patch("elastro.core.client.logger") as mock_logger,
+        ):
+            mock_instance = MagicMock()
+            mock_instance.ping.return_value = True
+            mock_es_class.return_value = mock_instance
+
+            client = ElasticsearchClient(
+                hosts=["http://elastic:secret@localhost:9200"],
+                username="user",
+                password="hunter2",
+                use_config=False,
+            )
+            client.connect()
+
+        debug_messages = [
+            " ".join(str(arg) for arg in call.args)
+            for call in mock_logger.debug.call_args_list
+        ]
+        joined = " ".join(debug_messages)
+        assert "http://localhost:9200" in joined
+        assert "secret" not in joined
+        assert "hunter2" not in joined
+        assert "basic_auth" not in joined
+        mock_logger.info.assert_not_called()
+        for call in mock_logger.debug.call_args_list:
+            assert "Connecting with params" not in " ".join(str(a) for a in call.args)
+
+    def test_hosts_for_log_strips_userinfo(self):
+        assert hosts_for_log("http://elastic:secret@localhost:9200") == (
+            "http://localhost:9200"
+        )
+        assert hosts_for_log(["https://user:pw@es.example:9243"]) == [
+            "https://es.example:9243"
+        ]
 
     def test_connect_with_api_key(self):
         """Test connection with API key authentication."""

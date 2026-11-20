@@ -45,6 +45,9 @@ def explain_allocation(client: ElasticsearchClient, index: str) -> None:
     logger.info("cluster.allocation index=%s", index or "*")
     try:
         res = ClusterManager(client).allocation_explain(index=index)
+        if "index" not in res and res.get("message"):
+            click.echo(res["message"])
+            return
 
         console.print(f"[bold cyan]Index:[/bold cyan] {res.get('index', 'N/A')}")
         console.print(f"[bold cyan]Shard:[/bold cyan] {res.get('shard', 'N/A')}")

@@ -5,6 +5,7 @@ This module provides the core client for connecting to Elasticsearch.
 """
 
 from typing import Any, Dict, List, Optional, Union
+from urllib.parse import urlsplit, urlunsplit
 
 from elasticsearch import AsyncElasticsearch, Elasticsearch
 from elasticsearch.exceptions import (
@@ -20,6 +21,32 @@ from elastro.core.errors import AuthenticationError, ConnectionError, OperationE
 from elastro.core.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def hosts_for_log(hosts: Union[str, List[str], None]) -> Union[str, List[str], None]:
+    """Return hosts with userinfo stripped for log lines."""
+    if isinstance(hosts, list):
+        return [_strip_userinfo(item) for item in hosts]
+    if hosts is None:
+        return None
+    return _strip_userinfo(hosts)
+
+
+def _strip_userinfo(host: Any) -> Any:
+    if not isinstance(host, str) or "://" not in host:
+        return host
+    try:
+        parts = urlsplit(host)
+        if not parts.hostname:
+            return host
+        netloc = parts.hostname
+        if parts.port:
+            netloc = f"{netloc}:{parts.port}"
+        return urlunsplit(
+            (parts.scheme, netloc, parts.path, parts.query, parts.fragment)
+        )
+    except ValueError:
+        return host
 
 
 class ElasticsearchClient:
@@ -112,7 +139,9 @@ class ElasticsearchClient:
         self._client: Optional[Elasticsearch] = None
         self._connected = False
 
-        logger.debug("Initialized ElasticsearchClient with hosts: %s", self.hosts)
+        logger.debug(
+            "Initialized ElasticsearchClient with hosts: %s", hosts_for_log(self.hosts)
+        )
 
     @property
     def auth_type(self) -> Optional[str]:
@@ -193,28 +222,9 @@ class ElasticsearchClient:
             ConnectionError: If unable to connect to Elasticsearch
             AuthenticationError: If authentication fails
         """
-        logger.info("Connecting to Elasticsearch at %s...", self.hosts)
+        logger.debug("Connecting to Elasticsearch at %s...", hosts_for_log(self.hosts))
 
         client_params = self._get_client_params()
-
-        # Prepare safe loggable params
-        log_params = client_params.copy()
-        if "basic_auth" in log_params:
-            user = log_params["basic_auth"][0]
-            log_params["basic_auth"] = (user, "******")
-
-        log_auth = self.auth.copy() if self.auth else {}
-        if "password" in log_auth:
-            log_auth["password"] = "******"
-        if "api_key" in log_auth:
-            log_auth["api_key"] = "******"
-
-        logger.info(
-            "Connecting with params: hosts=%s, auth=%s, basic_auth=%s",
-            client_params.get("hosts"),
-            log_auth,
-            log_params.get("basic_auth"),
-        )
 
         try:
             self._client = Elasticsearch(**client_params)
@@ -229,7 +239,7 @@ class ElasticsearchClient:
                     raise AuthenticationError(detail)
                 raise ConnectionError(detail)
             self._connected = True
-            logger.info("Successfully connected to Elasticsearch")
+            logger.debug("Successfully connected to Elasticsearch")
         except ESConnectionError as e:
             self._connected = False
             self._client = None

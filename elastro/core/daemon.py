@@ -193,6 +193,7 @@ class ElastroRPCService:
         parser = argparse.ArgumentParser()
         parser.add_argument("index", type=str)
         parser.add_argument("query", type=str, nargs="?", default=None)
+        parser.add_argument("--query", dest="query_option", type=str, default=None)
         parser.add_argument("--size", type=int, default=10)
         parser.add_argument("--from", type=int, default=0, dest="from_")
 
@@ -240,7 +241,8 @@ class ElastroRPCService:
             must_fuzzy=getattr(parsed, "fuzzy", None),
             exclude_match=getattr(parsed, "exclude_match", None),
             exclude_term=getattr(parsed, "exclude_term", None),
-            query_string=getattr(parsed, "query", None),
+            query_string=getattr(parsed, "query_option", None)
+            or getattr(parsed, "query", None),
         )
 
         query_body = {"query": inner_query}

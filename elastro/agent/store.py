@@ -64,6 +64,9 @@ class AgentStore(BaseManager):
         except ElasticModuleError:
             raise
         except Exception as exc:
+            if _is_missing_index(exc):
+                logger.info("Agent index %s is missing; returning empty result", index)
+                return {"hits": {"total": {"value": 0, "relation": "eq"}, "hits": []}}
             logger.error(
                 "agent store search failed index=%s: %s", index, exc, exc_info=True
             )
@@ -92,3 +95,24 @@ class AgentStore(BaseManager):
             raise OperationError(
                 f"Failed to delete_by_query on {index}: {exc}"
             ) from exc
+
+
+_MISSING_INDEX_MARKERS = (
+    "index_not_found",
+    "no such index",
+    "resource_not_found",
+    "not_found_exception",
+)
+
+
+def _is_missing_index(exc: Exception) -> bool:
+    status = getattr(exc, "status_code", None)
+    meta = getattr(exc, "meta", None)
+    if status is None and meta is not None:
+        status = getattr(meta, "status", None)
+    if status == 404:
+        return True
+    if type(exc).__name__ in {"NotFoundError", "NotFoundException"}:
+        return True
+    message = str(exc).lower()
+    return any(marker in message for marker in _MISSING_INDEX_MARKERS)
