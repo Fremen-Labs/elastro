@@ -11,7 +11,11 @@ from elastro.core.errors import (
     OperationError,
     ValidationError,
 )
-from elastro.coverage.validators import CoverageValidator
+from elastro.coverage.validators import (
+    DEFAULT_APM_PATTERNS,
+    DEFAULT_BEATS_PATTERNS,
+    CoverageValidator,
+)
 
 
 def _search_hits(
@@ -162,6 +166,22 @@ def test_search_uses_es_now_freshness_agg(es_client) -> None:
     options = docs.return_value.search.call_args.kwargs["options"]
     fresh = options["aggs"]["fresh"]["filter"]["range"]["@timestamp"]["gte"]
     assert fresh == "now-5m"
+
+
+def test_beats_patterns_include_classic_and_datastream() -> None:
+    assert DEFAULT_BEATS_PATTERNS == (
+        "filebeat-*",
+        "metricbeat-*",
+        "logs-filebeat*",
+        "metrics-metricbeat*",
+    )
+    from elastro.health.collectors.apm_beats import (
+        _BEATS_SEARCH,
+        _INDEX_PATTERNS,
+    )
+
+    assert _INDEX_PATTERNS == DEFAULT_APM_PATTERNS + DEFAULT_BEATS_PATTERNS
+    assert _BEATS_SEARCH == ",".join(DEFAULT_BEATS_PATTERNS)
 
 
 def test_check_all_is_full_gate(es_client) -> None:

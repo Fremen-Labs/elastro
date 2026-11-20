@@ -133,7 +133,8 @@ def templates_apply(
     default=False,
     help=(
         "Full APM+Beats gate: fail unless every default pattern "
-        "(traces-apm*, metrics-apm*, logs-apm*, filebeat-*, metricbeat-*) passes"
+        "(traces-apm*, metrics-apm*, logs-apm*, filebeat-*, metricbeat-*, "
+        "logs-filebeat*, metrics-metricbeat*) passes"
     ),
 )
 @click.option(

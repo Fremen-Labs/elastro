@@ -135,46 +135,80 @@ def beats_ilm_findings(ctx: RuleContext) -> List[Finding]:
     if not data:
         return []
     explains = data.get("ilm") or {}
+    failed = {str(name) for name in (data.get("ilm_explain_failed") or []) if name}
+    skipped = {str(name) for name in (data.get("ilm_skipped") or []) if name}
     unmanaged: List[str] = []
+    unknown: List[str] = []
     for item in data.get("indices") or []:
         if not isinstance(item, dict):
             continue
         name = str(item.get("index") or "").strip()
         if not name or not is_beats_index(name):
             continue
+        if name in skipped:
+            continue
         explain = explains.get(name)
-        if not isinstance(explain, dict) or explain.get("managed") is False:
-            unmanaged.append(name)
-    if not unmanaged:
-        return []
-    logger.info("Beats indices without ILM: %s", len(unmanaged))
-    return [
-        Finding(
-            id="beats.ilm.missing",
-            category="beats",
-            title="Beats index without active ILM",
-            status=FindingStatus.WARN,
-            severity=Severity.MEDIUM,
-            score_impact=8,
-            summary=(
-                f"{len(unmanaged)} Filebeat/Metricbeat index(es) are not ILM-managed."
-            ),
-            affected_resources=unmanaged[:25],
-            source="rule",
-            indicator="beats",
-            remediation=_observe(
-                "coverage.templates",
-                "Apply Beats ILM templates",
-                "elastro coverage templates apply filebeat --dry-run",
-            ),
-            metadata={
-                "count": len(unmanaged),
-                "ilm_truncated": bool(data.get("ilm_truncated")),
-                "ilm_explained": data.get("ilm_explained"),
-                "ilm_explain_failed": data.get("ilm_explain_failed") or [],
-            },
+        if isinstance(explain, dict):
+            if explain.get("managed") is False:
+                unmanaged.append(name)
+            continue
+        if name in failed:
+            unknown.append(name)
+            continue
+        unknown.append(name)
+    findings: List[Finding] = []
+    if unmanaged:
+        logger.info("Beats indices without ILM: %s", len(unmanaged))
+        findings.append(
+            Finding(
+                id="beats.ilm.missing",
+                category="beats",
+                title="Beats index without active ILM",
+                status=FindingStatus.WARN,
+                severity=Severity.MEDIUM,
+                score_impact=8,
+                summary=(
+                    f"{len(unmanaged)} Filebeat/Metricbeat index(es) "
+                    "are not ILM-managed."
+                ),
+                affected_resources=unmanaged[:25],
+                source="rule",
+                indicator="beats",
+                remediation=_observe(
+                    "coverage.templates",
+                    "Apply Beats ILM templates",
+                    "elastro coverage templates apply filebeat --dry-run",
+                ),
+                metadata={
+                    "count": len(unmanaged),
+                    "ilm_explained": data.get("ilm_explained"),
+                },
+            )
         )
-    ]
+    if unknown:
+        findings.append(
+            Finding(
+                id="beats.ilm.explain_unknown",
+                category="beats",
+                title="Beats ILM explain unavailable",
+                status=FindingStatus.WARN,
+                severity=Severity.LOW,
+                score_impact=2,
+                summary=(
+                    f"{len(unknown)} Filebeat/Metricbeat index(es) could not "
+                    "be ILM-explained."
+                ),
+                affected_resources=unknown[:25],
+                source="rule",
+                indicator="beats",
+                metadata={
+                    "count": len(unknown),
+                    "ilm_explain_failed": sorted(failed),
+                    "ilm_truncated": bool(data.get("ilm_truncated")),
+                },
+            )
+        )
+    return findings
 
 
 def apm_rejection_findings(ctx: RuleContext) -> List[Finding]:

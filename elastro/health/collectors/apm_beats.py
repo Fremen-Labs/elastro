@@ -10,20 +10,15 @@ from elastro.core.errors import DocumentError, OperationError
 from elastro.core.ilm import IlmManager
 from elastro.core.index import IndexManager
 from elastro.core.logger import get_logger
+from elastro.coverage.validators import DEFAULT_APM_PATTERNS, DEFAULT_BEATS_PATTERNS
 from elastro.health.collectors.base import CollectContext, CollectorResult
 from elastro.health.manager import HealthManager
 
 logger = get_logger(__name__)
 
-_INDEX_PATTERNS = (
-    "traces-apm*",
-    "metrics-apm*",
-    "logs-apm*",
-    "filebeat-*",
-    "metricbeat-*",
-)
-_APM_SEARCH = "traces-apm*,metrics-apm*,logs-apm*"
-_BEATS_SEARCH = "filebeat-*,metricbeat-*"
+_INDEX_PATTERNS = DEFAULT_APM_PATTERNS + DEFAULT_BEATS_PATTERNS
+_APM_SEARCH = ",".join(DEFAULT_APM_PATTERNS)
+_BEATS_SEARCH = ",".join(DEFAULT_BEATS_PATTERNS)
 _MAX_EXPLAIN = 100
 _MISSING_INDEX_MARKERS = (
     "index_not_found",
@@ -78,6 +73,11 @@ def _collect(ctx: CollectContext) -> Dict[str, Any]:
         except OperationError as exc:
             logger.debug("ILM explain failed for %s: %s", name, exc)
             explain_failed.append(name)
+    skipped = [
+        str(entry.get("index") or "").strip()
+        for entry in ranked[_MAX_EXPLAIN:]
+        if str(entry.get("index") or "").strip()
+    ]
 
     stats: Dict[str, Any] = {}
     try:
@@ -97,6 +97,7 @@ def _collect(ctx: CollectContext) -> Dict[str, Any]:
         "ilm_explained": len(explains),
         "ilm_truncated": truncated,
         "ilm_explain_failed": explain_failed,
+        "ilm_skipped": skipped,
         "stats": stats,
         "freshness": {
             "apm": _freshness(documents, _APM_SEARCH),

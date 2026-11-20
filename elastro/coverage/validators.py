@@ -21,7 +21,12 @@ logger = get_logger(__name__)
 DEFAULT_WINDOW = "15m"
 DEFAULT_MIN_DOCS = 1
 DEFAULT_APM_PATTERNS = ("traces-apm*", "metrics-apm*", "logs-apm*")
-DEFAULT_BEATS_PATTERNS = ("filebeat-*", "metricbeat-*")
+DEFAULT_BEATS_PATTERNS = (
+    "filebeat-*",
+    "metricbeat-*",
+    "logs-filebeat*",
+    "metrics-metricbeat*",
+)
 DEFAULT_ALL_PATTERNS = DEFAULT_APM_PATTERNS + DEFAULT_BEATS_PATTERNS
 _TRACK_TOTAL_HITS_CAP = 10000
 _MISSING_INDEX_MARKERS = (

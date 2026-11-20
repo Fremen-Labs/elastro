@@ -50,6 +50,7 @@ def test_collect_happy_path(es_client) -> None:
     assert "traces-apm-default" in result.data["ilm"]
     assert result.data["ilm_truncated"] is False
     assert result.data["ilm_explained"] == 1
+    assert result.data["ilm_skipped"] == []
 
 
 def test_collect_list_connection_error(es_client) -> None:

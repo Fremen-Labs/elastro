@@ -78,19 +78,35 @@ class TestApmBeatsRules(unittest.TestCase):
         findings = beats_ilm_findings(ctx)
         self.assertEqual(findings[0].id, "beats.ilm.missing")
 
-    def test_beats_missing_explain_is_unmanaged(self) -> None:
+    def test_beats_truncated_explain_is_not_unmanaged(self) -> None:
         ctx = RuleContext(
             collector_data={
                 "apm_beats": {
                     "indices": [{"index": "filebeat-8.15.0"}],
                     "ilm": {},
                     "ilm_truncated": True,
+                    "ilm_skipped": ["filebeat-8.15.0"],
+                    "ilm_explain_failed": [],
+                }
+            }
+        )
+        self.assertEqual(beats_ilm_findings(ctx), [])
+
+    def test_beats_explain_failed_is_unknown(self) -> None:
+        ctx = RuleContext(
+            collector_data={
+                "apm_beats": {
+                    "indices": [{"index": "filebeat-8.15.0"}],
+                    "ilm": {},
+                    "ilm_explain_failed": ["filebeat-8.15.0"],
+                    "ilm_skipped": [],
                 }
             }
         )
         findings = beats_ilm_findings(ctx)
-        self.assertEqual(findings[0].id, "beats.ilm.missing")
-        self.assertTrue(findings[0].metadata["ilm_truncated"])
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].id, "beats.ilm.explain_unknown")
+        self.assertEqual(findings[0].status, FindingStatus.WARN)
 
     def test_beats_managed_no_finding(self) -> None:
         ctx = RuleContext(
