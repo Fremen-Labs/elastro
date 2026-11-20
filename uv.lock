@@ -315,7 +315,7 @@ wheels = [
 
 [[package]]
 name = "elastro-client"
-version = "1.13.7"
+version = "1.14.0"
 source = { editable = "." }
 dependencies = [
     { name = "click" },

@@ -241,6 +241,86 @@ class TestHealthAssessor(unittest.TestCase):
         rule_ids = {finding.id for finding in report.findings}
         self.assertIn("jvm.heap_pressure.es-node-1", rule_ids)
 
+    def test_custom_feature_apm_not_forwarded_and_filters_findings(self):
+        from elastro.health.models import Finding, Severity
+
+        class _CaptureCollector:
+            name = "health_report"
+            feature = "unset"
+
+            def collect(self, ctx: CollectContext) -> CollectorResult:
+                _CaptureCollector.feature = ctx.options.get("feature")
+                return CollectorResult(
+                    name=self.name,
+                    status="ok",
+                    data={
+                        "report": {},
+                        "findings": [],
+                        "cluster_name": "c",
+                        "status": "green",
+                        "indicators": {},
+                    },
+                )
+
+        registry = CollectorRegistry()
+        registry.register(_CaptureCollector())
+        with unittest.mock.patch("elastro.health.assessor.RuleEngine") as engine:
+            engine.return_value.evaluate.return_value = [
+                Finding(
+                    id="apm.datastream.missing",
+                    category="apm",
+                    title="missing",
+                    status=FindingStatus.FAIL,
+                    severity=Severity.HIGH,
+                    score_impact=15,
+                    summary="missing",
+                    source="rule",
+                    indicator="apm",
+                ),
+                Finding(
+                    id="jvm.heap_pressure.n1",
+                    category="jvm",
+                    title="heap",
+                    status=FindingStatus.WARN,
+                    severity=Severity.HIGH,
+                    score_impact=5,
+                    summary="heap",
+                    source="rule",
+                ),
+            ]
+            report = HealthAssessor(self.mock_client, registry=registry).run(
+                feature="apm"
+            )
+        self.assertIsNone(_CaptureCollector.feature)
+        ids = {item.id for item in report.findings}
+        self.assertEqual(ids, {"apm.datastream.missing"})
+
+    def test_feature_disk_still_forwarded(self):
+        class _CaptureCollector:
+            name = "health_report"
+            feature = "unset"
+
+            def collect(self, ctx: CollectContext) -> CollectorResult:
+                _CaptureCollector.feature = ctx.options.get("feature")
+                return CollectorResult(
+                    name=self.name,
+                    status="ok",
+                    data={
+                        "report": {},
+                        "findings": [],
+                        "cluster_name": "c",
+                        "status": "green",
+                        "indicators": {},
+                    },
+                )
+
+        registry = CollectorRegistry()
+        registry.register(_CaptureCollector())
+        with unittest.mock.patch("elastro.health.assessor.RuleEngine") as engine:
+            engine.return_value.evaluate.return_value = []
+            HealthAssessor(self.mock_client, registry=registry).run(feature="disk")
+        self.assertEqual(_CaptureCollector.feature, "disk")
+
 
 if __name__ == "__main__":
     unittest.main()

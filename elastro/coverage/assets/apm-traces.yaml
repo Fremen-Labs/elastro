@@ -1,0 +1,57 @@
+name: apm-traces
+description: ILM and index template for APM traces data streams (traces-apm*)
+aliases: []
+index_patterns:
+  - traces-apm*
+ilm:
+  policy_name: elastro-apm-traces
+  policy:
+    phases:
+      hot:
+        min_age: 0ms
+        actions:
+          rollover:
+            max_primary_shard_size: 50gb
+            max_age: 1d
+          set_priority:
+            priority: 100
+      warm:
+        min_age: 1d
+        actions:
+          set_priority:
+            priority: 50
+          readonly: {}
+          forcemerge:
+            max_num_segments: 1
+      delete:
+        min_age: 30d
+        actions:
+          delete: {}
+template:
+  index_patterns:
+    - traces-apm*
+  data_stream: {}
+  priority: 180
+  _meta:
+    managed_by: elastro
+    coverage_template: apm-traces
+  template:
+    settings:
+      index.lifecycle.name: elastro-apm-traces
+      index.number_of_shards: 1
+      index.number_of_replicas: 1
+      index.refresh_interval: 5s
+    mappings:
+      properties:
+        "@timestamp":
+          type: date
+        service:
+          properties:
+            name:
+              type: keyword
+            environment:
+              type: keyword
+        host:
+          properties:
+            name:
+              type: keyword

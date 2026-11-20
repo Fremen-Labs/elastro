@@ -120,7 +120,22 @@ See [Health Commands](./health_commands.md) for full option reference.
 
 ---
 
-## 11. `ingest`
+## 11. `coverage`
+**Purpose**: Elasticsearch-side APM and Beats coverage — ILM/index templates, data-arrival checks, and a combined readiness report.
+**Why it's important**: After instrumenting applications, you need a fast, automatable answer to “is data showing up, and is the cluster ready to keep it?” Coverage stays on the Elasticsearch/Kibana side (no SSH, Ansible, or agent deploy).
+
+See [Coverage & Readiness](./coverage.md) for the full command and Python API reference.
+
+- **`templates list` / `templates apply`**: Ship and apply opinionated ILM + index templates (`apm-traces`, `apm-metrics`, `filebeat-logs`, `metricbeat-metrics`). `--dry-run` prints planned bodies; apply requires `--yes` (or an interactive confirm).
+- **`check`**: Validate document counts, freshness, stream presence, and basic field presence (`--service`, `--pattern`, or `--all`). Failed checks exit `2` for CI.
+- **`report`**: Combined readiness report (template apply status + coverage checks + APM/Beats health findings).
+- **`fleet status` / `fleet agents`**: Optional read-only Fleet helpers (Kibana API). Not imported unless the command runs.
+
+Global `-o json|yaml|table` belongs on the root group: `elastro -o json coverage check --all`.
+
+---
+
+## 12. `ingest`
 **Purpose**: Client-side data preparation, formatting, and AI-driven pipeline operations.
 **Why it's important**: Elasticsearch ingest pipelines are powerful but run server-side. The `ingest` commands let you process, sanitize, validate, and format data (like CSV, SQL, Parquet, or NDJSON) locally *before* it reaches your cluster, and provides smart AI tools to rapidly author complex ingest logic.
 

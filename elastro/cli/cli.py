@@ -106,6 +106,7 @@ from elastro.cli.commands.document import (
     update_document,
 )
 from elastro.cli.commands.esql import esql_group
+from elastro.cli.commands.coverage import coverage_group
 from elastro.cli.commands.health import health_group
 from elastro.cli.commands.ilm import ilm_group
 
@@ -316,6 +317,7 @@ cli.add_command(rag_group)
 cli.add_command(daemon_group)
 cli.add_command(esql_group)
 cli.add_command(health_group)
+cli.add_command(coverage_group)
 
 
 def main() -> None:
