@@ -16,6 +16,7 @@ from elastro.cli.errors import confirm_or_exit, exit_from_exception, usage_error
 from elastro.cli.output import format_output
 from elastro.core.client import ElasticsearchClient
 from elastro.core.logger import get_logger
+from elastro.core.script import ScriptManager
 
 console = Console()
 logger = get_logger(__name__)
@@ -41,12 +42,7 @@ def list_scripts(client: ElasticsearchClient) -> None:
     require_client()
     logger.info("script.list")
     try:
-        # Pull cluster state selecting only metadata.stored_scripts
-        response = client.client.cluster.state(
-            metric="metadata", filter_path="metadata.stored_scripts"
-        )
-
-        scripts = response.get("metadata", {}).get("stored_scripts", {})
+        scripts = ScriptManager(client).list_scripts()
         if not scripts:
             console.print("[dim]No scripts found.[/dim]")
             return
@@ -66,7 +62,7 @@ def get_script(client: ElasticsearchClient, id: str) -> None:
     require_client()
     logger.info("script.get id=%s", id)
     try:
-        response = client.client.get_script(id=id)
+        response = ScriptManager(client).get_script(id)
         console.print(format_output(response, output_format="json"))
     except Exception as exc:
         exit_from_exception(exc, logger=logger, action="get script")
@@ -102,7 +98,7 @@ def delete_script(
     require_client()
     logger.info("script.delete id=%s", id)
     try:
-        response = client.client.delete_script(id=id)
+        response = ScriptManager(client).delete_script(id)
         if response.get("acknowledged"):
             console.print(f"[bold green]Success![/bold green] Script '{id}' deleted.")
         else:
@@ -171,12 +167,10 @@ def create_script(
         console.print("[dim]Empty script provided. Aborting.[/dim]")
         return
 
-    script_payload = {"script": {"lang": "painless", "source": script_source}}
-
     require_client()
     logger.info("script.create id=%s", id)
     try:
-        response = client.client.put_script(id=id, body=script_payload)
+        response = ScriptManager(client).put_script(id, script_source)
         if response.get("acknowledged"):
             console.print(f"[bold green]Success![/bold green] Script '{id}' stored.")
         else:
@@ -223,9 +217,7 @@ def execute_script(
     require_client()
     logger.info("script.execute id=%s has_source=%s", id or "-", bool(source))
     try:
-        response = client.client.perform_request(
-            "POST", "/_scripts/painless/_execute", body=payload
-        )
+        response = ScriptManager(client).execute(payload)
         console.print("[bold green]Execution Result:[/bold green]")
         console.print(format_output(response, output_format="json"))
     except Exception as exc:

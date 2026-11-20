@@ -16,6 +16,7 @@ from elastro.cli.context import require_client
 from elastro.cli.errors import exit_from_exception, usage_error
 from elastro.core.client import ElasticsearchClient
 from elastro.core.logger import get_logger
+from elastro.core.script import ScriptManager
 
 console = Console()
 logger = get_logger(__name__)
@@ -212,29 +213,14 @@ def test_command(
             usage_error("Error: --doc must be a valid JSON string.")
 
     try:
-        es = client.get_client()
-        # the es python client perform_request signature in 8.x:
-        # perform_request(method, path, headers=None, params=None, body=None)
         with console.status(
             f"[cyan]Executing script remotely in `{context}` context...[/cyan]"
         ):
-            response = es.perform_request(
-                "POST",
-                "/_scripts/painless/_execute",
-                headers={
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                },
-                body=payload,
-            )
+            body = ScriptManager(client).execute(payload)
 
         console.print(
             Panel("[bold green]✔ Execution Success[/bold green]", border_style="green")
         )
-
-        # In es python 8.x, the response object returns a named tuple where response is `.body`
-        body = response.body if hasattr(response, "body") else response
-        # rich print the JSON body
         console.print_json(data=body)
 
     except Exception as exc:
