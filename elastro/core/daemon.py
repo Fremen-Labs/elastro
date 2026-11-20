@@ -23,7 +23,7 @@ from elastro.cli.output import format_output
 from elastro.config.loader import get_config
 from elastro.core.client import ElasticsearchClient
 from elastro.core.document import DocumentManager
-from elastro.core.query_builder import QueryBuilder
+from elastro.core.query_builder import SearchFilterParser
 
 DAEMON_DEFAULT_HOST = "127.0.0.1"
 DAEMON_DEFAULT_PORT = 9201
@@ -227,7 +227,7 @@ class ElastroRPCService:
 
         doc_manager = DocumentManager(self.client)
 
-        inner_query = QueryBuilder.build_bool_query(
+        inner_query = SearchFilterParser.build_bool_query(
             must_match=getattr(parsed, "match", None),
             must_match_phrase=getattr(parsed, "match_phrase", None),
             must_term=getattr(parsed, "term", None),

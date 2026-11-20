@@ -9,7 +9,7 @@ from typing import Optional, Tuple, Any
 from elastro.core.client import ElasticsearchClient
 from elastro.core.document import DocumentManager
 from elastro.core.errors import OperationError
-from elastro.core.query_builder import QueryBuilder
+from elastro.core.query_builder import SearchFilterParser
 from elastro.cli.output import format_output
 from elastro.cli.completion import complete_indices
 
@@ -207,11 +207,11 @@ def search_documents(
         query_body = json.load(file)
     else:
         # Check if any flags set
-        # If no flags and no query, default to match_all inside QueryBuilder
+        # If no flags and no query, default to match_all inside SearchFilterParser
         # If flags set, build bool query.
 
-        # Build the actual query part using QueryBuilder
-        inner_query = QueryBuilder.build_bool_query(
+        # Build the actual query part using SearchFilterParser
+        inner_query = SearchFilterParser.build_bool_query(
             must_match=list(match) if match else None,
             must_match_phrase=list(match_phrase) if match_phrase else None,
             must_term=list(term) if term else None,

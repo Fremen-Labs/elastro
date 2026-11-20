@@ -1,8 +1,8 @@
 from typing import Dict, Any, List, Optional, Union
 
 
-class QueryBuilder:
-    """Helper class to build Elasticsearch DSL queries from simplified inputs."""
+class SearchFilterParser:
+    """Parse CLI field=value and gte: filter strings into Elasticsearch query dicts."""
 
     @staticmethod
     def parse_range(value: str) -> Dict[str, Any]:
@@ -90,7 +90,7 @@ class QueryBuilder:
             for m in must_range:
                 kv = parse_kv(m)
                 if kv:
-                    r = QueryBuilder.parse_range(kv[1])
+                    r = SearchFilterParser.parse_range(kv[1])
                     if r:
                         must_clauses.append({"range": {kv[0]: r}})
 
@@ -163,3 +163,7 @@ class QueryBuilder:
             return {"match_all": {}}
 
         return {"bool": bool_query}
+
+
+# Deprecated alias kept for one minor; use SearchFilterParser.
+QueryBuilder = SearchFilterParser
