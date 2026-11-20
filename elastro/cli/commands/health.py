@@ -4,6 +4,8 @@ from typing import Callable, Optional, Tuple
 
 import rich_click as click
 
+from elastro.cli.context import require_client
+from elastro.cli.output import format_output
 from elastro.core.client import ElasticsearchClient
 from elastro.core.errors import OperationError
 from elastro.core.logger import get_logger
@@ -19,10 +21,9 @@ from elastro.health.exit_policy import (
 from elastro.health.formatters.render import render_assessment
 from elastro.health.manager import HealthManager
 from elastro.health.models import AssessmentReport, FindingStatus
-from elastro.cli.output import format_output
+from elastro.health.remediation.catalog import CATALOG_ACTION_IDS
 from elastro.health.remediation.display import render_fix_run_result
 from elastro.health.remediation.dry_run import remediation_result_payload
-from elastro.health.remediation.catalog import CATALOG_ACTION_IDS
 from elastro.health.remediation.fix import run_health_fix
 from elastro.health.remediation.models import FixRunResult
 
@@ -273,7 +274,7 @@ def health_assess(
         click.echo("Error: --yes and --force require --fix", err=True)
         raise SystemExit(2)
 
-    client: ElasticsearchClient = ctx.obj
+    client = require_client(ctx)
     logger.info(
         "health assess invoked fix=%s dry_run=%s verbose_report=%s history=%s",
         fix,
@@ -456,7 +457,7 @@ def health_fix(
     elastro health fix --yes --action reroute_failed
     ```
     """
-    client: ElasticsearchClient = ctx.obj
+    client = require_client(ctx)
     logger.info(
         "health fix invoked dry_run=%s yes=%s force=%s index=%s action=%s",
         dry_run,
@@ -533,7 +534,7 @@ def health_score(
     from elastro.health.config import DEFAULT_HISTORY_INDEX
     from elastro.health.history import query_assessment_history
 
-    client: ElasticsearchClient = ctx.obj
+    client = require_client(ctx)
     logger.info(
         "health score invoked timeout=%s history=%s last=%s",
         timeout,
@@ -690,7 +691,7 @@ def health_trends(
     from elastro.health.history import history_cluster_summary, parse_window
     from elastro.health.trends import compute_trends
 
-    client: ElasticsearchClient = ctx.obj
+    client = require_client(ctx)
     output_fmt = _output_format(ctx)
     resolved_index = history_index or DEFAULT_HISTORY_INDEX
 
@@ -800,7 +801,7 @@ def health_nodes(
     from elastro.health.collectors.nodes import NodesCollector
     from elastro.health.formatters.nodes_table import format_nodes_table
 
-    client: ElasticsearchClient = ctx.obj
+    client = require_client(ctx)
     logger.info(
         "health nodes invoked node_id=%s metrics=%s hotspots=%s",
         node_id,
@@ -930,7 +931,7 @@ def health_shards(
         format_shard_analyze_table,
     )
 
-    client: ElasticsearchClient = ctx.obj
+    client = require_client(ctx)
     logger.info(
         "health shards invoked index=%s analyze=%s explain=%s",
         index,
@@ -1024,7 +1025,7 @@ def health_ilm(
     from elastro.health.formatters.ilm_table import format_stuck_ilm_table
     from elastro.health.ilm_status import list_ilm_indices
 
-    client: ElasticsearchClient = ctx.obj
+    client = require_client(ctx)
     logger.info(
         "health ilm invoked stuck_only=%s index=%s",
         stuck_only,
@@ -1081,7 +1082,7 @@ def health_hotspots(ctx: click.Context, variance: float) -> None:
     from elastro.health.formatters.hotspots_table import format_hotspots_table
     from elastro.health.rules.hotspots import hotspot_variance
 
-    client: ElasticsearchClient = ctx.obj
+    client = require_client(ctx)
     logger.info("health hotspots invoked variance=%s", variance)
     output_fmt = _output_format(ctx)
     result = NodesCollector().collect(CollectContext(client=client))
@@ -1145,7 +1146,7 @@ def health_lint(
     from elastro.health.formatters.lint_table import format_lint_table
     from elastro.health.lint import run_lint
 
-    client: ElasticsearchClient = ctx.obj
+    client = require_client(ctx)
     selected = list(categories) if categories else None
     logger.info(
         "health lint invoked categories=%s index=%s",
@@ -1269,7 +1270,7 @@ def _run_health_rollback(
     from elastro.health.audit import HealthAuditLogger
     from elastro.health.remediation.executor import RemediationExecutor
 
-    client: ElasticsearchClient = ctx.obj
+    client = require_client(ctx)
     logger.info(
         "health rollback apply invoked rollback_id=%s dry_run=%s",
         rollback_id,
@@ -1345,7 +1346,7 @@ def health_status(
     elastro health status --wait green --timeout 60s
     ```
     """
-    client: ElasticsearchClient = ctx.obj
+    client = require_client(ctx)
     health_manager = HealthManager(client)
     logger.info(
         "health status invoked level=%s wait=%s timeout=%s fail_on=%s",
@@ -1411,6 +1412,7 @@ def health_report(
     elastro health report --feature disk
     ```
     """
+    require_client()
     health_manager = HealthManager(client)
     logger.info(
         "health report invoked feature=%s verbose=%s",

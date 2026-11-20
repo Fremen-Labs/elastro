@@ -1,15 +1,21 @@
-import rich_click as click
 import json
-from rich.prompt import Prompt, Confirm, IntPrompt
+from typing import Any, Dict
+
+import rich_click as click
 from rich.console import Console
 from rich.panel import Panel
-from elastro.core.client import ElasticsearchClient
-from elastro.utils.templates import TemplateManager
-from elastro.core.errors import OperationError
-from typing import Dict, Any, List
+from rich.prompt import Confirm, IntPrompt, Prompt
+
 from elastro.cli.completion import complete_templates
+from elastro.cli.context import require_client
+from elastro.core.client import ElasticsearchClient
+from elastro.core.errors import OperationError
+from elastro.core.logger import get_logger
+from elastro.utils.templates import TemplateManager
 
 console = Console()
+error_console = Console(stderr=True)
+logger = get_logger(__name__)
 
 
 @click.group("template")
@@ -45,6 +51,8 @@ def list_templates(client: ElasticsearchClient, type: str, name: str) -> None:
     elastro template list --type component
     ```
     """
+    require_client()
+    logger.info("template.list type=%s name=%s", type, name or "*")
     manager = TemplateManager(client)
     try:
         result = manager.list(template_type=type, name=name)
@@ -76,6 +84,8 @@ def get_template(client: ElasticsearchClient, name: str, type: str) -> None:
     elastro template get my-template
     ```
     """
+    require_client()
+    logger.info("template.get name=%s type=%s", name, type)
     manager = TemplateManager(client)
     try:
         result = manager.get(name, template_type=type)
@@ -120,6 +130,14 @@ def delete_template(
     elastro -o json template delete my-template --dry-run
     ```
     """
+    require_client()
+    logger.info(
+        "template.delete name=%s type=%s force=%s dry_run=%s",
+        name,
+        type,
+        force,
+        dry_run,
+    )
     from elastro.cli.deletion import (
         emit_delete_preview,
         preview_template_delete,
@@ -176,6 +194,8 @@ def create_template(
     elastro template create my-template --file ./template.json
     ```
     """
+    require_client()
+    logger.info("template.create name=%s type=%s", name, type)
     manager = TemplateManager(client)
 
     body = json.load(file)
@@ -205,7 +225,8 @@ def wizard(client: ElasticsearchClient) -> None:
     elastro template wizard
     ```
     """
-
+    require_client()
+    logger.info("template.wizard")
     manager = TemplateManager(client)
 
     console.print(Panel.fit("🧙‍♂️ Index Architect Wizard", style="bold blue"))
@@ -304,4 +325,5 @@ def wizard(client: ElasticsearchClient) -> None:
             else:
                 console.print("[bold red]Failed.[/] Not acknowledged.")
         except Exception as e:
-            console.print(f"[bold red]Error:[/]{str(e)}")
+            error_console.print(f"[bold red]Error:[/]{str(e)}")
+            exit(1)

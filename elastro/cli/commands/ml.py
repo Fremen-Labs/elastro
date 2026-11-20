@@ -2,14 +2,27 @@
 Machine Learning commands for the CLI.
 """
 
-import rich_click as click
 from typing import Any
+
+import rich_click as click
 from rich.console import Console
-from rich.prompt import Prompt, Confirm
-from elastro.core.client import ElasticsearchClient
+from rich.prompt import Confirm, Prompt
+
+from elastro.agent.ml import MLManager
+from elastro.agent.models import (
+    MlAnalysisConfig,
+    MlDatafeedConfig,
+    MlDetector,
+    MlJobConfig,
+)
+from elastro.cli.context import require_client
+from elastro.cli.errors import exit_from_exception, stdin_is_tty, usage_error
 from elastro.cli.output import format_output
+from elastro.core.client import ElasticsearchClient
+from elastro.core.logger import get_logger
 
 console = Console()
+logger = get_logger(__name__)
 
 
 @click.group("ml")
@@ -29,6 +42,11 @@ def init_job(client: ElasticsearchClient) -> None:
     This command guides you through deploying a single-metric ML job
     over an existing Index or Datastream without hand-writing JSON.
     """
+    if not stdin_is_tty():
+        usage_error("interactive wizard requires a TTY")
+    require_client()
+    logger.info("ml.init-job")
+
     console.print("\n[bold cyan]Elastro ML Anomaly Detection Wizard[/bold cyan]")
     console.print(
         "This wizard will configure a basic Single Metric anomaly detection job.\n"
@@ -36,7 +54,8 @@ def init_job(client: ElasticsearchClient) -> None:
 
     console.print("[bold]1. Job Definition:[/bold]")
     console.print(
-        "The Job ID must be unique across the cluster. The Index Pattern defines what data the ML node will process."
+        "The Job ID must be unique across the cluster. "
+        "The Index Pattern defines what data the ML node will process."
     )
     # 1. Job ID
     job_id = Prompt.ask("Enter a new [bold]Job ID[/bold]", default="anomaly-job-01")
@@ -49,7 +68,9 @@ def init_job(client: ElasticsearchClient) -> None:
     # 3. Time Field
     console.print("\n[bold]2. Analysis Configuration:[/bold]")
     console.print(
-        "The time field is required to build time-series buckets. The metric field is the actual numerical value being analyzed (e.g., CPU %, response_time_ms)."
+        "The time field is required to build time-series buckets. "
+        "The metric field is the actual numerical value being analyzed "
+        "(e.g., CPU %, response_time_ms)."
     )
     time_field = Prompt.ask("Primary [bold]Time Field[/bold]", default="@timestamp")
 
@@ -62,7 +83,11 @@ def init_job(client: ElasticsearchClient) -> None:
         "The algorithm dictates what mathematical outlier the ML job hunts for."
     )
     function_idx = Prompt.ask(
-        "Select Analysis Function:\n  1. High Mean (Detect Spikes)\n  2. Low Mean (Detect Drops)\n  3. Count (Detect Log Volume Anomalies)\nChoice",
+        "Select Analysis Function:\n"
+        "  1. High Mean (Detect Spikes)\n"
+        "  2. Low Mean (Detect Drops)\n"
+        "  3. Count (Detect Log Volume Anomalies)\n"
+        "Choice",
         choices=["1", "2", "3"],
         default="1",
     )
@@ -70,45 +95,42 @@ def init_job(client: ElasticsearchClient) -> None:
     func_map = {"1": "high_mean", "2": "low_mean", "3": "count"}
     function_type = func_map[function_idx]
 
-    # Generate the ES mapping JSON
-    job_config: dict[str, Any] = {
-        "description": f"Elastro Scaffolded Job: detect '{function_type}' on '{metric_field}'",
-        "analysis_config": {
-            "bucket_span": "15m",
-            "detectors": [
-                {
-                    "function": function_type,
-                    "field_name": metric_field if function_type != "count" else None,
-                }
-            ],
-            "influencers": [],
-        },
-        "data_description": {"time_field": time_field},
-    }
+    detector = MlDetector(function=function_type)
+    if function_type != "count":
+        detector = MlDetector(function=function_type, field_name=metric_field)
 
-    # Scrub null fields
-    if function_type == "count":
-        del job_config["analysis_config"]["detectors"][0]["field_name"]
+    job = MlJobConfig(
+        description=(
+            f"Elastro Scaffolded Job: detect '{function_type}' on '{metric_field}'"
+        ),
+        analysis_config=MlAnalysisConfig(
+            bucket_span="15m",
+            detectors=[detector],
+            influencers=[],
+        ),
+        data_description={"time_field": time_field},
+    )
+    job_config: dict[str, Any] = job.model_dump(mode="json", exclude_none=True)
 
     console.print("\n[bold green]Generated Configuration:[/bold green]")
     console.print(format_output(job_config, output_format="json"))
 
     if not Confirm.ask("\nDeploy this ML Job to the cluster?"):
-        console.print("[dim]Operation aborted.[/dim]")
+        click.echo("Aborted", err=True)
         return
 
     try:
-        # ES API call: PUT _ml/anomaly_detectors/<job_id>
-        response = client.client.ml.put_job(job_id=job_id, body=job_config)
+        manager = MLManager(client)
+        manager.put_job(job_id, job)
         console.print(f"[bold green]Success![/bold green] ML Job '{job_id}' deployed.")
 
-        # Scaffold the datafeed
         datafeed_id = f"datafeed-{job_id}"
-        datafeed_config = {"job_id": job_id, "indices": [index_pattern]}
-        client.client.ml.put_datafeed(datafeed_id=datafeed_id, body=datafeed_config)
+        manager.put_datafeed(
+            datafeed_id, MlDatafeedConfig(job_id=job_id, indices=[index_pattern])
+        )
         console.print(
             f"[bold green]Success![/bold green] Datafeed '{datafeed_id}' attached."
         )
 
-    except Exception as e:
-        console.print(f"[bold red]Error deploying ML Job:[/bold red] {str(e)}")
+    except Exception as exc:
+        exit_from_exception(exc, logger=logger, action="deploy ML job")

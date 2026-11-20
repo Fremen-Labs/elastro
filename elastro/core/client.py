@@ -112,7 +112,7 @@ class ElasticsearchClient:
         self._client: Optional[Elasticsearch] = None
         self._connected = False
 
-        logger.debug(f"Initialized ElasticsearchClient with hosts: {self.hosts}")
+        logger.debug("Initialized ElasticsearchClient with hosts: %s", self.hosts)
 
     @property
     def auth_type(self) -> Optional[str]:
@@ -193,7 +193,7 @@ class ElasticsearchClient:
             ConnectionError: If unable to connect to Elasticsearch
             AuthenticationError: If authentication fails
         """
-        logger.info(f"Connecting to Elasticsearch at {self.hosts}...")
+        logger.info("Connecting to Elasticsearch at %s...", self.hosts)
 
         client_params = self._get_client_params()
 
@@ -210,7 +210,10 @@ class ElasticsearchClient:
             log_auth["api_key"] = "******"
 
         logger.info(
-            f"Connecting with params: hosts={client_params.get('hosts')}, auth={log_auth}, basic_auth={log_params.get('basic_auth')}"
+            "Connecting with params: hosts=%s, auth=%s, basic_auth=%s",
+            client_params.get("hosts"),
+            log_auth,
+            log_params.get("basic_auth"),
         )
 
         try:
@@ -230,12 +233,12 @@ class ElasticsearchClient:
         except ESConnectionError as e:
             self._connected = False
             self._client = None
-            logger.error(f"Connection failed: {str(e)}")
+            logger.error("Connection failed: %s", e)
             raise ConnectionError(f"Failed to connect to Elasticsearch: {str(e)}")
         except AuthenticationException as e:
             self._connected = False
             self._client = None
-            logger.error(f"Authentication failed: {str(e)}")
+            logger.error("Authentication failed: %s", e)
             raise AuthenticationError(f"Authentication failed: {str(e)}")
         except (ConnectionError, AuthenticationError):
             self._connected = False
@@ -244,7 +247,7 @@ class ElasticsearchClient:
         except Exception as e:
             self._connected = False
             self._client = None
-            logger.exception(f"Unexpected connection error: {str(e)}")
+            logger.exception("Unexpected connection error: %s", e)
             raise ConnectionError(
                 f"Unexpected error connecting to Elasticsearch: {str(e)}"
             )
@@ -374,7 +377,7 @@ class ElasticsearchClient:
                 "unassigned_shards": health.get("unassigned_shards"),
             }
 
-            logger.debug(f"Cluster health check: {result.get('status')}")
+            logger.debug("Cluster health check: %s", result.get("status"))
             return result
         except ESConnectionError:
             logger.error("Lost connection during health check")
@@ -382,7 +385,7 @@ class ElasticsearchClient:
                 "Lost connection to Elasticsearch during health check"
             )
         except TransportError as e:
-            logger.error(f"Transport error during health check: {str(e)}")
+            logger.error("Transport error during health check: %s", e)
             raise OperationError(f"Failed to retrieve cluster health: {str(e)}")
         except Exception as e:
             logger.exception("Unexpected error during health check")

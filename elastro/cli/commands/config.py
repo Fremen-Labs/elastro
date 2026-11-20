@@ -2,13 +2,18 @@
 Configuration management commands for the CLI.
 """
 
-import rich_click as click
+import copy
 import json
 import os
+from typing import Any, Dict
+
+import rich_click as click
 import yaml
-import copy
-from typing import Dict, Any, Union
-from elastro.config import get_config, save_config, default_config
+
+from elastro.config import default_config, get_config, save_config
+from elastro.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 CONFIG_PATH = os.path.expanduser("~/.elastic/config.yaml")
 
@@ -46,6 +51,7 @@ def get_config_value(key: str, profile: str) -> None:
     elastro config get elasticsearch.hosts
     ```
     """
+    logger.info("config.get key=%s profile=%s", key, profile)
     config = get_config(profile=profile)
 
     # Handle nested keys (e.g., "elasticsearch.hosts")
@@ -90,6 +96,7 @@ def set_config_value(key: str, value: str, profile: str) -> None:
     elastro config set elasticsearch.hosts '["http://localhost:9200"]'
     ```
     """
+    logger.info("config.set key=%s profile=%s", key, profile)
     config = get_config(profile=profile)
 
     # Parse the value if it looks like JSON
@@ -129,6 +136,7 @@ def list_config(profile: str) -> None:
     elastro config list
     ```
     """
+    logger.info("config.list profile=%s", profile)
     config = get_config(profile=profile)
     masked_config = mask_credentials(config)
     click.echo(yaml.dump(masked_config, default_flow_style=False))
@@ -150,6 +158,7 @@ def init_config(force: bool, profile: str) -> None:
     elastro config init
     ```
     """
+    logger.info("config.init force=%s profile=%s", force, profile)
     config_dir = os.path.dirname(CONFIG_PATH)
 
     # Create config directory if it does not exist
@@ -207,9 +216,10 @@ def run_config_wizard() -> Dict[str, Any]:
     """Run interactive wizard to build configuration."""
     from rich.console import Console
     from rich.panel import Panel
-    from rich.prompt import Prompt, Confirm
+    from rich.prompt import Confirm, Prompt
+
     from elastro.core.client import ElasticsearchClient
-    from elastro.core.errors import ConnectionError, AuthenticationError
+    from elastro.core.errors import AuthenticationError, ConnectionError
 
     console = Console()
     console.print(

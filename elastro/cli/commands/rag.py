@@ -2,15 +2,22 @@
 Graph RAG Commands for Code Flow Mapping.
 """
 
-import rich_click as click
 import os
-from typing import Optional
-from elastro.core.client import ElasticsearchClient
-from elastro.core.rag.ingestor import GraphRAGManager
-from elastro.cli.output import format_output
+
+import rich_click as click
 from rich.console import Console
 
+from elastro.cli.context import require_client
+from elastro.core.client import ElasticsearchClient
+from elastro.core.rag.ingestor import GraphRAGManager
+
+from elastro.core.client import ElasticsearchClient
+from elastro.core.logger import get_logger
+from elastro.core.rag.ingestor import GraphRAGManager
+
 console = Console()
+error_console = Console(stderr=True)
+logger = get_logger(__name__)
 
 
 @click.group("rag")
@@ -49,7 +56,9 @@ def ingest_repo(client: ElasticsearchClient, repo_path: str, index: str) -> None
     elastro rag ingest /path/to/my/go-repo
     ```
     """
+    require_client()
     repo_name = os.path.basename(os.path.abspath(repo_path))
+    logger.info("rag.ingest index=%s repo=%s", index, repo_name)
     console.print(
         f"[bold cyan]🔍 Initializing Graph RAG AST Parsing for '{repo_name}'[/bold cyan]"
     )
@@ -68,7 +77,7 @@ def ingest_repo(client: ElasticsearchClient, repo_path: str, index: str) -> None
         )
 
     except Exception as e:
-        console.print(f"[bold red]❌ RAG Ingestion Failed:[/bold red] {str(e)}")
+        error_console.print(f"[bold red]❌ RAG Ingestion Failed:[/bold red] {str(e)}")
         exit(1)
 
 
@@ -96,7 +105,9 @@ def update_file(client: ElasticsearchClient, file_path: str, index: str) -> None
     elastro rag update elastro/core/rag/ingestor.py
     ```
     """
+    require_client()
     file_name = os.path.basename(file_path)
+    logger.info("rag.update index=%s file=%s", index, file_name)
     console.print(
         f"[bold cyan]🔍 Surgically syncing AST Graph RAG for '{file_name}'[/bold cyan]"
     )
@@ -111,5 +122,5 @@ def update_file(client: ElasticsearchClient, file_path: str, index: str) -> None
         )
 
     except Exception as e:
-        console.print(f"[bold red]❌ RAG File Update Failed:[/bold red] {str(e)}")
+        error_console.print(f"[bold red]❌ RAG File Update Failed:[/bold red] {str(e)}")
         exit(1)

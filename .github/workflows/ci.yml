@@ -61,8 +61,11 @@ jobs:
           fi
 
   unit-core:
-    name: Core and CLI unit tests
+    name: Core and CLI unit tests (${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -70,7 +73,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: |
@@ -79,5 +82,5 @@ jobs:
 
       - name: Run core/CLI unit tests (no live cluster)
         run: |
-          pytest tests/unit/core/ tests/unit/config/ tests/unit/cli/ tests/unit/server/ tests/unit/advanced/ -q
+          pytest tests/unit/core/ tests/unit/config/ tests/unit/cli/ tests/unit/server/ tests/unit/advanced/ tests/unit/utils/ tests/unit/agent/ -q
 

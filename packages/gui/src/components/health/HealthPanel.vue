@@ -3,7 +3,6 @@ import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { ChevronDown, RefreshCw, Wrench } from 'lucide-vue-next'
 import FindingDetailPanel from './FindingDetailPanel.vue'
-import { state } from '../../store'
 import PageHeader from '../ui/PageHeader.vue'
 import AlertBanner from '../ui/AlertBanner.vue'
 import HealthScore from './HealthScore.vue'
@@ -32,9 +31,6 @@ const clusterSummary = ref<ClusterInventorySummary | null>(null)
 const summaryLoading = ref(false)
 const activeFix = ref<string | null>(null)
 const expandedFindings = ref<Record<string, boolean>>({})
-const awaitingToken = ref(false)
-
-const authHeaders = () => ({ Authorization: `Bearer ${state.token}` })
 
 const openFindings = computed((): HealthFinding[] => {
   const findings = assessment.value?.findings
@@ -48,7 +44,7 @@ const displayScore = computed(() => {
   return Number.isFinite(score) ? score : null
 })
 
-const isBusy = computed(() => loading.value || assessing.value || awaitingToken.value)
+const isBusy = computed(() => loading.value || assessing.value)
 
 const clusterLabel = computed(() => props.clusterName || 'cluster')
 
@@ -187,12 +183,12 @@ const sparkline = computed(() => {
 })
 
 const fetchClusterSummary = async () => {
-  if (!state.token || !props.clusterName) return
+  if (!props.clusterName) return
   summaryLoading.value = true
   try {
     const res = await axios.get(
       `${apiBase}/api/cluster/${encodeURIComponent(props.clusterName)}`,
-      { headers: authHeaders(), timeout: 30000 }
+      { timeout: 30000 }
     )
     clusterSummary.value = res.data as ClusterInventorySummary
   } catch {
@@ -203,11 +199,11 @@ const fetchClusterSummary = async () => {
 }
 
 const fetchTrends = async () => {
-  if (!state.token || !props.clusterName) return
+  if (!props.clusterName) return
   try {
     const res = await axios.get(
       `${apiBase}/api/clusters/${encodeURIComponent(props.clusterName)}/health/trends`,
-      { headers: authHeaders(), timeout: 30000, params: { window: '7d', limit: 30 } }
+      { timeout: 30000, params: { window: '7d', limit: 30 } }
     )
     const points = Array.isArray(res.data?.points) ? res.data.points : []
     trendPoints.value = points
@@ -222,11 +218,11 @@ const fetchTrends = async () => {
 }
 
 const fetchNodes = async () => {
-  if (!state.token || !props.clusterName) return
+  if (!props.clusterName) return
   try {
     const res = await axios.get(
       `${apiBase}/api/clusters/${encodeURIComponent(props.clusterName)}/health/nodes`,
-      { headers: authHeaders(), timeout: 30000 }
+      { timeout: 30000 }
     )
     nodes.value = Array.isArray(res.data?.nodes) ? res.data.nodes : []
   } catch {
@@ -245,7 +241,7 @@ const applyPayload = (raw: Record<string, unknown> | null): boolean => {
 const loadFullAssessment = async () => {
   const res = await axios.get(
     `${apiBase}/api/clusters/${encodeURIComponent(props.clusterName)}/health/assess`,
-    { headers: authHeaders(), timeout: 120000, responseType: 'json' }
+    { timeout: 120000, responseType: 'json' }
   )
   return applyPayload(coercePayload(res.data))
 }
@@ -253,7 +249,7 @@ const loadFullAssessment = async () => {
 const loadCachedSnapshot = async () => {
   const scoreRes = await axios.get(
     `${apiBase}/api/clusters/${encodeURIComponent(props.clusterName)}/health/score`,
-    { headers: authHeaders(), timeout: 120000, responseType: 'json' }
+    { timeout: 120000, responseType: 'json' }
   )
 
   const scorePayload = coercePayload(scoreRes.data)
@@ -263,7 +259,7 @@ const loadCachedSnapshot = async () => {
   try {
     const findingsRes = await axios.get(
       `${apiBase}/api/clusters/${encodeURIComponent(props.clusterName)}/health/findings`,
-      { headers: authHeaders(), timeout: 30000, responseType: 'json' }
+      { timeout: 30000, responseType: 'json' }
     )
     if (Array.isArray(findingsRes.data?.findings)) {
       findings = findingsRes.data.findings
@@ -276,12 +272,6 @@ const loadCachedSnapshot = async () => {
 }
 
 const loadAssessment = async (forceRefresh = false) => {
-  if (!state.token) {
-    awaitingToken.value = true
-    return
-  }
-  awaitingToken.value = false
-
   if (!props.clusterName) {
     error.value = 'Cluster name is missing.'
     return
@@ -321,9 +311,14 @@ const applyFix = async (
   finding: HealthFinding,
   action: string,
   indexName?: string,
-  dryRun = false
+  dryRun = true
 ) => {
-  if (!state.token) return
+  if (!dryRun) {
+    const target = indexName ? ` to '${indexName}'` : ''
+    if (!window.confirm(`Apply ${action}${target}? This will mutate the cluster.`)) {
+      return
+    }
+  }
   const key = `${finding.id}:${action}`
   activeFix.value = key
   try {
@@ -334,8 +329,9 @@ const applyFix = async (
         action,
         index_name: indexName,
         dry_run: dryRun,
+        force: !dryRun,
       },
-      { headers: authHeaders(), timeout: 60000 }
+      { timeout: 60000 }
     )
     if (dryRun) {
       alert(`Dry run: ${res.data.planned_api_call || res.data.message}`)
@@ -370,31 +366,13 @@ const suggestCatalogAction = (finding: HealthFinding): string | null => {
 
 const formatRoles = (roles: string[] | undefined) => (Array.isArray(roles) ? roles.join(', ') : '—')
 
-const waitForTokenAndLoad = () => {
-  hasLoaded.value = false
-  assessment.value = null
-  loading.value = true
-
-  if (state.token) {
-    loadAssessment(false)
-    return
-  }
-
-  awaitingToken.value = true
-  const interval = setInterval(() => {
-    if (state.token) {
-      clearInterval(interval)
-      awaitingToken.value = false
-      loadAssessment(false)
-    }
-  }, 100)
-}
-
-onMounted(waitForTokenAndLoad)
+onMounted(() => {
+  loadAssessment(false)
+})
 
 watch(
   () => props.clusterName,
-  () => waitForTokenAndLoad()
+  () => loadAssessment(false)
 )
 </script>
 
@@ -411,10 +389,6 @@ watch(
         </button>
       </template>
     </PageHeader>
-
-    <AlertBanner v-if="awaitingToken" variant="warning">
-      Waiting for security token. Launch via <code>elastro gui</code> if this persists.
-    </AlertBanner>
 
     <AlertBanner v-if="error" variant="error">{{ error }}</AlertBanner>
 

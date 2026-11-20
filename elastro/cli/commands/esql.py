@@ -12,13 +12,18 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import rich_click as click
+from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
 from rich.table import Table
-from rich import box
 
+from elastro.cli.context import require_client
 from elastro.core.client import ElasticsearchClient
+from elastro.core.logger import get_logger
+
+logger = get_logger(__name__)
+error_console = Console(stderr=True)
 
 
 @click.group("esql")
@@ -96,6 +101,13 @@ def esql_query(
     elastro esql query "FROM metrics-* | STATS avg(cpu) BY host" --format csv
     ```
     """
+    logger.info(
+        "esql.query format=%s columnar=%s limit=%s has_file=%s",
+        output_format,
+        columnar,
+        limit if limit is not None else "-",
+        bool(query_file),
+    )
     console = Console()
 
     # Resolve query source
@@ -108,14 +120,16 @@ def esql_query(
         if not sys.stdin.isatty():
             query_text = sys.stdin.read().strip()
         else:
-            console.print(
+            error_console.print(
                 "[bold red]Error:[/bold red] Provide a query string, --file, or pipe via stdin."
             )
             raise SystemExit(1)
 
     if not query_text:
-        console.print("[bold red]Error:[/bold red] Empty query.")
+        error_console.print("[bold red]Error:[/bold red] Empty query.")
         raise SystemExit(1)
+
+    require_client()
 
     # Append limit override if requested
     if limit is not None:
@@ -135,7 +149,6 @@ def esql_query(
         )
     )
 
-    # Execute
     try:
         body: Dict[str, Any] = {"query": query_text}
         if columnar:
@@ -167,12 +180,12 @@ def esql_query(
             else:
                 result = json.loads(str(fallback_response))
         except Exception as e:
-            console.print(
+            error_console.print(
                 f"[bold red]Error:[/bold red] ES|QL requires Elasticsearch 8.11+. {e}"
             )
             raise SystemExit(1)
     except Exception as e:
-        console.print(f"[bold red]Query failed:[/bold red] {e}")
+        error_console.print(f"[bold red]Query failed:[/bold red] {e}")
         raise SystemExit(1)
 
     # Extract columns and values
@@ -288,6 +301,9 @@ def esql_build(
     """
     from elastro.core.esql import ESQLQuery
 
+    logger.info(
+        "esql.build source=%s execute=%s format=%s", source, execute, output_format
+    )
     console = Console()
 
     q = ESQLQuery(source)
@@ -322,7 +338,7 @@ def esql_build(
         # Re-invoke query execution
         ctx = click.get_current_context()
         if ctx is None:
-            console.print("[bold red]Error:[/bold red] No CLI context available.")
+            error_console.print("[bold red]Error:[/bold red] No CLI context available.")
             raise SystemExit(1)
         ctx.invoke(
             esql_query,

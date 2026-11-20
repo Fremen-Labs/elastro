@@ -9,19 +9,52 @@ import copy
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 import yaml
 from dotenv import load_dotenv
 
 from elastro.config.defaults import DEFAULT_CONFIG
 from elastro.core.errors import ConfigurationError
+from elastro.core.logger import get_logger
 
 # Load environment variables from .env file
 load_dotenv()
 
+logger = get_logger(__name__)
+
 # Global configuration object
 _config = None
+
+_SECRET_FILE_MODE = 0o600
+
+
+def restrict_secret_file_mode(path: Union[Path, str]) -> None:
+    """Chmod *path* to 0o600 when the mode is wider than owner read/write.
+
+    A chmod failure is logged and does not raise, so startup still proceeds.
+    """
+    target = os.fspath(path)
+    try:
+        current = os.stat(target).st_mode & 0o777
+        if current & ~_SECRET_FILE_MODE:
+            os.chmod(target, _SECRET_FILE_MODE)
+    except OSError as exc:
+        logger.warning("Failed to restrict mode on %s: %s", target, exc)
+
+
+def write_secret_file(path: Union[Path, str], content: str) -> None:
+    """Write *content* to *path* with mode 0o600."""
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(str(target), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, _SECRET_FILE_MODE)
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        handle.write(content)
+    # O_CREAT does not tighten an existing looser mode; always chmod.
+    try:
+        os.chmod(target, _SECRET_FILE_MODE)
+    except OSError as exc:
+        logger.warning("Failed to restrict mode on %s: %s", target, exc)
 
 
 def load_config(
@@ -130,14 +163,16 @@ def _load_from_file(file_path: str) -> Dict[str, Any]:
 
         if path.suffix == ".yaml" or path.suffix == ".yml":
             with open(path, "r") as f:
-                return yaml.safe_load(f)
+                loaded = yaml.safe_load(f)
         elif path.suffix == ".json":
             with open(path, "r") as f:
-                return json.load(f)
+                loaded = json.load(f)
         else:
             raise ConfigurationError(
                 f"Unsupported configuration file format: {path.suffix}"
             )
+        restrict_secret_file_mode(path)
+        return loaded
     except Exception as e:
         raise ConfigurationError(
             f"Failed to load configuration from {file_path}: {str(e)}"
@@ -408,13 +443,8 @@ def save_config(
 
     path_obj = Path(path)
 
-    # Create directory if it doesn't exist
-    if not path_obj.parent.exists():
-        path_obj.parent.mkdir(parents=True)
-
     try:
-        with open(path_obj, "w") as f:
-            yaml.dump(config, f, default_flow_style=False)
+        write_secret_file(path_obj, yaml.dump(config, default_flow_style=False))
     except Exception as e:
         raise ConfigurationError(f"Failed to save configuration to {path}: {str(e)}")
 

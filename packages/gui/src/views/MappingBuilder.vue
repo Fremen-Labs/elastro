@@ -72,10 +72,6 @@ const deployTemplate = async () => {
     const response = await axios.post(`/api/cluster/${clusterName}/cli`, {
       command: commandToRun,
       stdin: generatedSchema.value
-    }, {
-      headers: {
-        'Authorization': `Bearer ${state.token}`
-      }
     })
 
     if (response.data.exit_code === 0) {

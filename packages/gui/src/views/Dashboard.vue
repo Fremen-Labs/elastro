@@ -16,15 +16,11 @@ const clusterScores = ref<Record<string, number | null>>({})
 const loadingScores = ref(false)
 
 const fetchClusters = async () => {
-  if (!state.token) return
-
   state.loadingClusters = true
   error.value = null
 
   try {
-    const res = await axios.get(`${apiBase}/api/clusters`, {
-      headers: { Authorization: `Bearer ${state.token}` }
-    })
+    const res = await axios.get(`${apiBase}/api/clusters`)
     state.clusters = res.data.clusters
     fetchScores()
   } catch (err: any) {
@@ -39,25 +35,15 @@ const fetchClusters = async () => {
 }
 
 onMounted(() => {
-  if (state.token) {
-    fetchClusters()
-  } else {
-    const checkToken = setInterval(() => {
-      if (state.token) {
-        clearInterval(checkToken)
-        fetchClusters()
-      }
-    }, 100)
-  }
+  fetchClusters()
 })
 
 const unstableCount = () =>
   state.clusters.reduce((acc, c) => acc + (c.unstable_indices || []).length, 0)
 
 const fetchScores = async () => {
-  if (!state.token || state.clusters.length === 0) return
+  if (state.clusters.length === 0) return
   loadingScores.value = true
-  const headers = { Authorization: `Bearer ${state.token}` }
   await Promise.all(
     state.clusters.map(async (cluster) => {
       if (cluster.health === 'offline') {
@@ -66,8 +52,7 @@ const fetchScores = async () => {
       }
       try {
         const res = await axios.get(
-          `${apiBase}/api/clusters/${encodeURIComponent(cluster.name)}/health/score`,
-          { headers }
+          `${apiBase}/api/clusters/${encodeURIComponent(cluster.name)}/health/score`
         )
         clusterScores.value[cluster.name] = res.data.overall_score
       } catch {

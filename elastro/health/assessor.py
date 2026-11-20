@@ -98,7 +98,8 @@ class HealthAssessor:
         ctx.es_version = es_version
 
         logger.info("Starting health assessment (es_version=%s)", es_version)
-        results = _run_collectors(self._registry, ctx, names=collectors)
+        # info() above requires a live client; the collector pool must not reconnect.
+        results = self._registry.run(ctx, names=collectors)
 
         cluster_name = "unknown"
         overall_score = 0
@@ -345,55 +346,3 @@ def _build_default_registry() -> CollectorRegistry:
     for collector in _DEFAULT_COLLECTORS:
         registry.register(collector)
     return registry
-
-
-def _run_collectors(
-    registry: CollectorRegistry,
-    ctx: CollectContext,
-    *,
-    names: Optional[List[str]] = None,
-) -> List:
-    """Run collectors sequentially, sharing health report context with later collectors."""
-    from elastro.health.collectors.base import CollectorResult
-
-    targets = names if names is not None else registry.list()
-    results: List[CollectorResult] = []
-
-    for name in targets:
-        collector = registry.get(name)
-        if collector is None:
-            results.append(
-                CollectorResult(
-                    name=name,
-                    status="skipped",
-                    error=f"Unknown collector: {name}",
-                )
-            )
-            continue
-
-        start = time.monotonic()
-        try:
-            result = collector.collect(ctx)
-        except Exception as exc:
-            logger.warning(
-                "Collector %s failed: %s",
-                name,
-                exc,
-                exc_info=True,
-            )
-            result = CollectorResult(
-                name=name,
-                status="error",
-                error=str(exc),
-                duration_ms=int((time.monotonic() - start) * 1000),
-            )
-        else:
-            if result.duration_ms == 0:
-                result.duration_ms = int((time.monotonic() - start) * 1000)
-
-        if result.name == "health_report" and result.status == "ok":
-            ctx.options["health_report"] = result.data.get("report")
-
-        results.append(result)
-
-    return results

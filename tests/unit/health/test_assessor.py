@@ -131,6 +131,44 @@ class TestHealthAssessor(unittest.TestCase):
         self.assertEqual(report.collectors_run, ["stub"])
         self.assertEqual(report.collectors_failed, [])
 
+    def test_run_records_failed_collector_and_keeps_sibling(self):
+        class _BoomCollector:
+            name = "boom"
+
+            def collect(self, ctx: CollectContext) -> CollectorResult:
+                raise RuntimeError("boom")
+
+        class _DiskStub:
+            name = "disk"
+
+            def collect(self, ctx: CollectContext) -> CollectorResult:
+                from elastro.health.models import Finding, Severity
+
+                finding = Finding(
+                    id="disk.high.node-a",
+                    category="disk",
+                    title="Disk high watermark on node-a",
+                    status=FindingStatus.WARN,
+                    severity=Severity.HIGH,
+                    score_impact=8,
+                    summary="Node disk usage is 92%",
+                    source="collector",
+                )
+                return CollectorResult(
+                    name=self.name,
+                    status="ok",
+                    data={"findings": [finding], "nodes": []},
+                )
+
+        registry = CollectorRegistry()
+        registry.register(_BoomCollector())
+        registry.register(_DiskStub())
+        report = HealthAssessor(self.mock_client, registry=registry).run()
+        self.assertEqual(report.collectors_run, ["boom", "disk"])
+        self.assertEqual(report.collectors_failed, ["boom"])
+        self.assertEqual(len(report.findings), 1)
+        self.assertEqual(report.findings[0].category, "disk")
+
     def test_run_includes_disk_collector_findings(self):
         class _DiskStub:
             name = "disk"

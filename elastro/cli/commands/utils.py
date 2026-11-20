@@ -2,15 +2,21 @@
 Utility commands for the CLI.
 """
 
-import rich_click as click
 import json
 from typing import Optional
+
+import rich_click as click
+
+from elastro.cli.context import require_client
+from elastro.cli.output import format_output
 from elastro.core.client import ElasticsearchClient
-from elastro.utils.templates import TemplateManager
+from elastro.core.errors import OperationError
 from elastro.utils.aliases import AliasManager
 from elastro.utils.health import HealthManager
-from elastro.core.errors import OperationError
-from elastro.cli.output import format_output
+from elastro.utils.templates import TemplateManager
+from elastro.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 @click.command("health")
@@ -51,6 +57,8 @@ def health(
     elastro utils health --wait green --timeout 60s
     ```
     """
+    require_client()
+    logger.info("utils.health level=%s wait=%s", level, wait or "-")
     click.echo(
         click.style(
             "Deprecation: use 'elastro health status' instead (removal in 2.0)",
@@ -91,6 +99,8 @@ def templates() -> None:
 @click.pass_obj
 def list_templates(client: ElasticsearchClient, type: str, name: str) -> None:
     """List index templates."""
+    require_client()
+    logger.info("utils.templates.list type=%s name=%s", type or "-", name or "*")
     template_manager = TemplateManager(client)
 
     try:
@@ -112,6 +122,8 @@ def list_templates(client: ElasticsearchClient, type: str, name: str) -> None:
 @click.pass_obj
 def get_template(client: ElasticsearchClient, name: str, type: str) -> None:
     """Get an index template."""
+    require_client()
+    logger.info("utils.templates.get name=%s type=%s", name, type)
     template_manager = TemplateManager(client)
 
     try:
@@ -141,6 +153,8 @@ def create_template(
     client: ElasticsearchClient, name: str, file: str, type: str
 ) -> None:
     """Create an index template."""
+    require_client()
+    logger.info("utils.templates.create name=%s type=%s", name, type)
     template_manager = TemplateManager(client)
 
     # Load template definition
@@ -179,6 +193,14 @@ def delete_template(
     dry_run: bool,
 ) -> None:
     """Delete an index template."""
+    require_client()
+    logger.info(
+        "utils.templates.delete name=%s type=%s force=%s dry_run=%s",
+        name,
+        type,
+        force,
+        dry_run,
+    )
     from elastro.cli.deletion import (
         emit_delete_preview,
         preview_template_delete,
@@ -234,6 +256,8 @@ def list_aliases(client: ElasticsearchClient, index: str, name: str) -> None:
     elastro utils aliases list --index "logs-*"
     ```
     """
+    require_client()
+    logger.info("utils.aliases.list index=%s name=%s", index or "*", name or "*")
     alias_manager = AliasManager(client)
 
     try:
@@ -276,6 +300,8 @@ def create_alias(
     elastro utils aliases create logs-write logs-00001 --is-write-index
     ```
     """
+    require_client()
+    logger.info("utils.aliases.create name=%s index=%s", name, index)
     alias_manager = AliasManager(client)
 
     # Parse filter if provided
@@ -332,6 +358,14 @@ def delete_alias(
     elastro -o json utils aliases delete my-alias my-index --dry-run
     ```
     """
+    require_client()
+    logger.info(
+        "utils.aliases.delete name=%s index=%s force=%s dry_run=%s",
+        name,
+        index,
+        force,
+        dry_run,
+    )
     from elastro.cli.deletion import (
         emit_delete_preview,
         preview_alias_delete,

@@ -8,6 +8,10 @@ import sys
 
 import rich_click as click
 
+from elastro.core.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 @click.group("daemon")
 def daemon_group() -> None:
@@ -35,6 +39,7 @@ def start(port: int, host: str) -> None:
     The daemon binds to loopback (127.0.0.1 by default) and requires a shared secret.
     Non-localhost binds are refused.
     """
+    logger.info("daemon.start host=%s port=%s", host, port)
     try:
         from elastro.core.daemon import (
             DaemonBindError,
@@ -64,6 +69,7 @@ def start(port: int, host: str) -> None:
 )
 def status(port: int, host: str) -> None:
     """Check if the Daemon is active via XML-RPC (not HTTP /health)."""
+    logger.info("daemon.status host=%s port=%s", host, port)
     from elastro.core.daemon import probe_daemon
 
     online, detail = probe_daemon(host=host, port=port)

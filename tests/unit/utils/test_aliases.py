@@ -344,7 +344,9 @@ class TestAliasManager:
         # Test listing aliases for a specific index
         result = alias_manager.list(index="index1")
         assert set(result) == {"alias1", "alias2"}
-        mock_elasticsearch.indices.get_alias.assert_called_once_with(index="index1")
+        mock_elasticsearch.indices.get_alias.assert_called_once_with(
+            index="index1", name="*"
+        )
 
     def test_list_aliases_error(self, alias_manager, mock_elasticsearch):
         """Test error handling when listing aliases."""

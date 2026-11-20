@@ -6,7 +6,13 @@ import rich_click as click
 from rich.console import Console
 from rich.table import Table
 
+from elastro.cli.context import require_client
+from elastro.cli.errors import confirm_or_exit, exit_from_exception
 from elastro.core.client import ElasticsearchClient
+from elastro.core.logger import get_logger
+from elastro.core.tasks import TaskManager
+
+logger = get_logger(__name__)
 
 
 @click.group(name="tasks")
@@ -27,10 +33,11 @@ def list_tasks(client: ElasticsearchClient, action: str, detailed: bool) -> None
     """
     List active node tasks.
     """
+    require_client()
     console = Console()
+    logger.info("tasks.list action=%s detailed=%s", action or "*", detailed)
     try:
-        es = client.client
-        res = es.tasks.list(detailed=detailed, actions=action)
+        res = TaskManager(client).list_tasks(action=action, detailed=detailed)
 
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("Task ID")
@@ -66,32 +73,32 @@ def list_tasks(client: ElasticsearchClient, action: str, detailed: bool) -> None
 
         console.print(f"Found {count} active tasks:")
         console.print(table)
-    except Exception as e:
-        console.print(f"[bold red]Tasks Error:[/bold red] {str(e)}")
+    except Exception as exc:
+        exit_from_exception(exc, logger=logger, action="list tasks")
 
 
 @tasks_group.command(name="cancel")
 @click.argument("task_id")
+@click.option(
+    "--yes",
+    is_flag=True,
+    help="Confirm cancellation without prompting (required when stdin is not a TTY)",
+)
 @click.pass_obj
-def cancel_task(client: ElasticsearchClient, task_id: str) -> None:
+def cancel_task(client: ElasticsearchClient, task_id: str, yes: bool) -> None:
     """
     Cancel an active task.
 
     TASK_ID must be in format <node_id>:<task_id>.
     """
+    confirm_or_exit(f"Cancel task '{task_id}'?", yes=yes)
+    require_client()
     console = Console()
+    logger.info("tasks.cancel task_id=%s", task_id)
     try:
-        es = client.client
-        res = es.tasks.cancel(task_id=task_id)
-
-        if res.get("node_failures"):
-            console.print(
-                "[bold red]Task Cancellation Encountered Node Failures![/bold red]"
-            )
-            console.print(res["node_failures"])
-        else:
-            console.print(
-                f"[bold green]Successfully requested cancellation for: {task_id}[/bold green]"
-            )
-    except Exception as e:
-        console.print(f"[bold red]Cancellation Error:[/bold red] {str(e)}")
+        TaskManager(client).cancel(task_id)
+        console.print(
+            f"[bold green]Successfully requested cancellation for: {task_id}[/bold green]"
+        )
+    except Exception as exc:
+        exit_from_exception(exc, logger=logger, action="cancel task")

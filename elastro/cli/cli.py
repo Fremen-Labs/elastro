@@ -6,40 +6,57 @@ This module defines the main CLI structure using Click.
 
 import sys
 
+
+def _try_doc_search_fast_path(argv: list[str]) -> bool:
+    """Attempt daemon XML-RPC search. True if a result was printed.
+
+    Restores the previous socket default timeout before returning so a
+    50 ms process-wide timeout cannot leak into the Click CLI.
+    """
+    if len(argv) < 3 or argv[1] != "doc" or argv[2] != "search":
+        return False
+    if "--help" in argv or "-h" in argv:
+        return False
+
+    import os
+    import socket
+    import xmlrpc.client
+
+    token = os.environ.get("ELASTRO_DAEMON_TOKEN")
+    token_path = os.path.expanduser("~/.elastic/daemon.token")
+    if not token:
+        try:
+            with open(token_path, encoding="utf-8") as token_file:
+                token = token_file.read().strip()
+        except OSError:
+            token = None
+    if not token:
+        from elastro.core.logger import get_logger
+
+        get_logger("elastro.cli").debug("daemon token missing at %s", token_path)
+        return False
+
+    previous_timeout = socket.getdefaulttimeout()
+    try:
+        socket.setdefaulttimeout(0.05)
+        proxy = xmlrpc.client.ServerProxy("http://127.0.0.1:9201")
+        result = proxy.fast_path_search(token, argv[3:])
+        if result:
+            print(result, end="")
+            return True
+        return False
+    except (OSError, TimeoutError, socket.timeout, xmlrpc.client.Error):
+        return False
+    finally:
+        socket.setdefaulttimeout(previous_timeout)
+
+
 # --- FAST PATH INTERCEPTOR ---
 # Must run before any other heavy imports to avoid the ~214ms startup penalty
 if len(sys.argv) >= 3 and sys.argv[1] == "doc" and sys.argv[2] == "search":
-    # Only use the fast path if '--help' is not requested
     if "--help" not in sys.argv and "-h" not in sys.argv:
-        try:
-            import os
-            import socket
-            import xmlrpc.client
-
-            # Set a very short timeout so we fallback to heavy CLI if daemon is offline
-            socket.setdefaulttimeout(0.05)
-            token = os.environ.get("ELASTRO_DAEMON_TOKEN")
-            if not token:
-                token_path = os.path.expanduser("~/.elastic/daemon.token")
-                try:
-                    with open(token_path, encoding="utf-8") as token_file:
-                        token = token_file.read().strip()
-                except OSError:
-                    token = None
-            if not token:
-                raise RuntimeError("daemon token missing")
-            proxy = xmlrpc.client.ServerProxy("http://127.0.0.1:9201")
-
-            result = proxy.fast_path_search(token, sys.argv[3:])
-            if result:
-                print(result, end="")
-                sys.exit(0)
-        except Exception as e:
-            # If the daemon is offline or crashes, silently fall through
-            # to the normal heavy Click execution.
-            import logging
-
-            logging.getLogger("elastro.cli").debug(f"Fast-path daemon bypass: {e}")
+        if _try_doc_search_fast_path(sys.argv):
+            sys.exit(0)
 # --- END FAST PATH INTERCEPTOR ---
 
 import os
@@ -182,20 +199,13 @@ def cli(
         max_retries=cfg["elasticsearch"]["max_retries"],
     )
 
-    # Establish connection
+    # Establish connection. Do not exit here: config/gui/daemon still run
+    # when the cluster is down. Client-using callbacks call require_client.
     try:
         client.connect()
-    except Exception as e:
-        if verbose:
-            click.echo(f"Failed to connect to Elasticsearch: {e}", err=True)
-        # We don't exit here because some commands might not need connection (e.g. config),
-        # but most do. For now, let's let individual commands fail if they need connection,
-        # or better, just Log it. client.connect() raises ConnectionError.
-        # Actually, if we fail to connect, most commands will fail.
-        # Let's print a warning but continue, as 'config' commands shouldn't fail.
-        pass
+    except Exception as exc:
+        ctx.meta["connection_error"] = exc
 
-    # Store in context
     ctx.obj = client
 
 

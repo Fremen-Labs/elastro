@@ -23,10 +23,11 @@ class TestRemediationCatalog:
         planned = RemediationCatalog.planned_call(
             "reduce_replicas",
             "logs-2024",
-            api_mode=True,
+            api_payload=True,
         )
         assert "logs-2024" in planned
         assert "number_of_replicas" in planned
+        assert "auto_expand_replicas" in planned
 
     def test_triggers_remediation_scan(self):
         assert RemediationCatalog.triggers_remediation_scan("elastro health fix")
@@ -53,7 +54,7 @@ class TestRemediationExecutor:
         assert result.success is True
         assert "PUT /logs-2024/_settings" in (result.planned_api_call or "")
 
-    def test_non_interactive_executes_with_api_mode(self, client):
+    def test_api_payload_does_not_auto_confirm(self, client):
         with patch(
             "elastro.health.remediation.executor.RemediationCatalog.execute",
             return_value="done",
@@ -62,7 +63,25 @@ class TestRemediationExecutor:
                 client,
                 dry_run=False,
                 interactive=False,
-                api_mode=True,
+                api_payload=True,
+            )
+            result = executor.execute_action("reroute_failed", None)
+
+        assert result.executed is False
+        assert result.message == "Skipped by user"
+        mock_execute.assert_not_called()
+
+    def test_non_interactive_executes_with_force(self, client):
+        with patch(
+            "elastro.health.remediation.executor.RemediationCatalog.execute",
+            return_value="done",
+        ) as mock_execute:
+            executor = RemediationExecutor(
+                client,
+                dry_run=False,
+                interactive=False,
+                api_payload=True,
+                force=True,
             )
             result = executor.execute_action("reroute_failed", None)
 
@@ -71,12 +90,13 @@ class TestRemediationExecutor:
         assert result.message == "done"
         mock_execute.assert_called_once()
 
-    def test_non_interactive_confirm_requires_yes(self, client):
+    def test_non_interactive_confirm_requires_force(self, client):
         executor = RemediationExecutor(
             client,
             dry_run=False,
             interactive=False,
-            auto_yes=False,
+            auto_yes=True,
+            force=False,
         )
         result = executor.execute_action("reroute_failed", None)
         assert result.executed is False

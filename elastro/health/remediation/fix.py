@@ -36,7 +36,7 @@ def run_health_fix(
     action_filter: Optional[str] = None,
     target_replicas: Optional[int] = None,
     interactive: bool = True,
-    api_mode: bool = False,
+    api_payload: bool = False,
     session_id: Optional[str] = None,
     cluster_name: Optional[str] = None,
     audit_logger: Optional["HealthAuditLogger"] = None,
@@ -52,7 +52,7 @@ def run_health_fix(
         interactive=interactive and not preview,
         auto_yes=auto_yes,
         force=force,
-        api_mode=api_mode and not preview,
+        api_payload=api_payload and not preview,
         confirm=confirm,
         session_id=resolved_session,
         audit_logger=None if preview else audit_logger,
@@ -75,7 +75,7 @@ def run_health_fix(
             action_filter,
             index_pattern=index_pattern,
             target_replicas=target_replicas,
-            api_mode=api_mode,
+            api_payload=api_payload,
         )
     else:
         planned = RemediationPlanner.plan_from_diagnoses(
@@ -84,7 +84,7 @@ def run_health_fix(
             index_pattern=index_pattern,
             action_filter=action_filter,
             target_replicas=target_replicas,
-            api_mode=api_mode,
+            api_payload=api_payload,
         )
         if action_filter and not planned and action_filter in CATALOG_ACTION_IDS:
             planned = RemediationPlanner.plan_explicit(
@@ -92,7 +92,7 @@ def run_health_fix(
                 action_filter,
                 index_pattern=index_pattern,
                 target_replicas=target_replicas,
-                api_mode=api_mode,
+                api_payload=api_payload,
             )
 
     if plan_only:
@@ -111,7 +111,6 @@ def run_health_fix(
         interactive=interactive,
         auto_yes=auto_yes,
         force=force,
-        api_mode=api_mode,
         confirm=confirm,
         prompt=prompt,
     )

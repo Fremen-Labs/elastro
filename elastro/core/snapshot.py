@@ -179,6 +179,7 @@ class SnapshotManager(BaseManager):
         include_global_state: bool = False,
         wait_for_completion: bool = False,
         metadata: Optional[Dict[str, Any]] = None,
+        partial: bool = False,
     ) -> Dict[str, Any]:
         """
         Create a snapshot.
@@ -191,6 +192,7 @@ class SnapshotManager(BaseManager):
             include_global_state: Whether to include cluster state
             wait_for_completion: Whether to wait for snapshot to complete
             metadata: Optional metadata to add to snapshot
+            partial: Allow a partial snapshot when some shards cannot be snapshotted
 
         Returns:
             Snapshot response (status or info)
@@ -204,6 +206,7 @@ class SnapshotManager(BaseManager):
                 "indices": indices,
                 "ignore_unavailable": ignore_unavailable,
                 "include_global_state": include_global_state,
+                "partial": partial,
             }
             if metadata:
                 body["metadata"] = metadata
@@ -292,3 +295,35 @@ class SnapshotManager(BaseManager):
         except Exception as e:
             logger.error(f"Failed to restore snapshot '{snapshot}': {str(e)}")
             raise OperationError(f"Failed to restore snapshot '{snapshot}': {str(e)}")
+
+    def get_snapshot_status(
+        self,
+        repository: Optional[str] = None,
+        snapshot: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get snapshot status.
+
+        Args:
+            repository: Optional repository name
+            snapshot: Optional snapshot name (ignored unless repository is set)
+
+        Returns:
+            Snapshot status payload
+        """
+        try:
+            logger.debug(
+                f"Getting snapshot status repository={repository} snapshot={snapshot}"
+            )
+            self._ensure_connected()
+            es = self._client.get_client()
+            if repository and snapshot:
+                response = es.snapshot.status(repository=repository, snapshot=snapshot)
+            elif repository:
+                response = es.snapshot.status(repository=repository)
+            else:
+                response = es.snapshot.status()
+            return self._handle_response(response)
+        except Exception as e:
+            logger.error(f"Failed to get snapshot status: {str(e)}")
+            raise OperationError(f"Failed to get snapshot status: {str(e)}")

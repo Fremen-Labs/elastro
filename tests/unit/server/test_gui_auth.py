@@ -1,12 +1,13 @@
 """GUI session cookie / claim-code auth tests (no live ES)."""
 
+from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
 from elastro.server import (
     GUI_TOKEN_COOKIE,
     ElastroGUI,
     gui_claim_url,
-    inject_gui_token_shim,
+    set_gui_session_cookie,
 )
 
 
@@ -53,13 +54,34 @@ def test_claim_sets_cookie_and_is_single_use():
     assert first.status_code == 302
     assert GUI_TOKEN_COOKIE in first.cookies
     assert first.cookies[GUI_TOKEN_COOKIE] == gui.token
+    set_cookie = first.headers.get("set-cookie") or ""
+    lower = set_cookie.lower()
+    assert "httponly" in lower
+    assert "samesite=strict" in lower
+    assert "path=/" in lower
+    assert "max-age=86400" in lower
+    assert "domain=" not in lower
 
     replay = client.get(f"/auth/claim?code={code}")
     assert replay.status_code == 401
 
 
-def test_token_shim_injected():
-    html = "<html><head></head><body></body></html>"
-    out = inject_gui_token_shim(html)
-    assert "elastro_gui_token" in out
-    assert "URLSearchParams.prototype.get" in out
+def test_set_gui_session_cookie_is_httponly():
+    response = Response()
+    set_gui_session_cookie(response, "secret-token")
+    header = response.headers.get("set-cookie") or ""
+    lower = header.lower()
+    assert GUI_TOKEN_COOKIE in header
+    assert "httponly" in lower
+    assert "samesite=strict" in lower
+    assert "path=/" in lower
+    assert "max-age=86400" in lower
+    assert "domain=" not in lower
+
+
+def test_served_html_does_not_contain_token_shim():
+    gui = ElastroGUI()
+    client = TestClient(gui.app)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "URLSearchParams.prototype.get" not in response.text

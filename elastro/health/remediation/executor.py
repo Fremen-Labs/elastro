@@ -78,7 +78,7 @@ class RemediationExecutor:
         auto_yes: bool = False,
         force: bool = False,
         confirm: Optional[ConfirmFn] = None,
-        api_mode: bool = False,
+        api_payload: bool = False,
         session_id: Optional[str] = None,
         rollback_store: Optional[RollbackStore] = None,
         audit_logger: Optional["HealthAuditLogger"] = None,
@@ -90,7 +90,7 @@ class RemediationExecutor:
         self.auto_yes = auto_yes
         self.force = force
         self._confirm = confirm
-        self.api_mode = api_mode
+        self.api_payload = api_payload
         self._session_id = session_id or str(uuid4())
         self._rollback_store = rollback_store or RollbackStore()
         self._audit = audit_logger
@@ -112,17 +112,16 @@ class RemediationExecutor:
             return False
         if confirmed is not None:
             return confirmed
-        if self.api_mode:
-            return True
-        if not self.interactive:
-            if safety == RemediationSafety.DESTRUCTIVE:
-                return self.auto_yes and self.force
-            if safety in {RemediationSafety.CONFIRM, RemediationSafety.SUGGEST}:
-                return self.auto_yes
-            return self.auto_yes
-        if self._confirm is not None:
-            return self._confirm(prompt, default)
-        return default
+        if (
+            safety in {RemediationSafety.CONFIRM, RemediationSafety.DESTRUCTIVE}
+            and not self.interactive
+        ):
+            return self.force
+        if self.interactive:
+            if self._confirm is not None:
+                return self._confirm(prompt, default)
+            return default
+        return True
 
     def execute_action(
         self,
@@ -157,7 +156,7 @@ class RemediationExecutor:
         planned = RemediationCatalog.planned_call(
             action_id,
             index_name,
-            api_mode=self.api_mode,
+            api_payload=self.api_payload,
             target_replicas=resolved_target,
         )
 
@@ -229,7 +228,7 @@ class RemediationExecutor:
                 action_id,
                 self._index_manager,
                 index_name,
-                api_mode=self.api_mode,
+                api_payload=self.api_payload,
                 target_replicas=resolved_target,
             )
             result = RemediationResult(

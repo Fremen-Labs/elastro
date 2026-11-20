@@ -29,6 +29,22 @@ class TestRemediationSafety:
             force=True,
         )
 
+    def test_can_auto_confirm_confirm_tier_with_yes_without_force(self):
+        assert can_auto_confirm(
+            RemediationSafety.CONFIRM,
+            auto_yes=True,
+            force=False,
+        )
+
+    def test_can_auto_confirm_rejects_payload_kwargs(self):
+        with pytest.raises(TypeError):
+            can_auto_confirm(
+                RemediationSafety.CONFIRM,
+                auto_yes=False,
+                force=False,
+                api_payload=True,
+            )
+
     def test_refusal_message_for_destructive_without_force(self):
         planned = PlannedAction(
             action_id="reduce_replicas",
@@ -78,6 +94,14 @@ class TestRemediationSafety:
         )
         decision = gate.decide(planned)
         assert decision.execute is True
+
+    def test_gate_rejects_payload_kwargs(self):
+        with pytest.raises(TypeError):
+            RemediationSafetyGate(
+                dry_run=False,
+                interactive=False,
+                api_payload=True,
+            )
 
     def test_gate_typed_confirm_for_destructive(self):
         planned = PlannedAction(

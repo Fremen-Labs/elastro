@@ -2,7 +2,6 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft } from 'lucide-vue-next'
-import { state } from '../store'
 import axios from 'axios'
 import { AnsiUp } from 'ansi_up'
 import PageHeader from '../components/ui/PageHeader.vue'
@@ -26,15 +25,11 @@ const activeModal = ref<'nodes' | 'indices' | 'ilm' | 'backups' | null>(null)
 const closeModal = () => { activeModal.value = null }
 
 const fetchClusterDetails = async () => {
-  if (!state.token) return
-  
   loading.value = true
   error.value = null
   
   try {
-    const res = await axios.get(`${apiBase}/api/cluster/${encodeURIComponent(clusterName.value)}`, {
-      headers: { Authorization: `Bearer ${state.token}` }
-    })
+    const res = await axios.get(`${apiBase}/api/cluster/${encodeURIComponent(clusterName.value)}`)
     details.value = res.data
   } catch (err: any) {
     if (err.response?.status === 401) {
@@ -50,16 +45,7 @@ const fetchClusterDetails = async () => {
 }
 
 onMounted(() => {
-  if (state.token) {
-    fetchClusterDetails()
-  } else {
-    const checkToken = setInterval(() => {
-      if (state.token) {
-        clearInterval(checkToken)
-        fetchClusterDetails()
-      }
-    }, 100)
-  }
+  fetchClusterDetails()
 })
 
 const getHealthColor = healthColor
@@ -71,12 +57,9 @@ const unhealthyLoading = ref(false)
 const activeFix = ref<string | null>(null)
 
 const fetchUnhealthyIndices = async () => {
-  if (!state.token) return
   unhealthyLoading.value = true
   try {
-    const res = await axios.get(`${apiBase}/api/clusters/${encodeURIComponent(clusterName.value)}/indices/unhealthy`, {
-      headers: { Authorization: `Bearer ${state.token}` }
-    })
+    const res = await axios.get(`${apiBase}/api/clusters/${encodeURIComponent(clusterName.value)}/indices/unhealthy`)
     unhealthyIndices.value = res.data.indices
   } catch (err) {
     console.error("Failed to fetch unhealthy indices", err)
@@ -86,36 +69,43 @@ const fetchUnhealthyIndices = async () => {
 }
 
 const executeFix = async (indexName: string, action: string) => {
-  if (!state.token) return
-  
   if (action === 'reduce_replicas' && indexName.startsWith('.')) {
       const confirmMsg = `WARNING: '${indexName}' appears to be a system or internal index.\n\nElasticsearch heavily protects these indices using 'auto_expand_replicas'. To force the replicas to 0, Elastro must permanently disable auto-expansion for this index. Are you sure you want to proceed?`
       if (!window.confirm(confirmMsg)) return
+  } else if (!window.confirm(`Apply ${action} to '${indexName}'? This will mutate the cluster.`)) {
+      return
   }
-  
+
   activeFix.value = indexName
   try {
-    await axios.post(
+    const res = await axios.post(
       `${apiBase}/api/clusters/${encodeURIComponent(clusterName.value)}/indices/${encodeURIComponent(indexName)}/fix`,
-      { action },
-      { headers: { Authorization: `Bearer ${state.token}` } }
+      { action, dry_run: false, force: true }
     )
-    
-    // Optimistic UI: Immediately remove the index from the unhealthy list to provide instant tactile feedback
+
+    if (res.data?.status === 'dry_run') {
+      alert(`Dry run: ${res.data.planned_api_call || res.data.message || 'No changes applied.'}`)
+      return
+    }
+
+    if (res.data?.status !== 'success') {
+      alert(res.data?.message || 'Failed to apply fix.')
+      return
+    }
+
     if (unhealthyIndices.value) {
       unhealthyIndices.value = unhealthyIndices.value.filter(idx => idx.index !== indexName)
     }
-    
-    // The Elasticsearch background thread takes a moment to process the cluster state change
-    // Wait slightly so the newly polled cluster state reflects the green health
+
     setTimeout(() => {
       fetchUnhealthyIndices()
       fetchClusterDetails()
     }, 1500)
-    
+
   } catch(err: any) {
     console.error("Fix failed", err)
-    alert(err.response?.data?.detail || "Failed to apply fix.")
+    const detail = err.response?.data?.detail
+    alert(typeof detail === 'string' ? detail : 'Failed to apply fix.')
   } finally {
     activeFix.value = null
   }
@@ -189,6 +179,34 @@ const cliHistory = ref<HistoryItem[]>([
 const cliLoading = ref(false)
 const terminalBody = ref<HTMLElement | null>(null)
 
+const postCli = (command: string, confirm: boolean) =>
+  axios.post(
+    `${apiBase}/api/cluster/${encodeURIComponent(clusterName.value)}/cli`,
+    { command, confirm }
+  )
+
+const pushCliResult = (data: { output?: string; exit_code?: number }) => {
+  const ansiUp = new AnsiUp()
+  if (data.output) {
+    cliHistory.value.push({
+      type: data.exit_code === 0 ? 'output' : 'error',
+      text: ansiUp.ansi_to_html(data.output)
+    })
+  } else {
+    cliHistory.value.push({ type: 'system', text: '[Command completed with no output]' })
+  }
+}
+
+const formatCliError = (err: any): string => {
+  const detail = err.response?.data?.detail
+  if (typeof detail === 'string') return detail
+  if (detail && typeof detail === 'object') {
+    if (Array.isArray(detail.argv)) return detail.argv.join(' ')
+    if (typeof detail.code === 'string') return detail.code
+  }
+  return err.message || 'Unknown execution error'
+}
+
 const executeCommand = async () => {
   const cmd = cliInput.value.trim()
   if (!cmd || cliLoading.value) return
@@ -206,28 +224,25 @@ const executeCommand = async () => {
   }, 10)
 
   try {
-    const res = await axios.post(
-      `${apiBase}/api/cluster/${encodeURIComponent(clusterName.value)}/cli`,
-      { command: cmd },
-      { headers: { Authorization: `Bearer ${state.token}` } }
-    )
-    
-    // Convert Typer/Rich VT100 ANSI codes into colorful HTML spans natively 
-    const ansiUp = new AnsiUp()
-    
-    if (res.data.output) {
-       const htmlOutput = ansiUp.ansi_to_html(res.data.output)
-       
-       cliHistory.value.push({ 
-         type: res.data.exit_code === 0 ? 'output' : 'error', 
-         text: htmlOutput 
-       })
-    } else {
-       cliHistory.value.push({ type: 'system', text: '[Command completed with no output]' })
-    }
+    const res = await postCli(cmd, false)
+    pushCliResult(res.data)
   } catch (err: any) {
-    const errorMsg = err.response?.data?.detail || err.message || 'Unknown execution error'
-    cliHistory.value.push({ type: 'error', text: `Error: ${errorMsg}` })
+    if (err.response?.status === 409) {
+      const detail = err.response?.data?.detail
+      const argvLabel = Array.isArray(detail?.argv) ? detail.argv.join(' ') : cmd
+      if (window.confirm(`This command is destructive:\n\n${argvLabel}\n\nConfirm execution?`)) {
+        try {
+          const res = await postCli(cmd, true)
+          pushCliResult(res.data)
+        } catch (retryErr: any) {
+          cliHistory.value.push({ type: 'error', text: `Error: ${formatCliError(retryErr)}` })
+        }
+      } else {
+        cliHistory.value.push({ type: 'system', text: 'Aborted' })
+      }
+    } else {
+      cliHistory.value.push({ type: 'error', text: `Error: ${formatCliError(err)}` })
+    }
   } finally {
     cliLoading.value = false
     

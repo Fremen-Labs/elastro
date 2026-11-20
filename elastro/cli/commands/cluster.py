@@ -5,9 +5,14 @@ Cluster management commands.
 import rich_click as click
 from rich.console import Console
 from rich.table import Table
-from typing import Any
 
+from elastro.cli.context import require_client
+from elastro.cli.errors import confirm_or_exit, exit_from_exception
 from elastro.core.client import ElasticsearchClient
+from elastro.core.cluster import ClusterManager
+from elastro.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 @click.group(name="cluster")
@@ -28,6 +33,7 @@ def explain_allocation(client: ElasticsearchClient, index: str) -> None:
     Runs GET _cluster/allocation/explain to diagnose exactly why a shard is
     sitting in an unassigned (UNASSIGNED) state, returning the node decision logic.
     """
+    require_client()
     click.echo(
         click.style(
             "Deprecation: use 'elastro health shards --explain' instead (removal in 2.0)",
@@ -36,14 +42,9 @@ def explain_allocation(client: ElasticsearchClient, index: str) -> None:
         err=True,
     )
     console = Console()
+    logger.info("cluster.allocation index=%s", index or "*")
     try:
-        es = client.client
-
-        kwargs: dict[str, Any] = {}
-        if index:
-            kwargs["index"] = index
-
-        res = es.cluster.allocation_explain(**kwargs)
+        res = ClusterManager(client).allocation_explain(index=index)
 
         console.print(f"[bold cyan]Index:[/bold cyan] {res.get('index', 'N/A')}")
         console.print(f"[bold cyan]Shard:[/bold cyan] {res.get('shard', 'N/A')}")
@@ -78,8 +79,8 @@ def explain_allocation(client: ElasticsearchClient, index: str) -> None:
             console.print("\n[bold]Node Allocation Decisions:[/bold]")
             console.print(table)
 
-    except Exception as e:
-        console.print(f"[bold red]Allocation Error:[/bold red] {str(e)}")
+    except Exception as exc:
+        exit_from_exception(exc, logger=logger, action="explain allocation")
 
 
 @cluster_group.command(name="settings")
@@ -88,31 +89,47 @@ def explain_allocation(client: ElasticsearchClient, index: str) -> None:
     type=click.Choice(["all", "primaries", "new_primaries", "none"]),
     help="Update cluster.routing.allocation.enable setting (Transient)",
 )
+@click.option(
+    "--yes",
+    is_flag=True,
+    help="Confirm routing changes without prompting (required when stdin is not a TTY)",
+)
 @click.pass_obj
-def cluster_settings(client: ElasticsearchClient, enable_routing: str) -> None:
+def cluster_settings(
+    client: ElasticsearchClient, enable_routing: str, yes: bool
+) -> None:
     """
     View or update cluster routing allocation settings.
 
     If no options are passed, prints the current persistent and transient settings.
     """
+    if enable_routing:
+        confirm_or_exit(
+            f"Set cluster.routing.allocation.enable to '{enable_routing}'?",
+            yes=yes,
+        )
+    require_client()
     console = Console()
+    logger.info(
+        "cluster.settings enable_routing=%s yes=%s",
+        enable_routing or "show",
+        yes,
+    )
     try:
-        es = client.client
-
+        manager = ClusterManager(client)
         if enable_routing:
-            body = {"transient": {"cluster.routing.allocation.enable": enable_routing}}
-            res = es.cluster.put_settings(body=body)
+            manager.enable_routing(enable_routing)
             console.print(
                 f"[bold green]Successfully updated routing allocation to:[/bold green] {enable_routing}"
             )
             return
 
-        res = es.cluster.get_settings(flat_settings=True)
+        res = manager.get_settings(flat_settings=True)
         console.print("[bold cyan]Persistent Settings:[/bold cyan]")
         console.print(res.get("persistent", {}))
 
         console.print("\n[bold cyan]Transient Settings:[/bold cyan]")
         console.print(res.get("transient", {}))
 
-    except Exception as e:
-        console.print(f"[bold red]Settings Error:[/bold red] {str(e)}")
+    except Exception as exc:
+        exit_from_exception(exc, logger=logger, action="cluster settings")

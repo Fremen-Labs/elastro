@@ -4,7 +4,8 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from elastro.core.client import ElasticsearchClient
-from elastro.core.errors import OperationError
+from elastro.core.errors import OperationError, ValidationError
+from elastro.core.snapshot import SnapshotManager as CoreSnapshotManager
 from elastro.utils.snapshots import SnapshotManager, SnapshotConfig, RepositoryConfig
 
 
@@ -90,7 +91,95 @@ class TestSnapshotManager:
         """Test initializing SnapshotManager."""
         manager = SnapshotManager(es_client)
         assert manager._client == es_client
-        assert manager._es == es_client.client
+        assert isinstance(manager._core, CoreSnapshotManager)
+        assert manager._core._client is es_client
+        assert not hasattr(manager, "_es")
+
+    def test_adapter_delegates_to_core_not_es(
+        self, snapshot_manager, mock_elasticsearch
+    ):
+        """Adapter calls core with translated args and never touches ES transport."""
+        core = MagicMock()
+        snapshot_manager._core = core
+
+        core.create_repository.return_value = True
+        repo_config = RepositoryConfig(
+            name="test-repo", type="fs", settings={"location": "/tmp"}
+        )
+        assert snapshot_manager.create_repository(repo_config) is True
+        core.create_repository.assert_called_once_with(
+            "test-repo", "fs", {"location": "/tmp"}
+        )
+
+        core.delete_snapshot.return_value = True
+        assert snapshot_manager.delete_snapshot("test-repo", "test-snap") is True
+        core.delete_snapshot.assert_called_once_with("test-repo", "test-snap")
+
+        core.get_snapshot_status.return_value = {"snapshots": []}
+        assert snapshot_manager.get_snapshot_status("test-repo", "test-snap") == {
+            "snapshots": []
+        }
+        core.get_snapshot_status.assert_called_once_with(
+            repository="test-repo", snapshot="test-snap"
+        )
+
+        core.list_snapshots.return_value = [{"snapshot": "s1"}]
+        assert snapshot_manager.get_snapshot("test-repo") == {
+            "snapshots": [{"snapshot": "s1"}]
+        }
+        core.list_snapshots.assert_called_once_with("test-repo")
+
+        core.get_snapshot.return_value = {"snapshot": "s1"}
+        assert snapshot_manager.get_snapshot("test-repo", "s1") == {
+            "snapshots": [{"snapshot": "s1"}]
+        }
+        core.get_snapshot.assert_called_once_with("test-repo", "s1")
+
+        core.list_repositories.return_value = {"test-repo": {"type": "fs"}}
+        assert snapshot_manager.get_repository() == {"test-repo": {"type": "fs"}}
+        core.list_repositories.assert_called_once_with()
+
+        core.create_snapshot.return_value = {"accepted": True}
+        snap_config = SnapshotConfig(name="s1", indices=["idx"])
+        assert snapshot_manager.create_snapshot("test-repo", snap_config) == {
+            "accepted": True
+        }
+        core.create_snapshot.assert_called_once_with(
+            repository="test-repo",
+            snapshot="s1",
+            indices="idx",
+            ignore_unavailable=False,
+            include_global_state=True,
+            wait_for_completion=False,
+            partial=False,
+        )
+
+        core.restore_snapshot.return_value = {"accepted": True}
+        assert snapshot_manager.restore_snapshot(
+            "test-repo", "s1", indices=["idx"]
+        ) == {"accepted": True}
+        core.restore_snapshot.assert_called_once_with(
+            "test-repo",
+            "s1",
+            indices="idx",
+            rename_pattern=None,
+            rename_replacement=None,
+            wait_for_completion=False,
+        )
+
+        assert mock_elasticsearch.snapshot.mock_calls == []
+
+    def test_validation_error_becomes_operation_error(
+        self, snapshot_manager, mock_elasticsearch
+    ):
+        """Shim maps core ValidationError to OperationError with the old prefix."""
+        with pytest.raises(
+            OperationError,
+            match="Failed to delete repository : Repository name is required",
+        ) as exc_info:
+            snapshot_manager.delete_repository("")
+        assert isinstance(exc_info.value.__cause__, ValidationError)
+        mock_elasticsearch.snapshot.delete_repository.assert_not_called()
 
     def test_create_repository_success(self, snapshot_manager, mock_elasticsearch):
         """Test creating a repository successfully."""
@@ -138,7 +227,7 @@ class TestSnapshotManager:
         # Test error handling
         repo_config = RepositoryConfig(name="test-repo", type="fs")
         with pytest.raises(
-            OperationError, match="Failed to create repository test-repo: Test error"
+            OperationError, match="Failed to create repository 'test-repo': Test error"
         ):
             snapshot_manager.create_repository(repo_config)
 
@@ -163,7 +252,7 @@ class TestSnapshotManager:
         )
 
         with pytest.raises(
-            OperationError, match="Failed to delete repository test-repo: Test error"
+            OperationError, match="Failed to delete repository 'test-repo': Test error"
         ):
             snapshot_manager.delete_repository("test-repo")
 
@@ -201,7 +290,7 @@ class TestSnapshotManager:
 
         result = snapshot_manager.get_repository()
         assert result == mock_response
-        mock_elasticsearch.snapshot.get_repository.assert_called_once_with()
+        mock_elasticsearch.snapshot.get_repository.assert_called_once_with(name="_all")
 
     def test_get_repository_error(self, snapshot_manager, mock_elasticsearch):
         """Test error handling when getting repositories."""
@@ -209,7 +298,7 @@ class TestSnapshotManager:
         mock_elasticsearch.snapshot.get_repository.side_effect = Exception("Test error")
 
         with pytest.raises(
-            OperationError, match="Failed to get repository information: Test error"
+            OperationError, match="Failed to list repositories: Test error"
         ):
             snapshot_manager.get_repository()
 
@@ -278,7 +367,8 @@ class TestSnapshotManager:
 
         snapshot_config = SnapshotConfig(name="test-snapshot")
         with pytest.raises(
-            OperationError, match="Failed to create snapshot test-snapshot: Test error"
+            OperationError,
+            match="Failed to create snapshot 'test-snapshot': Test error",
         ):
             snapshot_manager.create_snapshot("test-repo", snapshot_config)
 
@@ -299,7 +389,8 @@ class TestSnapshotManager:
         mock_elasticsearch.snapshot.delete.side_effect = Exception("Test error")
 
         with pytest.raises(
-            OperationError, match="Failed to delete snapshot test-snapshot: Test error"
+            OperationError,
+            match="Failed to delete snapshot 'test-snapshot': Test error",
         ):
             snapshot_manager.delete_snapshot("test-repo", "test-snapshot")
 
@@ -349,7 +440,8 @@ class TestSnapshotManager:
         mock_elasticsearch.snapshot.get.side_effect = Exception("Test error")
 
         with pytest.raises(
-            OperationError, match="Failed to get snapshot information: Test error"
+            OperationError,
+            match="Failed to list snapshots in 'test-repo': Test error",
         ):
             snapshot_manager.get_snapshot("test-repo")
 
@@ -365,7 +457,7 @@ class TestSnapshotManager:
         mock_elasticsearch.snapshot.restore.assert_called_once_with(
             repository="test-repo",
             snapshot="test-snapshot",
-            body={},
+            body={"indices": "_all"},
             wait_for_completion=False,
         )
 
@@ -399,7 +491,8 @@ class TestSnapshotManager:
         mock_elasticsearch.snapshot.restore.side_effect = Exception("Test error")
 
         with pytest.raises(
-            OperationError, match="Failed to restore snapshot test-snapshot: Test error"
+            OperationError,
+            match="Failed to restore snapshot 'test-snapshot': Test error",
         ):
             snapshot_manager.restore_snapshot("test-repo", "test-snapshot")
 

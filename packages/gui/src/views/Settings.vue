@@ -25,12 +25,9 @@ const clusterForm = ref({
 const authMethod = ref('basic') // 'basic' or 'api_key'
 
 const fetchConfig = async () => {
-  if (!state.token) return
   isLoading.value = true
   try {
-    const res = await axios.get(`${apiBase}/api/clusters`, {
-      headers: { Authorization: `Bearer ${state.token}` }
-    })
+    const res = await axios.get(`${apiBase}/api/clusters`)
     state.clusters = res.data.clusters || []
   } catch (err: any) {
     error.value = "Failed to load cluster details."
@@ -40,8 +37,6 @@ const fetchConfig = async () => {
 }
 
 const saveCluster = async () => {
-  if (!state.token) return
-  
   error.value = null
   successMsg.value = null
   isLoading.value = true
@@ -63,9 +58,7 @@ const saveCluster = async () => {
       }
     }
 
-    await axios.post(`${apiBase}/api/config/clusters`, payload, {
-      headers: { Authorization: `Bearer ${state.token}` }
-    })
+    await axios.post(`${apiBase}/api/config/clusters`, payload)
     
     successMsg.value = `Cluster '${clusterForm.value.name}' added successfully.`
     clusterForm.value = { name: '', host: '', username: '', password: '', api_key: '' }
@@ -82,13 +75,7 @@ const saveCluster = async () => {
 }
 
 onMounted(() => {
-  // Wait for token
-  const checkToken = setInterval(() => {
-    if (state.token) {
-      clearInterval(checkToken)
-      fetchConfig()
-    }
-  }, 100)
+  fetchConfig()
 })
 </script>
 

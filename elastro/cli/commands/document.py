@@ -2,16 +2,22 @@
 Document management commands for the CLI.
 """
 
-import rich_click as click
 import json
 import sys
-from typing import Optional, Tuple, Any
+from typing import Any, Optional, Tuple
+
+import rich_click as click
+
+from elastro.cli.completion import complete_indices
+from elastro.cli.context import require_client
+from elastro.cli.output import format_output
 from elastro.core.client import ElasticsearchClient
 from elastro.core.document import DocumentManager
 from elastro.core.errors import OperationError
-from elastro.core.query_builder import QueryBuilder
-from elastro.cli.output import format_output
-from elastro.cli.completion import complete_indices
+from elastro.core.query_builder import SearchFilterParser
+from elastro.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 @click.command("index", no_args_is_help=True)
@@ -46,6 +52,8 @@ def index_document(
     elastro doc index my-logs --id 123 --file ./user.json
     ```
     """
+    require_client()
+    logger.info("doc.index index=%s id=%s", index, id or "-")
     document_manager = DocumentManager(client)
 
     # Load document data
@@ -87,6 +95,8 @@ def bulk_index(client: ElasticsearchClient, index: str, file: Any) -> None:
     elastro doc bulk my-logs --file ./bulk_data.json
     ```
     """
+    require_client()
+    logger.info("doc.bulk index=%s", index)
     document_manager = DocumentManager(client)
 
     # Load documents data
@@ -123,6 +133,8 @@ def get_document(client: ElasticsearchClient, index: str, id: str) -> None:
     elastro doc get my-logs 123
     ```
     """
+    require_client()
+    logger.info("doc.get index=%s id=%s", index, id)
     document_manager = DocumentManager(client)
 
     try:
@@ -200,6 +212,8 @@ def search_documents(
     elastro doc search my-logs --file ./advanced_query.json
     ```
     """
+    require_client()
+    logger.info("doc.search index=%s size=%s from=%s", index, size, from_)
     document_manager = DocumentManager(client)
 
     # Determine query source
@@ -207,11 +221,11 @@ def search_documents(
         query_body = json.load(file)
     else:
         # Check if any flags set
-        # If no flags and no query, default to match_all inside QueryBuilder
+        # If no flags and no query, default to match_all inside SearchFilterParser
         # If flags set, build bool query.
 
-        # Build the actual query part using QueryBuilder
-        inner_query = QueryBuilder.build_bool_query(
+        # Build the actual query part using SearchFilterParser
+        inner_query = SearchFilterParser.build_bool_query(
             must_match=list(match) if match else None,
             must_match_phrase=list(match_phrase) if match_phrase else None,
             must_term=list(term) if term else None,
@@ -272,6 +286,8 @@ def update_document(
     elastro doc update my-logs 123 --file ./fields.json --partial
     ```
     """
+    require_client()
+    logger.info("doc.update index=%s id=%s partial=%s", index, id, partial)
     document_manager = DocumentManager(client)
 
     # Load document data
@@ -315,6 +331,8 @@ def delete_document(
     elastro -o json doc delete my-logs 123 --dry-run
     ```
     """
+    require_client()
+    logger.info("doc.delete index=%s id=%s dry_run=%s", index, id, dry_run)
     from elastro.cli.deletion import emit_delete_preview, preview_document_delete
 
     if dry_run:
@@ -366,6 +384,8 @@ def bulk_delete(
     elastro -o json doc bulk-delete my-logs --file ./ids.json --dry-run
     ```
     """
+    require_client()
+    logger.info("doc.bulk-delete index=%s dry_run=%s", index, dry_run)
     from elastro.cli.deletion import emit_delete_preview, preview_bulk_document_delete
 
     ids = json.load(file)
