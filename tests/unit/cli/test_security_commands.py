@@ -7,8 +7,15 @@ from click.testing import CliRunner
 from elastro.cli.commands.security import security_group
 
 
-def test_users_transport_error_exits_1() -> None:
+def _client() -> MagicMock:
     client = MagicMock()
+    client.is_connected.return_value = True
+    client.get_client.return_value = client.client
+    return client
+
+
+def test_users_transport_error_exits_1() -> None:
+    client = _client()
     client.client.security.get_user.side_effect = Exception("No node reached")
     result = CliRunner().invoke(security_group, ["users"], obj=client)
 
@@ -19,7 +26,7 @@ def test_users_transport_error_exits_1() -> None:
 
 
 def test_roles_transport_error_exits_1() -> None:
-    client = MagicMock()
+    client = _client()
     client.client.security.get_role.side_effect = Exception("No node reached")
     result = CliRunner().invoke(security_group, ["roles"], obj=client)
 
@@ -29,7 +36,7 @@ def test_roles_transport_error_exits_1() -> None:
 
 
 def test_users_success_exits_0() -> None:
-    client = MagicMock()
+    client = _client()
     client.client.security.get_user.return_value = {
         "elastic": {
             "full_name": "Elastic",

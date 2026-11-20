@@ -10,6 +10,7 @@ from elastro.cli.context import require_client
 from elastro.cli.errors import exit_from_exception
 from elastro.core.client import ElasticsearchClient
 from elastro.core.logger import get_logger
+from elastro.core.security import SecurityManager
 
 logger = get_logger(__name__)
 
@@ -33,12 +34,7 @@ def list_users(client: ElasticsearchClient, username: str) -> None:
     console = Console()
     logger.info("security.users username=%s", username or "*")
     try:
-        es = client.client
-        res = (
-            es.security.get_user(username=username)
-            if username
-            else es.security.get_user()
-        )
+        res = SecurityManager(client).get_users(username)
 
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("Username")
@@ -72,8 +68,7 @@ def list_roles(client: ElasticsearchClient, name: str) -> None:
     console = Console()
     logger.info("security.roles name=%s", name or "*")
     try:
-        es = client.client
-        res = es.security.get_role(name=name) if name else es.security.get_role()
+        res = SecurityManager(client).get_roles(name)
 
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("Role Name")
