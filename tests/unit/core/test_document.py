@@ -2,6 +2,8 @@
 Unit tests for DocumentManager class.
 """
 
+import inspect
+
 import pytest
 from unittest.mock import MagicMock, patch
 from elasticsearch import NotFoundError
@@ -109,13 +111,14 @@ class TestDocumentManager:
 
         # Call the method
         documents = [{"_id": "1", "field1": "value1"}, {"_id": "2", "field1": "value2"}]
-        result = document_manager.bulk_index_sync(
+        result = document_manager.bulk_index(
             index="test_index", documents=documents, refresh=True
         )
 
         # Verify the result
         assert result["errors"] is False
         assert len(result["items"]) == 2
+        assert not inspect.iscoroutine(result)
 
         # Verify the mock was called with correct parameters
         # The operations list should have index operations and documents alternating

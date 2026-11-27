@@ -63,8 +63,8 @@ class TestDatastreamManager:
         assert call_args["body"]["index_patterns"] == [pattern]
         assert call_args["body"]["data_stream"] == {}
         assert call_args["body"]["priority"] == 500
-        assert call_args["body"]["settings"] == settings["settings"]
-        assert call_args["body"]["mappings"] == settings["mappings"]
+        assert call_args["body"]["template"]["settings"] == settings["settings"]
+        assert call_args["body"]["template"]["mappings"] == settings["mappings"]
 
         # Verify validator calls
         self.datastream_manager.validator.validate_index_mappings.assert_called_once_with(
@@ -201,6 +201,33 @@ class TestDatastreamManager:
         assert result == {"acknowledged": True}
         indices.put_index_template.assert_called_once()
         assert indices.create_data_stream.call_count == 2
+        body = indices.put_index_template.call_args[1]["body"]
+        assert body["priority"] == 1_000_000
+        assert body["data_stream"] == {}
+        assert (
+            body["template"]["mappings"]["properties"]["@timestamp"]["type"] == "date"
+        )
+
+    def test_create_datastream_retries_when_matching_template_has_no_data_stream(
+        self,
+    ) -> None:
+        indices = self.mock_client._client.indices
+        indices.create_data_stream.side_effect = [
+            Exception(
+                "matching index template [vorsam-single-node-replicas] "
+                "for data stream [test-datastream] has no data stream template"
+            ),
+            {"acknowledged": True},
+        ]
+        indices.put_index_template.return_value = {"acknowledged": True}
+
+        result = self.datastream_manager.create("test-datastream")
+
+        assert result == {"acknowledged": True}
+        assert indices.create_data_stream.call_count == 2
+        body = indices.put_index_template.call_args[1]["body"]
+        assert body["priority"] == 1_000_000
+        assert body["index_patterns"] == ["test-datastream"]
 
     def test_list_datastreams_success(self):
         """Test successful listing of datastreams."""

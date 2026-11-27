@@ -227,6 +227,35 @@ def test_ilm_start_with_yes_calls_start() -> None:
     client.client.ilm.start.assert_called_once()
 
 
+def test_doc_index_refreshes_by_default() -> None:
+    client = _client()
+    with patch("elastro.cli.commands.document.DocumentManager") as cls:
+        cls.return_value.index.return_value = {"result": "created", "_id": "1"}
+        result = CliRunner().invoke(
+            cli,
+            ["doc", "index", "products", "--id", "1"],
+            input='{"name": "Laptop", "category": "electronics"}\n',
+            obj=client,
+        )
+    assert result.exit_code == 0, result.output
+    kwargs = cls.return_value.index.call_args.kwargs
+    assert kwargs.get("refresh") is True
+
+
+def test_doc_index_no_refresh_flag() -> None:
+    client = _client()
+    with patch("elastro.cli.commands.document.DocumentManager") as cls:
+        cls.return_value.index.return_value = {"result": "created", "_id": "1"}
+        result = CliRunner().invoke(
+            cli,
+            ["doc", "index", "products", "--id", "1", "--no-refresh"],
+            input='{"name": "Laptop"}\n',
+            obj=client,
+        )
+    assert result.exit_code == 0, result.output
+    assert cls.return_value.index.call_args.kwargs.get("refresh") is False
+
+
 def test_doc_search_query_option() -> None:
     client = _client()
     with patch("elastro.cli.commands.document.DocumentManager") as cls:
