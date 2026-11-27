@@ -237,14 +237,16 @@ def cli(
     if verbose:
         cfg["cli"]["verbose"] = verbose
 
-    # Construct only. Client-using callbacks call require_client, which connects.
-    ctx.obj = ElasticsearchClient(
-        hosts=cfg["elasticsearch"]["hosts"],
-        auth=cfg["elasticsearch"]["auth"],
-        timeout=cfg["elasticsearch"]["timeout"],
-        retry_on_timeout=cfg["elasticsearch"]["retry_on_timeout"],
-        max_retries=cfg["elasticsearch"]["max_retries"],
-    )
+    # Construct only when the caller did not inject a client (CliRunner obj=).
+    # Client-using callbacks call require_client, which connects on first use.
+    if ctx.obj is None:
+        ctx.obj = ElasticsearchClient(
+            hosts=cfg["elasticsearch"]["hosts"],
+            auth=cfg["elasticsearch"]["auth"],
+            timeout=cfg["elasticsearch"]["timeout"],
+            retry_on_timeout=cfg["elasticsearch"]["retry_on_timeout"],
+            max_retries=cfg["elasticsearch"]["max_retries"],
+        )
 
 
 @cli.group()

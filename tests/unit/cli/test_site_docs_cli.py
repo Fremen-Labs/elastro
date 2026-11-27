@@ -26,6 +26,22 @@ def test_hoist_skips_non_format_dash_o() -> None:
     assert _hoist_root_output_option(args) == args
 
 
+def test_cli_preserves_injected_obj(monkeypatch) -> None:
+    from unittest.mock import MagicMock
+
+    from elastro.core.client import ElasticsearchClient
+
+    connect = MagicMock(side_effect=AssertionError("must not connect"))
+    monkeypatch.setattr(ElasticsearchClient, "connect", connect)
+    injected = MagicMock(spec=ElasticsearchClient)
+    injected._connected = True
+    result = CliRunner().invoke(
+        cli, ["health", "trends", "--window", "bad"], obj=injected
+    )
+    connect.assert_not_called()
+    assert result.exit_code == 2
+
+
 def test_health_assess_accepts_output_after_subcommand() -> None:
     result = CliRunner().invoke(cli, ["health", "assess", "-o", "table", "--help"])
     assert result.exit_code == 0, result.output
