@@ -21,6 +21,8 @@ def require_client(ctx: Optional[click.Context] = None) -> ElasticsearchClient:
     """
     if ctx is None:
         ctx = click.get_current_context()
+    if ctx is None:
+        raise RuntimeError("no active Click context")
     error = ctx.meta.get("connection_error")
     if error is not None:
         raise SystemExit(render_error(_as_domain_error(error))) from error

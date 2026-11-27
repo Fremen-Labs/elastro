@@ -20,10 +20,10 @@ def _output_format() -> str:
     ctx = click.get_current_context(silent=True)
     if ctx is None:
         return "json"
-    root = ctx
-    while root.parent is not None:
-        root = root.parent
-    return str(root.params.get("output") or "json")
+    current: click.Context = ctx
+    while current.parent is not None:
+        current = current.parent
+    return str(current.params.get("output") or "json")
 
 
 @click.group(name="cluster")
