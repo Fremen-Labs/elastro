@@ -163,3 +163,11 @@ class TestAggregationBuilder:
             },
         }
         assert builder.to_dict() == expected
+
+    def test_build_aliases_to_dict(self) -> None:
+        builder = AggregationBuilder()
+        builder.terms("brands", "brand")
+        builder.avg("avg_rating", "rating")
+        assert builder.build() == builder.to_dict()
+        assert "brands" in builder.build()
+        assert "avg_rating" in builder.build()

@@ -13,6 +13,22 @@ class QueryBuilder:
     def __init__(self) -> None:
         """Initialize an empty query builder."""
         self._query: Dict[str, Any] = {}
+        self._bool: Optional["BoolQueryBuilder"] = None
+
+    def _leaf(self, query: Dict[str, Any]) -> "QueryBuilder":
+        """Set a leaf clause, combining successive clauses with bool.must."""
+        if self._bool is not None:
+            self._bool.must(query)
+            return self
+        if self._query:
+            existing = self._query
+            self._query = {}
+            self._bool = BoolQueryBuilder(self)
+            self._bool.must(existing)
+            self._bool.must(query)
+            return self
+        self._query = query
+        return self
 
     def match(
         self,
@@ -38,8 +54,11 @@ class QueryBuilder:
         if fuzziness:
             match_query["match"][field]["fuzziness"] = fuzziness
 
-        self._query = match_query
-        return self
+        return self._leaf(match_query)
+
+    def match_all(self) -> "QueryBuilder":
+        """Create a match_all query."""
+        return self._leaf({"match_all": {}})
 
     def match_phrase(self, field: str, value: str, slop: int = 0) -> "QueryBuilder":
         """Create a match_phrase query.
@@ -52,8 +71,7 @@ class QueryBuilder:
         Returns:
             Self for method chaining
         """
-        self._query = {"match_phrase": {field: {"query": value, "slop": slop}}}
-        return self
+        return self._leaf({"match_phrase": {field: {"query": value, "slop": slop}}})
 
     def term(self, field: str, value: Any) -> "QueryBuilder":
         """Create a term query (exact match).
@@ -65,8 +83,7 @@ class QueryBuilder:
         Returns:
             Self for method chaining
         """
-        self._query = {"term": {field: value}}
-        return self
+        return self._leaf({"term": {field: value}})
 
     def terms(self, field: str, values: List[Any]) -> "QueryBuilder":
         """Create a terms query (multiple exact matches).
@@ -78,8 +95,7 @@ class QueryBuilder:
         Returns:
             Self for method chaining
         """
-        self._query = {"terms": {field: values}}
-        return self
+        return self._leaf({"terms": {field: values}})
 
     def range(
         self,
@@ -111,8 +127,7 @@ class QueryBuilder:
         if lt is not None:
             range_params["lt"] = lt
 
-        self._query = {"range": {field: range_params}}
-        return self
+        return self._leaf({"range": {field: range_params}})
 
     def exists(self, field: str) -> "QueryBuilder":
         """Create an exists query.
@@ -123,8 +138,7 @@ class QueryBuilder:
         Returns:
             Self for method chaining
         """
-        self._query = {"exists": {"field": field}}
-        return self
+        return self._leaf({"exists": {"field": field}})
 
     def wildcard(self, field: str, value: str) -> "QueryBuilder":
         """Create a wildcard query.
@@ -136,8 +150,7 @@ class QueryBuilder:
         Returns:
             Self for method chaining
         """
-        self._query = {"wildcard": {field: value}}
-        return self
+        return self._leaf({"wildcard": {field: value}})
 
     def bool(self) -> "BoolQueryBuilder":
         """Start building a bool query.
@@ -145,7 +158,12 @@ class QueryBuilder:
         Returns:
             A BoolQueryBuilder instance
         """
-        return BoolQueryBuilder(self)
+        if self._bool is None:
+            self._bool = BoolQueryBuilder(self)
+            if self._query:
+                self._bool.must(self._query)
+                self._query = {}
+        return self._bool
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert the built query to a dictionary.
@@ -153,6 +171,9 @@ class QueryBuilder:
         Returns:
             The complete query as a dictionary
         """
+        if self._bool is not None:
+            self._bool.build()
+            self._bool = None
         return self._query
 
     def build(self) -> Dict[str, Any]:

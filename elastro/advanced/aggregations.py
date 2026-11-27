@@ -176,3 +176,11 @@ class AggregationBuilder:
             The complete aggregations as a dictionary
         """
         return self._aggregations
+
+    def build(self) -> Dict[str, Dict[str, Any]]:
+        """Build aggregations and return the dictionary representation.
+
+        Alias of ``to_dict()`` so callers can use the same ``.build()``
+        pattern as ``QueryBuilder``.
+        """
+        return self.to_dict()

@@ -214,9 +214,12 @@ class ElasticsearchClient:
 
         return client_params
 
-    def connect(self) -> None:
+    def connect(self) -> bool:
         """
         Establish connection to Elasticsearch.
+
+        Returns:
+            True if the connection was established.
 
         Raises:
             ConnectionError: If unable to connect to Elasticsearch
@@ -240,6 +243,7 @@ class ElasticsearchClient:
                 raise ConnectionError(detail)
             self._connected = True
             logger.debug("Successfully connected to Elasticsearch")
+            return True
         except ESConnectionError as e:
             self._connected = False
             self._client = None
@@ -322,6 +326,33 @@ class ElasticsearchClient:
         if not self._connected or self._client is None:
             raise ConnectionError("Client is not connected. Call connect() first.")
         return self._client
+
+    @property
+    def native_client(self) -> Elasticsearch:
+        """Alias for the underlying elasticsearch-py client (docs / ScrollHelper)."""
+        return self.get_client()
+
+    def info(self) -> Dict[str, Any]:
+        """
+        Return cluster information (name, version, tagline).
+
+        Returns:
+            Dictionary containing cluster info.
+
+        Raises:
+            ConnectionError: If client is not connected
+            OperationError: If the info request fails
+        """
+        if self._client is None:
+            raise ConnectionError("Client is not connected. Call connect() first.")
+        try:
+            response = self._client.info()
+            if hasattr(response, "body"):
+                return dict(response.body)
+            return dict(response)
+        except Exception as e:
+            logger.error("Failed to fetch cluster info: %s", e)
+            raise OperationError(f"Failed to fetch cluster info: {str(e)}") from e
 
     def get_async_client(self) -> AsyncElasticsearch:
         """

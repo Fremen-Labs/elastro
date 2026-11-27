@@ -147,8 +147,48 @@ from elastro.core.client import ElasticsearchClient
 
 # Register Top-Level Groups
 
+_OUTPUT_FORMATS = frozenset({"json", "yaml", "table"})
 
-@click.group()
+
+def _hoist_root_output_option(args: list[str]) -> list[str]:
+    """Move ``-o/--output json|yaml|table`` in front of the subcommand.
+
+    Docs and the public site show ``elastro health assess -o table``. Click
+    only binds root-group options before the subcommand, so copy-paste of
+    that form otherwise fails with "No such option '-o'". Values that are
+    not an output format (e.g. ``ingest grok-builder -o file.json``) stay
+    in place.
+    """
+    hoisted: list[str] = []
+    rest: list[str] = []
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg in ("-o", "--output") and i + 1 < len(args):
+            value = args[i + 1]
+            if value in _OUTPUT_FORMATS:
+                hoisted.extend([arg, value])
+                i += 2
+                continue
+        if arg.startswith("--output="):
+            value = arg.split("=", 1)[1]
+            if value in _OUTPUT_FORMATS:
+                hoisted.append(arg)
+                i += 1
+                continue
+        rest.append(arg)
+        i += 1
+    return hoisted + rest
+
+
+class ElastroGroup(click.Group):
+    """Root group that accepts ``-o table`` after the subcommand."""
+
+    def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
+        return super().parse_args(ctx, _hoist_root_output_option(args))
+
+
+@click.group(cls=ElastroGroup)
 @click.option(
     "--config",
     "-c",
@@ -197,14 +237,16 @@ def cli(
     if verbose:
         cfg["cli"]["verbose"] = verbose
 
-    # Construct only. Client-using callbacks call require_client, which connects.
-    ctx.obj = ElasticsearchClient(
-        hosts=cfg["elasticsearch"]["hosts"],
-        auth=cfg["elasticsearch"]["auth"],
-        timeout=cfg["elasticsearch"]["timeout"],
-        retry_on_timeout=cfg["elasticsearch"]["retry_on_timeout"],
-        max_retries=cfg["elasticsearch"]["max_retries"],
-    )
+    # Construct only when the caller did not inject a client (CliRunner obj=).
+    # Client-using callbacks call require_client, which connects on first use.
+    if ctx.obj is None:
+        ctx.obj = ElasticsearchClient(
+            hosts=cfg["elasticsearch"]["hosts"],
+            auth=cfg["elasticsearch"]["auth"],
+            timeout=cfg["elasticsearch"]["timeout"],
+            retry_on_timeout=cfg["elasticsearch"]["retry_on_timeout"],
+            max_retries=cfg["elasticsearch"]["max_retries"],
+        )
 
 
 @cli.group()

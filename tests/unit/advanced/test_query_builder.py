@@ -224,3 +224,34 @@ class TestBoolQueryBuilder:
         }
 
         assert query.to_dict() == expected
+
+
+class TestSiteAdvertisedQueryBuilder:
+    """Behaviors advertised on elastro.fremenlabs.com."""
+
+    def test_match_all(self) -> None:
+        query = QueryBuilder().match_all().build()
+        assert query == {"match_all": {}}
+
+    def test_chained_match_and_range_become_bool_must(self) -> None:
+        query_builder = QueryBuilder()
+        query_builder.match("name", "laptop")
+        query_builder.range("price", gte=500, lte=2000)
+        query = query_builder.build()
+        assert query == {
+            "bool": {
+                "must": [
+                    {"match": {"name": {"query": "laptop", "operator": "or"}}},
+                    {"range": {"price": {"gte": 500, "lte": 2000}}},
+                ]
+            }
+        }
+
+    def test_parent_build_finalizes_pending_bool(self) -> None:
+        query_builder = QueryBuilder()
+        bool_query = query_builder.bool()
+        bool_query.must(QueryBuilder().match("name", "laptop"))
+        bool_query.must(QueryBuilder().range("price", gte=500, lte=2000))
+        query = query_builder.build()
+        assert query["bool"]["must"][0]["match"]["name"]["query"] == "laptop"
+        assert query["bool"]["must"][1]["range"]["price"] == {"gte": 500, "lte": 2000}

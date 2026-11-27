@@ -1,8 +1,10 @@
 """Scroll helper for handling large result sets in Elasticsearch."""
 
 from typing import Any, Callable, Dict, Generator, List, Optional, Union
+
 from elasticsearch import Elasticsearch
-from elasticsearch import Elasticsearch
+
+from elastro.core.client import ElasticsearchClient
 from elastro.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -16,13 +18,17 @@ class ScrollHelper:
         process of initializing and maintaining scroll contexts.
     """
 
-    def __init__(self, client: Elasticsearch) -> None:
+    def __init__(self, client: Union[Elasticsearch, ElasticsearchClient]) -> None:
         """Initialize the scroll helper.
 
         Args:
-            client: Elasticsearch client instance
+            client: Native ``Elasticsearch`` client, or an
+                ``ElasticsearchClient`` (uses ``get_client()`` / ``native_client``).
         """
-        self._client = client
+        if isinstance(client, ElasticsearchClient):
+            self._client = client.get_client()
+        else:
+            self._client = client
 
     def scroll(
         self,

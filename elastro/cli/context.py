@@ -28,7 +28,9 @@ def require_client(ctx: Optional[click.Context] = None) -> ElasticsearchClient:
         raise SystemExit(render_error(_as_domain_error(error))) from error
 
     client = ctx.obj
-    if isinstance(client, ElasticsearchClient) and not client._connected:
+    # MagicMock(spec=ElasticsearchClient) passes isinstance but has no _connected.
+    connected = bool(getattr(client, "_connected", True))
+    if isinstance(client, ElasticsearchClient) and not connected:
         try:
             client.connect()
         except Exception as exc:
