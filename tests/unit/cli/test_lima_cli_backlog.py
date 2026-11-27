@@ -227,6 +227,33 @@ def test_ilm_start_with_yes_calls_start() -> None:
     client.client.ilm.start.assert_called_once()
 
 
+def test_utils_templates_without_subcommand_lists() -> None:
+    client = _client()
+    with patch("elastro.cli.commands.utils.TemplateManager") as cls:
+        cls.return_value.list.return_value = [{"name": "logs"}]
+        result = CliRunner().invoke(cli, ["utils", "templates"], obj=client)
+    assert result.exit_code == 0, result.output
+    cls.return_value.list.assert_called_once()
+
+
+def test_utils_aliases_without_subcommand_lists() -> None:
+    client = _client()
+    with patch("elastro.cli.commands.utils.AliasManager") as cls:
+        cls.return_value.list.return_value = [{"alias": "logs"}]
+        result = CliRunner().invoke(cli, ["utils", "aliases"], obj=client)
+    assert result.exit_code == 0, result.output
+    cls.return_value.list.assert_called_once()
+
+
+def test_utils_templates_list_subcommand_still_works() -> None:
+    client = _client()
+    with patch("elastro.cli.commands.utils.TemplateManager") as cls:
+        cls.return_value.list.return_value = []
+        result = CliRunner().invoke(cli, ["utils", "templates", "list"], obj=client)
+    assert result.exit_code == 0, result.output
+    cls.return_value.list.assert_called_once()
+
+
 def test_doc_index_refreshes_by_default() -> None:
     client = _client()
     with patch("elastro.cli.commands.document.DocumentManager") as cls:
