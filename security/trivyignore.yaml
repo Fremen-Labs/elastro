@@ -15,3 +15,12 @@ vulnerabilities:
       Dev-only esbuild/vite local dev server issue on Windows; Elastro GUI build uses
       production vite build only in CI/release. Upgrade path: vite@8 when stable.
     expired_at: 2026-12-31
+  - id: CVE-2026-112940
+    paths:
+      - "uv.lock"
+    statement: >-
+      filelock 4.1.0 is only the Python 3.10 resolution of cachecontrol's optional
+      filecache extra (pip-audit toolchain). 4.2.1 dropped requires-python to >=3.11,
+      so the 3.10 lock marker cannot be patched without dropping 3.10. filelock is
+      not a runtime dependency of elastro-client; 3.11+ already resolves 4.3.1.
+    expired_at: 2026-12-31
