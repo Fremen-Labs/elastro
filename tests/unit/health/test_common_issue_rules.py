@@ -2,6 +2,7 @@
 
 import unittest
 
+from elastro.health.models import FindingStatus
 from elastro.health.rules.backup_policy import backup_policy_findings
 from elastro.health.rules.circuit_breaker import circuit_breaker_findings
 from elastro.health.rules.cluster_blocks import cluster_block_findings
@@ -120,6 +121,55 @@ class TestCommonIssueRules(unittest.TestCase):
         )
         findings = cluster_block_findings(ctx)
         self.assertEqual(findings[0].id, "cluster.block.read_only_allow_delete")
+
+    def test_empty_cluster_state_block_containers_are_not_findings(self):
+        ctx = RuleContext(
+            collector_data={
+                "cluster_health": {
+                    "blocks": {"indices": {}, "cluster": {}},
+                }
+            }
+        )
+        self.assertEqual(cluster_block_findings(ctx), [])
+
+    def test_nested_cluster_blocks_from_cluster_state(self):
+        ctx = RuleContext(
+            collector_data={
+                "cluster_health": {
+                    "blocks": {
+                        "indices": {},
+                        "cluster": {
+                            "6": {
+                                "description": "cluster read-only (api)",
+                            }
+                        },
+                    }
+                }
+            }
+        )
+        findings = cluster_block_findings(ctx)
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].id, "cluster.block.6")
+        self.assertEqual(findings[0].status, FindingStatus.FAIL)
+
+    def test_index_level_blocks_are_warn_not_cluster_fail(self):
+        ctx = RuleContext(
+            collector_data={
+                "cluster_health": {
+                    "blocks": {
+                        "indices": {
+                            "logs-0001": {"4": {"description": "index read-only (api)"}}
+                        },
+                        "cluster": {},
+                    }
+                }
+            }
+        )
+        findings = cluster_block_findings(ctx)
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].id, "cluster.block.indices")
+        self.assertEqual(findings[0].status, FindingStatus.WARN)
+        self.assertEqual(findings[0].affected_resources, ["logs-0001"])
 
 
 if __name__ == "__main__":
