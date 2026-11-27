@@ -30,6 +30,7 @@ if command -v trivy >/dev/null 2>&1; then
     --skip-version-check \
     --skip-dirs "$ROOT/packages/gui/node_modules" \
     --skip-dirs "$ROOT/node_modules" \
+    --ignorefile "$ROOT/security/trivyignore.yaml" \
     --exit-code 1 \
     "$ROOT"
   echo
@@ -41,6 +42,8 @@ if command -v trivy >/dev/null 2>&1; then
     --include-dev-deps \
     --ignorefile "$ROOT/security/trivyignore.yaml" \
     --skip-version-check \
+    --skip-dirs "$ROOT/packages/gui/node_modules" \
+    --skip-dirs "$ROOT/node_modules" \
     --exit-code 1 \
     "$ROOT"
 else
