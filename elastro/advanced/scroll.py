@@ -18,9 +18,7 @@ class ScrollHelper:
         process of initializing and maintaining scroll contexts.
     """
 
-    def __init__(
-        self, client: Union[Elasticsearch, ElasticsearchClient]
-    ) -> None:
+    def __init__(self, client: Union[Elasticsearch, ElasticsearchClient]) -> None:
         """Initialize the scroll helper.
 
         Args:
