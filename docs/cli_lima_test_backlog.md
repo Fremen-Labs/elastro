@@ -181,30 +181,30 @@ Fine, but `--help` says “Wrapper for list”. Easy to call without a pattern a
 
 ## Backlog (prioritized)
 
-| ID | Pri | Item |
-|---|---|---|
-| LIMA-1 | P0 | Done for this session (kube API up). Keep a documented port-forward. |
-| LIMA-2 | P1 | NodePort 30920 not reachable from Mac; default Elastro profile 401s. Document `port-forward` + Lima secret vs laptop `config.yaml`. |
-| REL-1 | P0 | Publish 1.14.0 to PyPI / update `install.sh` so `pipx install elastro-client` matches git main. |
-| CLI-1 | P1 | Do not `connect()` until `require_client()`; never ERROR-log a failed ping on `--help`. |
-| CLI-2 | P1 | Skip ES connect for Fleet (Kibana-only), `coverage templates list`, dry-run apply, `config *`. Confirmed live: fleet still pings ES. |
-| CLI-3 | P2 | ASCII art on `--help`; `-o json health status` still prints a human banner line before JSON. |
-| CLI-4 | P2 | Connect logs: host only, no username/`basic_auth` tuple; DEBUG not INFO. |
-| CLI-5 | P2 | `painless scaffold` non-TTY → exit 2, no ES. |
-| CLI-6 | P2 | `ilm start` / `ilm stop` get `--yes` / dry-run like other mutations. |
-| CLI-7 | P3 | Click missing-arg (exit 2) should not ping ES first. |
-| CLI-8 | P2 | `doc search` has no `--query` flag (`Did you mean --term?`). Fix help/examples. |
-| CLI-9 | P2 | `cluster allocation` on a green cluster (0 unassigned shards) exits 1 with ES 400. Treat as empty success. |
-| CLI-10 | P2 | `memory search` / `tools search` dump Elasticsearch 404 stack traces when agent indices are absent. Return empty + exit 0 or a one-line “index missing”. |
-| COV-1 | P1 | `--all` AND-gate confirmed live: filebeat + traces pass; metricbeat / `logs-filebeat*` / `metrics-metricbeat*` fail this cluster. |
-| COV-2 | P1 | Still open: `templates apply --yes` not run against Lima (would install templates over existing APM/Beats patterns). Use a scratch cluster. |
-| COV-3 | P1 | Live: default assess FAIL (`cluster.block.indices`); `--feature apm`/`beats` exit 0 with score 100 and empty findings. Filter hides cluster FAILs. |
-| COV-4 | P2 | `health.audit` still logs on `health assess`. `coverage report` was not separately verified for audit index writes. |
-| COV-5 | P2 | Fleet not live-tested against Kibana (`enabled: false`). Need an API key. |
-| COV-6 | P1 | `--feature disk` still emits `security.tls.plain_http` and FAIL score 47. Feature filter is leaky. |
-| COV-7 | P1 | `--service elasticsearch` matched 14 APM streams then 0 docs. Service check should query `service.name` only, not treat stream names as coverage. |
-| COV-8 | P1 | `field_presence` reported `host.name=35757 of 2 docs`. Aggregations are not scoped to the time window. |
-| TEST-1 | P2 | Add a live CLI smoke job (gated) so Lima/CI can run this matrix. |
+| ID | Pri | Item | Status |
+|---|---|---|---|
+| LIMA-1 | P0 | Kube API up. Keep a documented port-forward. | Done |
+| LIMA-2 | P1 | Document `port-forward` + Lima secret vs laptop `config.yaml`. | Done (`docs/coverage.md`, `docs/cli_usage.md`) |
+| REL-1 | P0 | Publish 1.14.0 to PyPI. | Done (`elastro-client` 1.14.0) |
+| CLI-1 | P1 | Connect only in `require_client()`. | Done |
+| CLI-2 | P1 | Skip ES connect for Fleet, templates list, dry-run apply, config. | Done |
+| CLI-3 | P2 | No ASCII header on `--help` or JSON/YAML. | Done |
+| CLI-4 | P2 | Connect logs: host only, DEBUG. | Done |
+| CLI-5 | P2 | `painless scaffold` non-TTY → exit 2, no ES. | Done |
+| CLI-6 | P2 | `ilm start` / `ilm stop` `--yes` / dry-run. | Done |
+| CLI-7 | P3 | Missing-arg exit 2 must not ping ES. | Done |
+| CLI-8 | P2 | `doc search --query`. | Done |
+| CLI-9 | P2 | `cluster allocation` empty success on green cluster. | Done |
+| CLI-10 | P2 | `memory`/`tools` search empty when agent indices missing. | Done |
+| COV-1 | P1 | `--all` AND-gate (metricbeat patterns absent on Lima). | Open by design |
+| COV-2 | P1 | No `templates apply --yes` on shared Lima. | Open by design |
+| COV-3 | P1 | `--feature apm`/`beats` keep cluster FAIL findings. | Done |
+| COV-4 | P2 | `coverage report` does not write `elastro-health-audit`. | Done (`audit=False`) |
+| COV-5 | P2 | Fleet live Kibana API-key test. | Open by design |
+| COV-6 | P1 | `--feature disk` must not include `security.tls`. | Done |
+| COV-7 | P1 | `--service` must not treat stream names as coverage. | Done |
+| COV-8 | P1 | `field_presence` scoped to the time window. | Done |
+| TEST-1 | P2 | Gated live CLI smoke (`tests/integration/test_cli_live_smoke.py`). | Done |
 
 ---
 
