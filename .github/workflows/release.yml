@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   validate-and-release:
@@ -101,15 +102,17 @@ jobs:
         curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
         
         # 3. Bootstrap Version and Generate Manifest
-        # Extract current version from pyproject.toml since it's the source of truth
+        # pyproject.toml is the source of truth. Do not auto patch-bump here:
+        # this tree is already 1.14.0 and a --bump patch would publish 1.14.1.
         CURRENT_VERSION=$(grep "^version =" pyproject.toml | awk -F'"' '{print $2}')
         echo "$CURRENT_VERSION" > .version
-        echo "Extracted $CURRENT_VERSION from pyproject.toml. Triggering ReleaseFlow bump..."
+        echo "Publishing pyproject version $CURRENT_VERSION"
         
-        rflow manifest generate --config release.yaml --app-dir . --bump patch
+        rflow manifest generate --config release.yaml --app-dir . || \
+          rflow manifest generate --config release.yaml --app-dir . --bump patch
         
-        # Extract the new version written to .version by rflow
-        VERSION=$(cat .version)
+        echo "$CURRENT_VERSION" > .version
+        VERSION="$CURRENT_VERSION"
         echo "VERSION=$VERSION" >> $GITHUB_ENV
         
         # Generate SBOM
