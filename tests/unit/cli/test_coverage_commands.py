@@ -180,6 +180,27 @@ def test_coverage_report_failed_exits_2() -> None:
     assert result.exit_code == 2
 
 
+def test_check_all_skip_absent_passed_to_validator() -> None:
+    with patch("elastro.cli.cli.ElasticsearchClient.connect"):
+        with patch("elastro.cli.commands.coverage.CoverageValidator") as cls:
+            cls.return_value.check_all.return_value = _pass_report()
+            result = CliRunner().invoke(
+                cli, ["coverage", "check", "--all", "--skip-absent"]
+            )
+    assert result.exit_code == 0, result.output
+    kwargs = cls.return_value.check_all.call_args.kwargs
+    assert kwargs.get("skip_absent") is True
+
+
+def test_skip_absent_without_all_is_usage_error() -> None:
+    with patch("elastro.cli.cli.ElasticsearchClient.connect"):
+        result = CliRunner().invoke(
+            cli, ["coverage", "check", "--pattern", "filebeat-*", "--skip-absent"]
+        )
+    assert result.exit_code == 2, result.output
+    assert "--skip-absent requires --all" in result.output
+
+
 def test_check_all_help_documents_and_gate() -> None:
     result = CliRunner().invoke(coverage_group, ["check", "--help"])
     assert result.exit_code == 0, result.output

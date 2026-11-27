@@ -107,6 +107,17 @@ def test_check_pattern_search_error_is_operation_error(es_client) -> None:
                     CoverageValidator(es_client).check_pattern("traces-apm*")
 
 
+def test_check_all_skip_absent_passes_missing_patterns(es_client) -> None:
+    with patch("elastro.coverage.validators.IndexManager") as idx:
+        with patch("elastro.coverage.validators.DatastreamManager") as ds:
+            idx.return_value.list.return_value = []
+            ds.return_value.list.return_value = []
+            report = CoverageValidator(es_client).check_all(skip_absent=True)
+    assert report.passed is True
+    assert all(check.skipped for check in report.checks)
+    assert any("skipped" in check.summary for check in report.checks)
+
+
 def test_check_all_aggregates_patterns(es_client) -> None:
     with patch("elastro.coverage.validators.IndexManager") as idx:
         with patch("elastro.coverage.validators.DatastreamManager") as ds:

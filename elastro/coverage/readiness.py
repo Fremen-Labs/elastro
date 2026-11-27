@@ -49,6 +49,7 @@ class ReadinessReporter:
         min_docs: int = DEFAULT_MIN_DOCS,
         max_age: Optional[str] = None,
         max_cardinality: Optional[int] = None,
+        skip_absent: bool = False,
     ) -> ReadinessReport:
         """Run template status, coverage checks, and APM/Beats health rules."""
         templates = self._templates.list(include_applied=True)
@@ -74,6 +75,7 @@ class ReadinessReporter:
                 min_docs=min_docs,
                 max_age=max_age,
                 max_cardinality=max_cardinality,
+                skip_absent=skip_absent,
             )
 
         from elastro.health.assessor import HealthAssessor
