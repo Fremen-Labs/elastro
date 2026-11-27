@@ -261,25 +261,28 @@ class TestHealthAssessLive:
     def live_available(self):
         from elasticsearch import Elasticsearch
 
-        password = os.environ.get("ELASTIC_PASSWORD", "GA5UM2tsITwwuelI4JWX")
+        from tests.conftest import live_client_kwargs, live_es_hosts
+
+        kwargs = live_client_kwargs()
+        host = live_es_hosts()[0]
         try:
             es = Elasticsearch(
-                "http://localhost:9205",
-                basic_auth=("elastic", password),
+                host,
+                basic_auth=(kwargs["username"], kwargs["password"]),
                 verify_certs=False,
                 request_timeout=5,
             )
             es.info()
-            return True
+            return host
         except Exception:
-            pytest.skip("local-elastro-brain not available on localhost:9205")
+            pytest.skip(f"live Elasticsearch not available at {host}")
 
     def test_live_assess_table(self, runner, live_available):
         result = runner.invoke(
             cli,
             [
                 "-h",
-                "http://localhost:9205",
+                live_available,
                 "-o",
                 "table",
                 "health",
@@ -298,7 +301,7 @@ class TestHealthAssessLive:
             cli,
             [
                 "-h",
-                "http://localhost:9205",
+                live_available,
                 "-o",
                 "json",
                 "health",

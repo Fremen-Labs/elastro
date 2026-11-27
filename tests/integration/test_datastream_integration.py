@@ -11,6 +11,7 @@ import logging
 from elastro.core.client import ElasticsearchClient
 from elastro.core.datastream import DatastreamManager
 from elastro.core.document import DocumentManager
+from tests.conftest import live_client_kwargs, live_es_auth, live_es_hosts
 from tests.fixtures.datastream_fixtures import VALID_DATASTREAM_SETTINGS
 
 
@@ -25,18 +26,15 @@ class TestDatastreamManagerIntegration:
 
         Sets up the datastream manager for each test
         """
-        hosts = ["http://localhost:9200"]
-        self.client = ElasticsearchClient(
-            hosts=hosts,
-            auth={"username": "elastic", "password": "elastic_password"},
-            verify_certs=False,  # Disable certificate verification
-        )
+        hosts = live_es_hosts()
+        user, password = live_es_auth()
+        self.client = ElasticsearchClient(**live_client_kwargs())
         # Connect the client before creating the manager
         self.client.connect()
         # Use a plain elasticsearch client to clean up after the test
         es_client = Elasticsearch(
             hosts=hosts,
-            basic_auth=("elastic", "elastic_password"),
+            basic_auth=(user, password),
             verify_certs=False,  # Disable certificate verification
             ssl_show_warn=False,  # Disable SSL warnings
         )
@@ -49,7 +47,7 @@ class TestDatastreamManagerIntegration:
         # Setup an index template for datastreams
         es_client = Elasticsearch(
             hosts=hosts,
-            basic_auth=("elastic", "elastic_password"),
+            basic_auth=(user, password),
             verify_certs=False,  # Disable certificate verification
         )
         index_template = {
