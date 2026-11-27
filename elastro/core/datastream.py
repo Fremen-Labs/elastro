@@ -13,12 +13,17 @@ from elastro.core.logger import get_logger
 logger = get_logger(__name__)
 
 
+# Beat cluster-wide templates such as ``vorsam-single-node-replicas`` (*).
+_AUTO_DATA_STREAM_TEMPLATE_PRIORITY = 1_000_000
+
+
 def _missing_data_stream_template(exc: Exception) -> bool:
     """Return True when ES rejected create because no data-stream template exists."""
     text = str(exc).lower()
     needles = (
         "no matching index template",
         "matching index template with data_stream enabled",
+        "has no data stream template",
         "composable template that matches",
         "index template matching",
     )
@@ -33,7 +38,12 @@ class DatastreamManager(BaseManager):
     """
 
     def create_index_template(
-        self, name: str, pattern: str, settings: Dict[str, Any]
+        self,
+        name: str,
+        pattern: str,
+        settings: Dict[str, Any],
+        *,
+        priority: int = 500,
     ) -> Dict[str, Any]:
         """
         Create an index template required for data streams in Elasticsearch 8.x.
@@ -65,18 +75,20 @@ class DatastreamManager(BaseManager):
             # Ensure the client is connected
             self._ensure_connected()
 
-            # Prepare template definition
-            template_def = {
+            # Composable index templates (ES 8) nest settings/mappings under template.
+            template_inner: Dict[str, Any] = {}
+            if settings:
+                if "settings" in settings:
+                    template_inner["settings"] = settings["settings"]
+                if "mappings" in settings:
+                    template_inner["mappings"] = settings["mappings"]
+            template_def: Dict[str, Any] = {
                 "index_patterns": [pattern],
                 "data_stream": {},  # Enable data stream
-                "priority": 500,
+                "priority": priority,
             }
-
-            # Add settings and mappings if provided
-            if "settings" in settings:
-                template_def["settings"] = settings["settings"]
-            if "mappings" in settings:
-                template_def["mappings"] = settings["mappings"]
+            if template_inner:
+                template_def["template"] = template_inner
 
             # Create the template
             response = self._client.get_client().indices.put_index_template(
@@ -142,6 +154,7 @@ class DatastreamManager(BaseManager):
                     f"{name}-elastro-template",
                     name,
                     {"mappings": {"properties": {"@timestamp": {"type": "date"}}}},
+                    priority=_AUTO_DATA_STREAM_TEMPLATE_PRIORITY,
                 )
                 response = self._client.get_client().indices.create_data_stream(
                     **create_params

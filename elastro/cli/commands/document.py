@@ -26,9 +26,19 @@ logger = get_logger(__name__)
 @click.option(
     "--file", type=click.File("r"), help="Path to document file (use '-' for stdin)"
 )
+@click.option(
+    "--refresh/--no-refresh",
+    default=True,
+    show_default=True,
+    help="Refresh the index so the document is immediately searchable",
+)
 @click.pass_obj
 def index_document(
-    client: ElasticsearchClient, index: str, id: Optional[str], file: Any
+    client: ElasticsearchClient,
+    index: str,
+    id: Optional[str],
+    file: Any,
+    refresh: bool,
 ) -> None:
     """
     Index a document.
@@ -64,7 +74,7 @@ def index_document(
         document = json.loads(sys.stdin.read())
 
     try:
-        result = document_manager.index(index, id, document)
+        result = document_manager.index(index, id, document, refresh=refresh)
         output = format_output(result)
         click.echo(output)
         click.echo(f"Document indexed successfully in '{index}'.")
@@ -81,8 +91,16 @@ def index_document(
     required=True,
     help="Path to bulk documents file (use '-' for stdin)",
 )
+@click.option(
+    "--refresh/--no-refresh",
+    default=True,
+    show_default=True,
+    help="Refresh the index so bulked documents are immediately searchable",
+)
 @click.pass_obj
-def bulk_index(client: ElasticsearchClient, index: str, file: Any) -> None:
+def bulk_index(
+    client: ElasticsearchClient, index: str, file: Any, refresh: bool
+) -> None:
     """
     Bulk index documents.
 
@@ -107,7 +125,7 @@ def bulk_index(client: ElasticsearchClient, index: str, file: Any) -> None:
         exit(1)
 
     try:
-        result = document_manager.bulk_index(index, documents)
+        result = document_manager.bulk_index(index, documents, refresh=refresh)
         output = format_output(result)
         click.echo(output)
         click.echo(f"Bulk indexing completed: {len(documents)} documents processed.")

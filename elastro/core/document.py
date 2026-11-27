@@ -77,7 +77,26 @@ class DocumentManager(BaseManager):
             logger.error(f"Failed to index document info '{index}': {str(e)}")
             raise DocumentError(f"Failed to index document: {str(e)}")
 
-    async def bulk_index(
+    def bulk_index(
+        self, index: str, documents: List[Dict[str, Any]], refresh: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Bulk index multiple documents (synchronous).
+
+        Docs, examples, the CLI, and integration tests call this without
+        ``await``. Use ``bulk_index_async`` for the async helper client.
+
+        Args:
+            index: Name of the index
+            documents: List of documents to index
+            refresh: Whether to refresh the index immediately
+
+        Returns:
+            Elasticsearch bulk API response (``errors``, ``items``, …)
+        """
+        return self.bulk_index_sync(index, documents, refresh)
+
+    async def bulk_index_async(
         self, index: str, documents: List[Dict[str, Any]], refresh: bool = False
     ) -> Dict[str, Any]:
         """
