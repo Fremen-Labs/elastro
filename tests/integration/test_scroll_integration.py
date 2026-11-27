@@ -6,18 +6,14 @@ from elasticsearch import Elasticsearch
 
 from elastro.advanced import ScrollHelper
 from elastro.core.client import ElasticsearchClient
+from tests.conftest import live_client_kwargs
 
 
 @pytest.fixture(scope="module")
 def es_client():
     """Create an Elasticsearch client for testing."""
     # Create client with proper authentication
-    client = ElasticsearchClient(
-        hosts=["http://localhost:9200"],
-        username="elastic",
-        password="elastic_password",
-        verify_certs=False,
-    )
+    client = ElasticsearchClient(**live_client_kwargs())
 
     # Connect to Elasticsearch
     client.connect()

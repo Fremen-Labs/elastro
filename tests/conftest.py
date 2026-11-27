@@ -46,15 +46,42 @@ def datastream_manager(es_client):
     return DatastreamManager(es_client)
 
 
+def live_es_hosts() -> list:
+    url = (
+        os.environ.get("ELASTIC_URL")
+        or os.environ.get("ELASTIC_HOSTS")
+        or "http://localhost:9200"
+    )
+    return [url]
+
+
+def live_es_auth() -> tuple:
+    return (
+        os.environ.get("ELASTIC_USERNAME", "elastic"),
+        os.environ.get("ELASTIC_PASSWORD", "elastic_password"),
+    )
+
+
+def live_client_kwargs() -> dict:
+    user, password = live_es_auth()
+    return {
+        "hosts": live_es_hosts(),
+        "username": user,
+        "password": password,
+        "verify_certs": False,
+    }
+
+
 # Integration test fixtures
 @pytest.fixture(scope="session")
 def real_elasticsearch():
     """
     Return a real Elasticsearch client for integration tests.
     """
+    user, password = live_es_auth()
     client = Elasticsearch(
-        hosts=["http://localhost:9200"],
-        basic_auth=("elastic", "elastic_password"),
+        hosts=live_es_hosts(),
+        basic_auth=(user, password),
         verify_certs=False,
         ssl_show_warn=False,
     )
@@ -72,7 +99,13 @@ def real_elasticsearch():
 @pytest.fixture(scope="session")
 def real_es_client(real_elasticsearch):
     """Return a real ElasticsearchClient for integration tests."""
-    client = ElasticsearchClient(hosts=["http://localhost:9200"])
+    user, password = live_es_auth()
+    client = ElasticsearchClient(
+        hosts=live_es_hosts(),
+        username=user,
+        password=password,
+        verify_certs=False,
+    )
     # Force client to use the real_elasticsearch instance
     client._client = real_elasticsearch
     client._connected = True

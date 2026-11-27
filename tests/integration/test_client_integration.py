@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from elastro.core.client import ElasticsearchClient
 from elastro.core.errors import ConnectionError, AuthenticationError
+from tests.conftest import live_client_kwargs, live_es_hosts
 
 
 # Mark as integration tests
@@ -20,10 +21,7 @@ class TestElasticsearchClientIntegration:
         """Test connecting to Elasticsearch."""
         # Create client
         client = ElasticsearchClient(
-            hosts=["http://localhost:9200"],
-            username="elastic",
-            password="elastic_password",
-            verify_certs=False,  # Disable certificate verification
+            **live_client_kwargs(),
         )
 
         # Connect
@@ -44,10 +42,7 @@ class TestElasticsearchClientIntegration:
         """Test reconnecting after closing the connection."""
         # Create client
         client = ElasticsearchClient(
-            hosts=["http://localhost:9200"],
-            username="elastic",
-            password="elastic_password",
-            verify_certs=False,  # Disable certificate verification
+            **live_client_kwargs(),
         )
 
         # Connect
@@ -89,7 +84,7 @@ class TestElasticsearchClientIntegration:
 
         # Create client with auth
         client = ElasticsearchClient(
-            hosts=["http://localhost:9200"],
+            hosts=live_es_hosts(),
             username=username,
             password=password,
             verify_certs=False,  # Disable certificate verification
@@ -114,7 +109,7 @@ class TestElasticsearchClientIntegration:
 
         # Create client with API key
         client = ElasticsearchClient(
-            hosts=["http://localhost:9200"],
+            hosts=live_es_hosts(),
             api_key=api_key,
             verify_certs=False,  # Disable certificate verification
         )
@@ -131,12 +126,10 @@ class TestElasticsearchClientIntegration:
     def test_invalid_authentication(self):
         """Test invalid authentication."""
         # Create client with invalid auth
-        client = ElasticsearchClient(
-            hosts=["http://localhost:9200"],
-            username="invalid_user",
-            password="invalid_password",
-            verify_certs=False,  # Disable certificate verification
-        )
+        kwargs = live_client_kwargs()
+        kwargs["username"] = "invalid_user"
+        kwargs["password"] = "invalid_password"
+        client = ElasticsearchClient(**kwargs)
 
         # Try to connect
         with pytest.raises((ConnectionError, AuthenticationError)):
@@ -147,11 +140,9 @@ class TestElasticsearchClientIntegration:
     def test_connection_timeout(self):
         """Test connection timeout."""
         # Create client with very short timeout
-        client = ElasticsearchClient(
-            hosts=["http://localhost:9200"],
-            timeout=0.001,  # 1ms timeout
-            verify_certs=False,  # Disable certificate verification
-        )
+        kwargs = live_client_kwargs()
+        kwargs["timeout"] = 0.001  # 1ms timeout
+        client = ElasticsearchClient(**kwargs)
 
         # Try to connect
         try:

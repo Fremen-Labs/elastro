@@ -18,12 +18,9 @@ def verify_quick_start():
     try:
         # Client Connection
         print("1. Connecting to Elasticsearch...")
-        client = ElasticsearchClient(
-            hosts=["http://localhost:9200"],
-            username="elastic",
-            password="changeme",
-            verify_certs=False,  # Local dev usually self-signed or HTTP
-        )
+        from tests.conftest import live_client_kwargs
+
+        client = ElasticsearchClient(**live_client_kwargs())
         client.connect()
         print("   ✅ Connected")
 
