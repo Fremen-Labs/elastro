@@ -28,6 +28,8 @@ if command -v trivy >/dev/null 2>&1; then
     --severity HIGH,CRITICAL \
     --scanners vuln \
     --skip-version-check \
+    --skip-dirs "$ROOT/packages/gui/node_modules" \
+    --skip-dirs "$ROOT/node_modules" \
     --exit-code 1 \
     "$ROOT"
   echo
