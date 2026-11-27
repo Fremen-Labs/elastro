@@ -39,6 +39,17 @@ Check if `elastro` can connect to your cluster:
 elastro utils health
 ```
 
+### Lima / local k3s (elastic-telemetry)
+
+The Elasticsearch NodePort is not reachable from the Mac. Port-forward, and do not reuse a laptop `~/.elastic/config.yaml` password against Lima:
+
+```bash
+kubectl --kubeconfig ~/.kube/config-lima-k3s -n elastic-telemetry \
+  port-forward --address 127.0.0.1 svc/elasticsearch 9205:9200
+```
+
+Point Elastro at `http://127.0.0.1:9205` with the `elastic-credentials` / `elastic-password` kube secret (0600 config). Laptop profile credentials 401 against Lima.
+
 ## Global Options
 
 The following options can be used with any command:

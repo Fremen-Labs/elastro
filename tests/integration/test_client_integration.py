@@ -139,10 +139,13 @@ class TestElasticsearchClientIntegration:
 
     def test_connection_timeout(self):
         """Test connection timeout."""
-        # Create client with very short timeout
-        kwargs = live_client_kwargs()
-        kwargs["timeout"] = 0.001  # 1ms timeout
-        client = ElasticsearchClient(**kwargs)
+        # Unreachable port so this does not depend on a live cluster.
+        client = ElasticsearchClient(
+            hosts=["http://127.0.0.1:1"],
+            timeout=0.001,
+            verify_certs=False,
+            use_config=False,
+        )
 
         # Try to connect
         try:
