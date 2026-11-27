@@ -90,14 +90,16 @@ def health(
         exit(1)
 
 
-@click.group("templates")
-def templates() -> None:
+@click.group("templates", invoke_without_command=True)
+@click.pass_context
+def templates(ctx: click.Context) -> None:
     """
     Manage index templates (Legacy).
 
-    Consider using 'elastro template' top-level command instead.
+    With no subcommand, lists templates. Prefer ``elastro template``.
     """
-    pass
+    if ctx.invoked_subcommand is None:
+        ctx.invoke(list_templates)
 
 
 @templates.command("list")
@@ -235,10 +237,16 @@ def delete_template(
         exit(1)
 
 
-@click.group("aliases")
-def aliases() -> None:
-    """Manage index aliases."""
-    pass
+@click.group("aliases", invoke_without_command=True)
+@click.pass_context
+def aliases(ctx: click.Context) -> None:
+    """
+    Manage index aliases.
+
+    With no subcommand, lists aliases.
+    """
+    if ctx.invoked_subcommand is None:
+        ctx.invoke(list_aliases)
 
 
 @aliases.command("list")
