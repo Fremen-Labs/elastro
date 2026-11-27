@@ -26,6 +26,15 @@ class TestScrollHelper:
         """Test that the ScrollHelper correctly initializes."""
         assert scroll_helper._client == mock_es_client
 
+    def test_accepts_elastro_client(self, mock_es_client):
+        from elastro.core.client import ElasticsearchClient
+
+        wrapper = ElasticsearchClient(use_config=False)
+        wrapper._client = mock_es_client
+        wrapper._connected = True
+        helper = ScrollHelper(wrapper)
+        assert helper._client == mock_es_client
+
     def test_scroll_single_batch(self, scroll_helper, mock_es_client):
         """Test scroll method with a single batch of results."""
         # Mock search response with a single batch

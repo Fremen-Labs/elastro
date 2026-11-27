@@ -525,6 +525,37 @@ class TestDocumentManager:
         with pytest.raises(ValidationError, match="Query cannot be empty"):
             document_manager.search(index="test_index", query={})
 
+    def test_search_none_query_is_match_all(self, document_manager):
+        document_manager.client.client.search.return_value = {"hits": {"hits": []}}
+        document_manager.search(index="test_index")
+        document_manager.client.client.search.assert_called_once_with(
+            index="test_index", body={"query": {"match_all": {}}}
+        )
+
+    def test_index_accepts_document_as_second_positional(self, document_manager):
+        document_manager.client.client.index.return_value = {
+            "result": "created",
+            "_id": "auto",
+            "_index": "products",
+        }
+        document_manager.index("products", {"name": "Laptop"})
+        document_manager.client.client.index.assert_called_once_with(
+            index="products", document={"name": "Laptop"}, refresh="false"
+        )
+
+    def test_bulk_raw_operations(self, document_manager):
+        document_manager.client.client.bulk.return_value = {
+            "errors": False,
+            "items": [],
+        }
+        operations = [
+            {"index": {"_index": "test", "_id": "1"}},
+            {"field": "value1"},
+        ]
+        result = document_manager.bulk(operations)
+        assert result["errors"] is False
+        document_manager.client.client.bulk.assert_called_once()
+
     def test_search_document_error(self, document_manager):
         """Test handling of errors during search operation."""
         # Configure the mock to raise an exception

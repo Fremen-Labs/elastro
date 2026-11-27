@@ -13,6 +13,18 @@ from elastro.core.logger import get_logger
 logger = get_logger(__name__)
 
 
+def _missing_data_stream_template(exc: Exception) -> bool:
+    """Return True when ES rejected create because no data-stream template exists."""
+    text = str(exc).lower()
+    needles = (
+        "no matching index template",
+        "matching index template with data_stream enabled",
+        "composable template that matches",
+        "index template matching",
+    )
+    return any(needle in text for needle in needles)
+
+
 class DatastreamManager(BaseManager):
     """
     Manager for Elasticsearch datastream operations.
@@ -80,9 +92,10 @@ class DatastreamManager(BaseManager):
         """
         Create a new datastream.
 
-        Note: In Elasticsearch 8.x, a matching index template with data_stream enabled
-        must exist before creating the data stream. This method will create the data stream
-        only; the index template must be created separately.
+        Note: Elasticsearch 8.x requires a matching index template with
+        ``data_stream`` enabled. If create fails for that reason, Elastro
+        writes ``{name}-elastro-template`` (with an ``@timestamp`` date
+        field) and retries.
 
         Example:
             manager.create("metrics-app", description="App Metrics")
@@ -113,11 +126,31 @@ class DatastreamManager(BaseManager):
             if description:
                 create_params["aliases"] = {"default": {"is_write_index": True}}
 
-            # Create datastream
-            response = self._client.get_client().indices.create_data_stream(
-                **create_params
-            )
+            try:
+                response = self._client.get_client().indices.create_data_stream(
+                    **create_params
+                )
+            except Exception as e:
+                if not _missing_data_stream_template(e):
+                    raise
+                logger.info(
+                    "No data-stream template for '%s'; creating %s-elastro-template",
+                    name,
+                    name,
+                )
+                self.create_index_template(
+                    f"{name}-elastro-template",
+                    name,
+                    {"mappings": {"properties": {"@timestamp": {"type": "date"}}}},
+                )
+                response = self._client.get_client().indices.create_data_stream(
+                    **create_params
+                )
             return self._handle_response(response)
+        except ValidationError:
+            raise
+        except DatastreamError:
+            raise
         except Exception as e:
             raise DatastreamError(f"Failed to create datastream: {str(e)}")
 

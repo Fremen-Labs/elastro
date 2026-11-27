@@ -188,6 +188,20 @@ class TestDatastreamManager:
         assert "Failed to create datastream" in str(excinfo.value)
         assert "ES error" in str(excinfo.value)
 
+    def test_create_datastream_retries_after_missing_template(self) -> None:
+        indices = self.mock_client._client.indices
+        indices.create_data_stream.side_effect = [
+            Exception("no matching index template with data_stream enabled was found"),
+            {"acknowledged": True},
+        ]
+        indices.put_index_template.return_value = {"acknowledged": True}
+
+        result = self.datastream_manager.create("logs-app")
+
+        assert result == {"acknowledged": True}
+        indices.put_index_template.assert_called_once()
+        assert indices.create_data_stream.call_count == 2
+
     def test_list_datastreams_success(self):
         """Test successful listing of datastreams."""
         # Setup mock response

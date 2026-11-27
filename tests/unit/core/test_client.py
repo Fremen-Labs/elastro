@@ -323,6 +323,25 @@ class TestElasticsearchClient:
 
         assert client.get_client() is mock_client
 
+    def test_native_client_aliases_get_client(self):
+        client = ElasticsearchClient(use_config=False)
+        mock_client = MagicMock()
+        client._client = mock_client
+        client._connected = True
+        assert client.native_client is mock_client
+
+    def test_info_returns_cluster_payload(self):
+        client = ElasticsearchClient(use_config=False)
+        mock_client = MagicMock()
+        mock_client.info.return_value = {
+            "cluster_name": "lab",
+            "version": {"number": "8.17.0"},
+        }
+        client._client = mock_client
+        client._connected = True
+        assert client.info()["cluster_name"] == "lab"
+        mock_client.info.assert_called_once()
+
     def test_client_property_not_connected(self):
         """Test client property when not connected."""
         client = ElasticsearchClient(use_config=False)

@@ -17,13 +17,6 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 from rich.syntax import Syntax
 from rich.table import Table
 
-import rich_click as click
-from rich.console import Console
-from rich.panel import Panel
-from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
-from rich.syntax import Syntax
-from rich.table import Table
-
 from elastro.cli.context import require_client
 from elastro.core.client import ElasticsearchClient
 from elastro.core.logger import get_logger
@@ -198,7 +191,7 @@ def _display_result(console: Console, result: Any) -> None:
 
 
 @ingest_group.command(name="import", no_args_is_help=True)
-@click.argument("source", type=str)
+@click.argument("source", type=str, required=False)
 @click.option("--index", "-i", required=True, help="Target Elasticsearch index")
 @click.option(
     "--format",
@@ -268,7 +261,7 @@ def _display_result(console: Console, result: Any) -> None:
 @click.pass_obj
 def import_data(
     client: ElasticsearchClient,
-    source: str,
+    source: Optional[str],
     index: str,
     fmt: str,
     delimiter: Optional[str],
@@ -327,6 +320,13 @@ def import_data(
     elastro ingest import dump.sql --index users
     ```
     """
+    if not sql_query and not source:
+        console = Console()
+        console.print(
+            "[bold red]Error:[/bold red] Provide a SOURCE file or --sql with --dsn"
+        )
+        raise SystemExit(1)
+
     require_client()
     logger.info(
         "ingest.import index=%s format=%s has_dsn=%s validate=%s",
@@ -435,7 +435,7 @@ def import_data(
                     yield cleaned
 
         result = engine.ingest(
-            source,
+            source or "-",
             index,
             format=fmt,
             delimiter=delimiter,

@@ -25,8 +25,8 @@ class DocumentManager(BaseManager):
     def index(
         self,
         index: str,
-        id: Optional[str],
-        document: Dict[str, Any],
+        id: Optional[Any] = None,
+        document: Optional[Dict[str, Any]] = None,
         refresh: bool = False,
     ) -> Any:
         """
@@ -34,13 +34,19 @@ class DocumentManager(BaseManager):
 
         Args:
             index: Name of the index
-            id: Document ID (optional)
+            id: Document ID (optional). A dict here is treated as ``document``
+                so ``index(name, document)`` matches the public API docs.
             document: Document data
             refresh: Whether to refresh the index immediately
 
         Returns:
             Indexing response
         """
+        if document is None and isinstance(id, dict):
+            document = id
+            id = None
+        doc_id = str(id) if id is not None else None
+
         # Validate inputs
         if not index:
             raise ValidationError("Index name cannot be empty")
@@ -58,12 +64,12 @@ class DocumentManager(BaseManager):
             }
 
             # elasticsearch-py 8.x Index API uses `id` (not document_id)
-            if id:
-                params["id"] = id
+            if doc_id:
+                params["id"] = doc_id
 
             self._ensure_connected()
 
-            logger.debug(f"Indexing document into '{index}' with ID '{id}'")
+            logger.debug(f"Indexing document into '{index}' with ID '{doc_id}'")
             # Execute the index operation with explicit cast to Any to bypass kwargs mapping checks
             response = cast(Any, self._client.get_client()).index(**params)
             return self._handle_response(response)
@@ -301,16 +307,23 @@ class DocumentManager(BaseManager):
     def search(
         self,
         index: str,
-        query: Dict[str, Any],
+        query: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
+        *,
+        size: Optional[int] = None,
+        from_: Optional[int] = None,
+        sort: Optional[List[Any]] = None,
     ) -> Any:
         """
         Search for documents.
 
         Args:
             index: Name of the index
-            query: Elasticsearch query DSL
-            options: Additional search options like size, from, sort, etc.
+            query: Elasticsearch query DSL. ``None`` runs ``match_all``.
+            options: Additional search options like size, from, sort, aggs.
+            size: Hit count (keyword form of the public API docs).
+            from_: Offset.
+            sort: Sort criteria.
 
         Returns:
             Search results
@@ -319,7 +332,9 @@ class DocumentManager(BaseManager):
         if not index:
             raise ValidationError("Index name cannot be empty")
 
-        if not query:
+        if query is None:
+            query = {"match_all": {}}
+        elif not query:
             raise ValidationError("Query cannot be empty")
 
         # Prepare search body
@@ -333,8 +348,15 @@ class DocumentManager(BaseManager):
             body = {"query": {"match_all": {}}}
 
         # Add search options if provided
-        if options:
-            for key, value in options.items():
+        merged_options: Dict[str, Any] = dict(options or {})
+        if size is not None:
+            merged_options["size"] = size
+        if from_ is not None:
+            merged_options["from"] = from_
+        if sort is not None:
+            merged_options["sort"] = sort
+        if merged_options:
+            for key, value in merged_options.items():
                 if key in ["size", "from", "sort", "track_total_hits"]:
                     body[key] = value
                 elif key in ["_source", "aggs", "aggregations", "highlight"]:
@@ -415,6 +437,39 @@ class DocumentManager(BaseManager):
             raise
         except Exception as e:
             raise DocumentError(f"Failed to bulk index documents: {str(e)}")
+
+    def bulk(
+        self, operations: List[Dict[str, Any]], refresh: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Execute raw Elasticsearch bulk operations.
+
+        ``operations`` is the NDJSON-style list used by the Bulk API:
+        action metadata dicts interleaved with source documents.
+
+        Args:
+            operations: Bulk action/source pairs.
+            refresh: Whether to refresh affected indices immediately.
+
+        Returns:
+            Bulk API response.
+        """
+        if not operations or not isinstance(operations, list):
+            raise ValidationError("Bulk operations must be a non-empty list")
+        try:
+            self._ensure_connected()
+            logger.info("document.bulk operations=%s", len(operations))
+            return self._handle_response(
+                self._client.get_client().bulk(
+                    operations=operations,
+                    refresh="true" if refresh else "false",
+                )
+            )
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.error("Failed to execute bulk operations: %s", e)
+            raise DocumentError(f"Failed to execute bulk operations: {str(e)}") from e
 
     def bulk_delete_sync(
         self, index: str, ids: List[str], refresh: bool = False
