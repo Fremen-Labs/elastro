@@ -101,6 +101,36 @@ def test_help_skips_ascii_art_when_not_tty(monkeypatch) -> None:
     assert "_ __|" not in result.output
 
 
+def test_help_skips_ascii_art_on_tty(monkeypatch) -> None:
+    monkeypatch.delenv("ELASTRO_NO_ART", raising=False)
+    monkeypatch.delenv("ELASTRO_GUI_MODE", raising=False)
+    monkeypatch.setattr("elastro.cli.art.sys.stdout.isatty", lambda: True)
+    from elastro.cli.cli import _apply_header_text
+
+    _apply_header_text()
+    result = CliRunner().invoke(cli, ["--help"])
+    assert result.exit_code == 0
+    assert "_ __|" not in result.output
+
+
+def test_header_text_only_for_table_tty(monkeypatch) -> None:
+    import rich_click as click
+
+    from elastro.cli.cli import _apply_header_text
+
+    monkeypatch.delenv("ELASTRO_NO_ART", raising=False)
+    monkeypatch.delenv("ELASTRO_GUI_MODE", raising=False)
+    monkeypatch.setattr("elastro.cli.art.sys.stdout.isatty", lambda: True)
+    _apply_header_text("json")
+    assert click.rich_click.HEADER_TEXT is None
+    _apply_header_text("yaml")
+    assert click.rich_click.HEADER_TEXT is None
+    _apply_header_text("table")
+    assert click.rich_click.HEADER_TEXT is not None
+    _apply_header_text()
+    assert click.rich_click.HEADER_TEXT is None
+
+
 def test_banner_enabled_respects_no_art_and_tty(monkeypatch) -> None:
     monkeypatch.delenv("ELASTRO_GUI_MODE", raising=False)
     monkeypatch.setenv("ELASTRO_NO_ART", "1")
@@ -138,6 +168,7 @@ def test_health_status_json_has_no_banner(monkeypatch) -> None:
     payload = json.loads(result.stdout)
     assert payload["cluster_name"] == "docker-cluster"
     assert payload["status"] == "green"
+    assert "_ __|" not in result.output
 
 
 def test_health_status_table_prints_banner(monkeypatch) -> None:

@@ -77,8 +77,9 @@ click.rich_click.ERRORS_SUGGESTION = (
 click.rich_click.ERRORS_EPILOGUE = "To find out more, visit [link=https://github.com/Fremen-Labs/elastro]https://github.com/Fremen-Labs/elastro[/link]"
 
 
-def _apply_header_text() -> None:
-    if banner_enabled():
+def _apply_header_text(output: Optional[str] = None) -> None:
+    """ASCII header is for TTY table mode only, never JSON/YAML or --help."""
+    if output == "table" and banner_enabled():
         click.rich_click.HEADER_TEXT = ELASTRO_ART
     else:
         click.rich_click.HEADER_TEXT = None
@@ -223,7 +224,7 @@ def cli(
     This CLI provides commands for managing Elasticsearch indices, documents, and
     datastreams.
     """
-    _apply_header_text()
+    _apply_header_text(output)
     # Load configuration
     cfg = load_config(config, profile)
 
