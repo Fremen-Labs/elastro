@@ -2,6 +2,8 @@
 
 This guide helps you diagnose and resolve common issues encountered while using Elastro.
 
+CLI commands that need a cluster fail closed (exit 1) on connect errors. `--help`, `config`, Fleet, and dry-run paths do not ping Elasticsearch. `-o json` / `-o yaml` do not print the ASCII banner. `elastro coverage fleet status` with JSON prints `{enabled: false}` and exits 0 when Fleet is unset.
+
 ## Connection Issues
 
 ### Unable to Connect to Elasticsearch
@@ -22,6 +24,12 @@ This guide helps you diagnose and resolve common issues encountered while using 
 3. Ensure network connectivity between your application and Elasticsearch
 4. Check firewall settings to allow connections on the Elasticsearch port
 5. If using Docker, ensure the network configuration allows proper connectivity
+6. Lima `elastic-telemetry`: NodePort is not reachable from the Mac. Port-forward and use the kube secret, not laptop `~/.elastic/config.yaml`:
+
+```bash
+kubectl --kubeconfig ~/.kube/config-lima-k3s -n elastic-telemetry \
+  port-forward --address 127.0.0.1 svc/elasticsearch 9205:9200
+```
 
 ### Authentication Failures
 
@@ -105,10 +113,12 @@ This guide helps you diagnose and resolve common issues encountered while using 
 1. Check if the index already exists with `index_manager.exists()`
 2. Validate your settings and mappings against Elasticsearch documentation
 3. Check cluster health with `client.health_check()`
-4. Use the `ignore_existing=True` parameter when appropriate:
-   ```python
-   index_manager.create("my-index", ignore_existing=True)
-   ```
+4. Skip create when the index already exists:
+
+```python
+if not index_manager.exists("my-index"):
+    index_manager.create("my-index")
+```
 
 ### Missing Indices
 
