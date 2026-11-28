@@ -25,6 +25,7 @@ Elastro is a Python library designed to simplify interactions with Elasticsearch
 - Document operations (indexing, searching, updating)
 - Datastream management
 - Advanced query building and search functionality
+- Cluster health assessment and APM/Beats coverage checks
 
 The library offers both a programmatic API and a command-line interface for seamless integration with various workflows.
 
@@ -71,6 +72,7 @@ If you are using Elastro as a library in your Python project:
 python3 -m venv venv
 source venv/bin/activate
 pip install elastro-client
+pip install "elastro-client[ingest-sql]"  # optional SQL ingest
 ```
 
 ### Troubleshooting: "externally-managed-environment"
