@@ -1,6 +1,6 @@
 # Health Assessment Commands
 
-Elastro's `health` command group provides scored cluster assessments, actionable findings, safe remediation, rollback, and optional audit/history indexing. Available since v1.4.x; rollback and audit indexing shipped in **v1.8.0**; unified remediation workflow (`health fix`, `assess --plan`) shipped in **v1.10.0**; monitoring exit codes and `--fail-on` shipped in **v1.11.0**; disk + ILM catalog remediations shipped in **v1.12.0**; fleet history trends and ES-backed GUI history shipped in **v1.13.0**.
+Elastro's `health` command group provides scored cluster assessments, actionable findings, safe remediation, rollback, and optional audit/history indexing. Available since v1.4.x; rollback and audit indexing shipped in **v1.8.0**; unified remediation workflow (`health fix`, `assess --plan`) shipped in **v1.10.0**; monitoring exit codes and `--fail-on` shipped in **v1.11.0**; disk + ILM catalog remediations shipped in **v1.12.0**; fleet history trends and ES-backed GUI history shipped in **v1.13.0**; coverage, fail-closed CLI, and scratch-safe templates shipped in **v1.14.0**.
 
 For the full implementation plan and PR history, see [health_assessment_implementation_plan.md](./health_assessment_implementation_plan.md).
 
