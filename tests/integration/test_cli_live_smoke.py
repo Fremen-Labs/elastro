@@ -253,6 +253,7 @@ def test_live_cli_utils_templates_lists(real_es_client) -> None:
 
 @pytest.mark.integration
 def test_live_cli_fleet_status_does_not_require_es(real_es_client) -> None:
-    result = _invoke(real_es_client, "coverage", "fleet", "status")
-    assert result.exit_code == 2, result.output
-    assert "Fleet is disabled" in result.output or "Fleet" in result.output
+    result = _invoke(real_es_client, "-o", "json", "coverage", "fleet", "status")
+    assert result.exit_code == 0, result.output
+    payload = _json_payload(result.stdout)
+    assert payload.get("enabled") is False

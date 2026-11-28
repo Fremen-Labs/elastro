@@ -359,9 +359,11 @@ def fleet_status(ctx: click.Context) -> None:
 
     try:
         status = FleetClient.from_config().status()
-        _echo(status.model_dump(mode="json"), ctx)
+        payload = status.model_dump(mode="json")
+        payload["enabled"] = True
+        _echo(payload, ctx)
     except ValidationError as exc:
-        usage_error(str(exc))
+        _echo_fleet_disabled(ctx, exc)
     except Exception as exc:
         exit_from_exception(exc, logger=logger, action="fleet status")
 
@@ -392,9 +394,17 @@ def fleet_agents(ctx: click.Context, policy: Optional[str]) -> None:
         agents = FleetClient.from_config().list_agents(policy_id=policy)
         _echo([agent.model_dump(mode="json") for agent in agents], ctx)
     except ValidationError as exc:
-        usage_error(str(exc))
+        _echo_fleet_disabled(ctx, exc)
     except Exception as exc:
         exit_from_exception(exc, logger=logger, action="list fleet agents")
+
+
+def _echo_fleet_disabled(ctx: click.Context, exc: ValidationError) -> None:
+    """JSON/YAML: enabled=false exit 0. Table/human: usage error exit 2."""
+    if _output_format(ctx) in ("json", "yaml"):
+        _echo({"enabled": False, "reason": str(exc)}, ctx)
+        return
+    usage_error(str(exc))
 
 
 def _output_format(ctx: click.Context) -> str:
