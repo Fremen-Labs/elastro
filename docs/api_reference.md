@@ -1,6 +1,6 @@
 # API Reference
 
-This document provides detailed documentation for Elastro's core components and their methods.
+This document provides detailed documentation for Elastro's core components and their methods (1.14.0).
 
 ## Table of Contents
 
@@ -36,10 +36,29 @@ client = ElasticsearchClient(
 
 #### `connect()`
 
-Establishes a connection to the Elasticsearch cluster.
+Establishes a connection to the Elasticsearch cluster. Returns `True` on success.
 
 ```python
-client.connect()
+assert client.connect() is True
+```
+
+#### `info()`
+
+Returns cluster name, version, and tagline.
+
+```python
+info = client.info()
+print(info["cluster_name"], info["version"]["number"])
+```
+
+#### `native_client`
+
+Alias for the underlying elasticsearch-py client (`get_client()`). Used by `ScrollHelper`.
+
+```python
+from elastro.advanced import ScrollHelper
+
+scroll = ScrollHelper(client.native_client)
 ```
 
 #### `health_check()`
@@ -158,26 +177,36 @@ doc_manager = DocumentManager(client)
 
 #### `index(index, id, document)`
 
-Indexes a document with the given ID.
+Indexes a document. `id` may be omitted; a dict as the second positional argument is treated as `document`.
 
 ```python
 result = doc_manager.index(
     index="my-index", id="doc-1", document={"field1": "value1", "field2": "value2"}
 )
+doc_manager.index("my-index", {"field1": "value1"})
 # Returns: Dict with indexing result
 ```
 
 #### `bulk_index(index, documents)`
 
-Indexes multiple documents in a single operation.
+Synchronous bulk index. Returns the Elasticsearch bulk API body (`errors`, `items`). The async helper is `bulk_index_async`.
 
 ```python
 documents = [
     {"id": "doc-1", "document": {"field1": "value1"}},
     {"id": "doc-2", "document": {"field1": "value2"}},
 ]
-result = doc_manager.bulk_index("my-index", documents)
+result = doc_manager.bulk_index("my-index", documents, refresh=True)
 # Returns: Dict with bulk indexing result
+```
+
+#### `search(index, query=None, options=None)`
+
+`query=None` runs `match_all`. `options` may include `size`, `from`, `sort`, `aggs`.
+
+```python
+hits = doc_manager.search("products", {"match": {"name": "laptop"}}, {"size": 10})
+hits = doc_manager.search("products")  # match_all
 ```
 
 #### `get(index, id)`
@@ -276,26 +305,38 @@ The `QueryBuilder` class helps to construct complex Elasticsearch queries.
 ```python
 from elastro.advanced import QueryBuilder
 
-// ... existing code ...
+query_builder = QueryBuilder()
+bool_query = query_builder.bool()
+bool_query.must(QueryBuilder().match("name", "laptop"))
+bool_query.must(QueryBuilder().range("price", gte=500, lte=2000))
+query = query_builder.build()
+
+# Successive leaf clauses also combine with bool.must
+query = QueryBuilder().match("name", "laptop").range("price", gte=500).build()
+QueryBuilder().match_all().build()
 ```
 
 ### AggregationBuilder
 
-The `AggregationBuilder` class helps to construct Elasticsearch aggregations.
+The `AggregationBuilder` class helps to construct Elasticsearch aggregations. `.build()` is an alias of `.to_dict()`.
 
 ```python
 from elastro.advanced import AggregationBuilder
 
-// ... existing code ...
+aggs = AggregationBuilder().terms("brands", "brand").avg("avg_rating", "rating").build()
 ```
 
 ### ScrollHelper
 
-The `ScrollHelper` class helps with scrolling through large result sets.
+The `ScrollHelper` class helps with scrolling through large result sets. Pass `client.native_client` or an `ElasticsearchClient`.
 
 ```python
 from elastro.advanced import ScrollHelper
 from elastro import ElasticsearchClient
 
-// ... existing code ...
+client = ElasticsearchClient()
+client.connect()
+scroll = ScrollHelper(client.native_client)
+for batch in scroll.scroll(index="products", query={"match_all": {}}, size=100):
+    print(len(batch))
 ```
