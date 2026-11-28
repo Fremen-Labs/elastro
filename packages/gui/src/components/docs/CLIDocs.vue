@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import { Terminal, Command, Settings, RotateCcw, Activity, Shield, ListTree, Workflow } from 'lucide-vue-next';
+import { Terminal, Command, Settings, RotateCcw, Activity, Shield, ListTree, Workflow, HeartPulse, Radio } from 'lucide-vue-next';
 import CodeBlock from '../CodeBlock.vue';
 
 const sections = [
@@ -9,6 +9,8 @@ const sections = [
   { id: 'ilm-policy', title: 'ILM Policy Management', icon: Settings },
   { id: 'snapshot-restore', title: 'Snapshot & Restore', icon: RotateCcw },
   { id: 'cluster-diagnostics', title: 'Cluster Diagnostics', icon: Activity },
+  { id: 'health', title: 'Health Assessment', icon: HeartPulse },
+  { id: 'coverage', title: 'Coverage & Readiness', icon: Radio },
   { id: 'rbac-admin', title: 'RBAC Admin', icon: Shield },
   { id: 'task-monitor', title: 'Task Monitor', icon: ListTree },
   { id: 'ingest-pipes', title: 'Ingest Pipelines', icon: Workflow }
@@ -94,13 +96,13 @@ const scrollToSection = (id: string) => {
       <div class="hero-section">
         <div class="badge">
           <Terminal class="icon-badge text-accent" />
-          <span>CLI Reference</span>
+          <span>CLI Reference · 1.14.0</span>
         </div>
         <h1 class="page-title">
           Elastro <span class="gradient-text">CLI</span>
         </h1>
         <p class="subtitle">
-          Manage your Elasticsearch clusters, snapshots, and ILM policies directly from the terminal.
+          Manage clusters, health, coverage, snapshots, and ILM from the terminal.
         </p>
       </div>
 
@@ -116,6 +118,7 @@ const scrollToSection = (id: string) => {
         <CodeBlock
           code="# Install from PyPI
 pip install elastro-client
+pip install &quot;elastro-client[ingest-sql]&quot;   # optional SQL ingest
 
 # Or install from source
 pip install git+https://github.com/Fremen-Labs/elastro.git"
@@ -147,8 +150,12 @@ elastro template wizard
 # Add a document
 elastro doc index products --id 1 --file ./product.json
 
-# Search documents
-elastro doc search products --term category=laptop"
+# Search documents (index refreshes by default)
+elastro doc search products --term category=laptop
+
+# Health and coverage
+elastro -o json health status
+elastro coverage check --all --skip-absent"
           language="bash"
           :showLineNumbers="true"
           title="Common Commands"
@@ -261,6 +268,58 @@ elastro cluster settings --enable-routing none"
           language="bash"
           :showLineNumbers="true"
           title="Cluster Commands"
+        />
+      </section>
+
+      <!-- Health Assessment -->
+      <section id="health" data-section class="doc-section">
+        <h2 class="section-title">
+          <HeartPulse class="icon-large text-primary" />
+          Health Assessment
+        </h2>
+        <p class="section-desc">
+          Scored cluster assessments with fail-closed exit codes. JSON output has no ASCII banner.
+        </p>
+        <CodeBlock
+          code="# Cluster health JSON
+elastro -o json health status
+
+# Full assessment (exit 2 when FAIL findings exist)
+elastro health assess --fail-on fail
+
+# Feature filters (disk does not include TLS findings)
+elastro health assess --feature disk
+elastro health assess --feature apm"
+          language="bash"
+          :showLineNumbers="true"
+          title="Health Commands"
+        />
+      </section>
+
+      <!-- Coverage -->
+      <section id="coverage" data-section class="doc-section">
+        <h2 class="section-title">
+          <Radio class="icon-large text-primary" />
+          Coverage &amp; Readiness
+        </h2>
+        <p class="section-desc">
+          APM and Beats data-arrival checks, scratch-safe template apply, optional Fleet via env.
+        </p>
+        <CodeBlock
+          code="# AND-gate over APM+Beats patterns; skip missing streams
+elastro coverage check --all --skip-absent
+
+# Scratch apply on a shared cluster (does not overwrite traces-apm*)
+elastro coverage templates apply apm-traces --yes \\
+  --policy-name elastro-scratch-apm --template-name elastro-scratch-apm \\
+  --index-pattern 'elastro-scratch-traces-*'
+
+# Fleet: JSON reports enabled=false when unset (no invented API keys)
+elastro -o json coverage fleet status
+# Optional: ELASTRO_FLEET_ENABLED, ELASTRO_FLEET_KIBANA_URL, ELASTRO_FLEET_API_KEY"
+          language="bash"
+          :showLineNumbers="true"
+          title="Coverage Commands"
         />
       </section>
 

@@ -93,7 +93,7 @@ const scrollToSection = (id: string) => {
       <div class="hero-section">
         <div class="badge">
           <Database class="icon-badge text-accent" />
-          <span>Python API Reference</span>
+          <span>Python API Reference · 1.14.0</span>
         </div>
         <h1 class="page-title">
           Elastro <span class="gradient-text">Python Client</span>
@@ -333,8 +333,16 @@ doc_manager = DocumentManager(client)
 # Match query
 query_builder = QueryBuilder()
 query_builder.match(&quot;name&quot;, &quot;laptop&quot;)
+query_builder.range(&quot;price&quot;, gte=500, lte=2000)
 query = query_builder.build()
-results = doc_manager.search(&quot;products&quot;, query)"
+results = doc_manager.search(&quot;products&quot;, query)
+
+# match_all, info, native_client, sync bulk
+QueryBuilder().match_all().build()
+client.info()
+from elastro.advanced import ScrollHelper
+ScrollHelper(client.native_client)
+doc_manager.bulk_index(&quot;products&quot;, [{&quot;name&quot;: &quot;Mouse&quot;}], refresh=True)"
           language="python"
           :showLineNumbers="true"
           title="basic_queries.py"
