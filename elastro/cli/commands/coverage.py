@@ -69,6 +69,18 @@ def templates_list(ctx: click.Context) -> None:
 @click.option("--warm-min-age", type=str, default=None, help="Warm phase min_age")
 @click.option("--dry-run", is_flag=True, default=False, help="Print bodies without PUT")
 @click.option("--yes", is_flag=True, default=False, help="Skip confirmation")
+@click.option(
+    "--index-pattern",
+    "index_patterns",
+    multiple=True,
+    help="Override index patterns (repeatable). Use elastro-scratch-* on shared clusters.",
+)
+@click.option(
+    "--template-name",
+    type=str,
+    default=None,
+    help="Override composable index template name (default elastro-<template>)",
+)
 @click.pass_context
 def templates_apply(
     ctx: click.Context,
@@ -80,6 +92,8 @@ def templates_apply(
     warm_min_age: Optional[str],
     dry_run: bool,
     yes: bool,
+    index_patterns: tuple,
+    template_name: Optional[str],
 ) -> None:
     """
     Apply an ILM policy and matching index template.
@@ -89,6 +103,9 @@ def templates_apply(
     ```bash
     elastro coverage templates apply apm-traces --dry-run
     elastro coverage templates apply metricbeat --policy-name custom-metrics --yes
+    elastro coverage templates apply apm-traces --yes \\
+      --policy-name elastro-scratch-apm --template-name elastro-scratch-apm \\
+      --index-pattern 'elastro-scratch-traces-*'
     ```
     """
     logger.info(
@@ -115,6 +132,8 @@ def templates_apply(
             rollover_max_size=rollover_size,
             hot_max_age=hot_max_age,
             warm_min_age=warm_min_age,
+            index_patterns=list(index_patterns) or None,
+            index_template_name=template_name,
         )
         _echo(result.model_dump(mode="json"), ctx)
     except ValidationError as exc:

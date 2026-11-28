@@ -29,6 +29,22 @@ def test_list_includes_shipped_templates() -> None:
     }
 
 
+def test_apply_scratch_overrides_patterns_and_names() -> None:
+    result = TemplateManager().apply(
+        "apm-traces",
+        dry_run=True,
+        ilm_policy_name="elastro-scratch-apm",
+        index_template_name="elastro-scratch-apm",
+        index_patterns=["elastro-scratch-traces-*"],
+    )
+    assert result.ilm_policy_name == "elastro-scratch-apm"
+    assert result.index_template_name == "elastro-scratch-apm"
+    assert result.index_template["index_patterns"] == ["elastro-scratch-traces-*"]
+    assert result.index_template["template"]["settings"]["index.lifecycle.name"] == (
+        "elastro-scratch-apm"
+    )
+
+
 def test_apply_dry_run_does_not_put(es_client) -> None:
     result = TemplateManager(es_client).apply("apm-traces", dry_run=True)
     assert result.dry_run is True
