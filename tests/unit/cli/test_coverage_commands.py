@@ -250,6 +250,21 @@ def test_check_all_help_documents_and_gate() -> None:
     assert "metrics-metricbeat*" in help_text
 
 
+def test_fleet_status_json_disabled_exits_0() -> None:
+    with patch("elastro.cli.cli.ElasticsearchClient.connect"):
+        result = CliRunner().invoke(cli, ["-o", "json", "coverage", "fleet", "status"])
+    assert result.exit_code == 0, result.output
+    assert '"enabled": false' in result.output
+    assert "super-secret" not in result.output
+
+
+def test_fleet_status_table_disabled_exits_2() -> None:
+    with patch("elastro.cli.cli.ElasticsearchClient.connect"):
+        result = CliRunner().invoke(cli, ["-o", "table", "coverage", "fleet", "status"])
+    assert result.exit_code == 2, result.output
+    assert "Fleet is disabled" in result.output
+
+
 def test_fleet_status_imports_on_demand() -> None:
     from elastro.coverage.fleet import FleetStatus
 

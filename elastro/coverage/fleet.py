@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode
 
@@ -46,6 +47,33 @@ class FleetStatus(BaseModel):
     agents: List[FleetAgent] = Field(default_factory=list)
 
 
+def fleet_settings() -> Dict[str, Any]:
+    """Return Fleet settings from yaml plus env overrides. Never logs the key."""
+    coverage = get_config().get("coverage") or {}
+    fleet = dict(coverage.get("fleet") or {})
+    env_enabled = _env_bool(os.environ.get("ELASTRO_FLEET_ENABLED"))
+    if env_enabled is not None:
+        fleet["enabled"] = env_enabled
+    url = (os.environ.get("ELASTRO_FLEET_KIBANA_URL") or "").strip()
+    key = (os.environ.get("ELASTRO_FLEET_API_KEY") or "").strip()
+    if url:
+        fleet["kibana_url"] = url
+    if key:
+        fleet["api_key"] = key
+    return fleet
+
+
+def _env_bool(value: Optional[str]) -> Optional[bool]:
+    if value is None:
+        return None
+    text = value.strip().lower()
+    if text in {"1", "true", "yes", "on"}:
+        return True
+    if text in {"0", "false", "no", "off"}:
+        return False
+    return None
+
+
 class FleetClient:
     """Thin Kibana Fleet API client (read-only)."""
 
@@ -71,14 +99,20 @@ class FleetClient:
 
     @classmethod
     def from_config(cls) -> "FleetClient":
-        """Build a client from ``coverage.fleet`` config (never logs the key)."""
-        coverage = get_config().get("coverage") or {}
-        fleet = coverage.get("fleet") or {}
+        """Build a client from config and env (never logs the key)."""
+        fleet = fleet_settings()
         if not fleet.get("enabled"):
             raise ValidationError(
                 "Fleet is disabled. Set coverage.fleet.enabled: true "
-                "and coverage.fleet.kibana_url / api_key."
+                "and coverage.fleet.kibana_url / api_key, or "
+                "ELASTRO_FLEET_ENABLED / ELASTRO_FLEET_KIBANA_URL / "
+                "ELASTRO_FLEET_API_KEY."
             )
+        logger.info(
+            "Fleet client enabled kibana_url=%s has_api_key=%s",
+            fleet.get("kibana_url") or "-",
+            bool(fleet.get("api_key")),
+        )
         return cls(
             kibana_url=str(fleet.get("kibana_url") or ""),
             api_key=str(fleet.get("api_key") or ""),

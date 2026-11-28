@@ -33,8 +33,8 @@ elastro coverage check --all --skip-absent
 # Combined readiness report
 elastro -o json coverage report
 
-# Optional Fleet (requires coverage.fleet.enabled: true plus kibana_url + api_key)
-elastro coverage fleet status
+# Optional Fleet (yaml coverage.fleet or ELASTRO_FLEET_* env; never log the key)
+elastro -o json coverage fleet status
 elastro coverage fleet agents --policy apm-apps
 ```
 

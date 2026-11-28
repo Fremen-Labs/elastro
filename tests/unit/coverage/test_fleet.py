@@ -90,6 +90,24 @@ def test_missing_url_raises_validation_error() -> None:
         FleetClient("", "key")
 
 
+def test_from_config_env_enables_without_logging_key(monkeypatch, caplog) -> None:
+    import logging
+
+    caplog.set_level(logging.INFO)
+    monkeypatch.setenv("ELASTRO_FLEET_ENABLED", "true")
+    monkeypatch.setenv("ELASTRO_FLEET_KIBANA_URL", "https://kibana:5601")
+    monkeypatch.setenv("ELASTRO_FLEET_API_KEY", "super-secret-key")
+    with patch(
+        "elastro.coverage.fleet.get_config",
+        return_value={"coverage": {"fleet": {"enabled": False}}},
+    ):
+        client = FleetClient.from_config()
+    assert client._base == "https://kibana:5601"
+    assert bool(getattr(client, "_api_key", None))
+    assert "super-secret-key" not in caplog.text
+    assert "super-secret-key" not in (caplog.text or "")
+
+
 def test_from_config_requires_enabled() -> None:
     with patch(
         "elastro.coverage.fleet.get_config",

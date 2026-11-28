@@ -64,7 +64,8 @@ def test_coverage_fleet_status_does_not_connect(monkeypatch, caplog) -> None:
     caplog.set_level(logging.ERROR)
 
     result = CliRunner().invoke(cli, ["coverage", "fleet", "status"])
-    assert result.exit_code == 2
+    assert result.exit_code == 0, result.output
+    assert '"enabled": false' in result.output
     connect.assert_not_called()
     ping.assert_not_called()
     assert not any("Ping failed" in rec.message for rec in caplog.records)

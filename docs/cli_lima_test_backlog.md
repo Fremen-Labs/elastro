@@ -198,7 +198,7 @@ Fine, but `--help` says “Wrapper for list”. Easy to call without a pattern a
 | COV-2 | P1 | No production `templates apply --yes` on shared Lima. | Done: `--index-pattern` / `--template-name` scratch apply |
 | COV-3 | P1 | `--feature apm`/`beats` keep cluster FAIL findings. | Done |
 | COV-4 | P2 | `coverage report` does not write `elastro-health-audit`. | Done (`audit=False`) |
-| COV-5 | P2 | Fleet live Kibana API-key test. | Open by design |
+| COV-5 | P2 | Fleet live Kibana API-key test. | Done: env `ELASTRO_FLEET_*`; JSON disabled is `{enabled: false}` exit 0 |
 | COV-6 | P1 | `--feature disk` must not include `security.tls`. | Done |
 | COV-7 | P1 | `--service` must not treat stream names as coverage. | Done |
 | COV-8 | P1 | `field_presence` scoped to the time window. | Done |
