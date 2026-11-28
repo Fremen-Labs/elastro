@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import { Terminal, Command, Settings, RotateCcw, Activity, Shield, ListTree, Workflow, HeartPulse, Radio } from 'lucide-vue-next';
+import { Terminal, Command, Settings, RotateCcw, Activity, Shield, ListTree, Workflow, HeartPulse, Radio, Code2 } from 'lucide-vue-next';
 import CodeBlock from '../CodeBlock.vue';
 
 const sections = [
@@ -13,7 +13,8 @@ const sections = [
   { id: 'coverage', title: 'Coverage & Readiness', icon: Radio },
   { id: 'rbac-admin', title: 'RBAC Admin', icon: Shield },
   { id: 'task-monitor', title: 'Task Monitor', icon: ListTree },
-  { id: 'ingest-pipes', title: 'Ingest Pipelines', icon: Workflow }
+  { id: 'ingest-pipes', title: 'Ingest Pipelines', icon: Workflow },
+  { id: 'more-commands', title: 'More Commands', icon: Code2 }
 ];
 
 const activeSection = ref('installation');
@@ -398,6 +399,43 @@ elastro ingest simulate raw-logs-ingest --doc '{&quot;_source&quot;: {&quot;mess
           language="bash"
           :showLineNumbers="true"
           title="Ingest Commands"
+        />
+      </section>
+
+      <!-- More commands -->
+      <section id="more-commands" data-section class="doc-section">
+        <h2 class="section-title">
+          <Code2 class="icon-large text-primary" />
+          More Commands
+        </h2>
+        <p class="section-desc">
+          ES|QL, Painless, daemon, agent helpers, and ILM start/stop. Missing agent indices return empty results (exit 0).
+        </p>
+        <CodeBlock
+          code="# ES|QL
+elastro esql query 'FROM * | LIMIT 1'
+elastro esql build -s '*' -w true --limit 1
+
+# Painless (scaffold needs a TTY)
+elastro painless test ./script.painless
+
+# ILM cluster switch (--yes required)
+elastro ilm start --dry-run
+elastro ilm stop --yes
+
+# Local search daemon
+elastro daemon status
+
+# Agent memory/tools (empty + exit 0 if indices are missing)
+elastro memory search test
+elastro tools search test
+
+# utils templates/aliases list with no subcommand
+elastro utils templates
+elastro utils aliases"
+          language="bash"
+          :showLineNumbers="true"
+          title="More Commands"
         />
       </section>
     </main>
