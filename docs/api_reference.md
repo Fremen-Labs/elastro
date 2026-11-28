@@ -323,12 +323,7 @@ The `AggregationBuilder` class helps to construct Elasticsearch aggregations. `.
 ```python
 from elastro.advanced import AggregationBuilder
 
-aggs = (
-    AggregationBuilder()
-    .terms("brands", "brand")
-    .avg("avg_rating", "rating")
-    .build()
-)
+aggs = AggregationBuilder().terms("brands", "brand").avg("avg_rating", "rating").build()
 ```
 
 ### ScrollHelper
