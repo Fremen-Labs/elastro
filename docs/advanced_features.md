@@ -13,6 +13,7 @@ from elastro.advanced import QueryBuilder
 
 # Create a simple match query
 query = QueryBuilder().match("title", "elasticsearch", operator="and").to_dict()
+query = QueryBuilder().match_all().build()
 
 # Create a match phrase query with slop
 query = (
@@ -27,6 +28,7 @@ query = QueryBuilder().term("status", "active").to_dict()
 
 ### Available Query Types
 
+- **match_all**: Match every document
 - **match**: For full-text search with options like fuzziness
 - **match_phrase**: For phrase matching with slop parameter
 - **term**: For exact value matching
@@ -76,6 +78,7 @@ from elastro.advanced import AggregationBuilder
 
 # Create a terms aggregation on a field
 aggs = AggregationBuilder().terms("status_counts", "status", size=5).to_dict()
+aggs = AggregationBuilder().terms("status_counts", "status", size=5).build()
 
 # Create a date histogram
 aggs = (
