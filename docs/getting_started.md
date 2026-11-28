@@ -228,23 +228,22 @@ elastro index list
 # Create an index
 elastro index create products --shards 3 --replicas 1
 
-# Add a document
-elastro doc index products --id 1 --data '{"name": "Laptop", "price": 999.99}'
-
-# Or from a file
+# Add a document (stdin or --file; index refreshes by default)
+echo '{"name": "Laptop", "price": 999.99}' | elastro doc index products --id 1
 elastro doc index products --id 2 --file ./product.json
 
 # Search for documents
 elastro doc search products --query 'name:laptop'
+elastro doc search products --term category=electronics
 
-# Get index details in YAML format
-elastro index get products --format yaml
+# Get index details in YAML
+elastro -o yaml index get products
 ```
 
 ## Next Steps
 
 - Run a scored health assessment: `elastro health assess -o table` — see [Health Commands](./health_commands.md)
-- Validate APM/Beats data arrival: `elastro coverage check --pattern "traces-apm*"` (or `--all` for a full APM+Beats gate) — see [Coverage & Readiness](./coverage.md)
+- Validate APM/Beats data arrival: `elastro coverage check --pattern "traces-apm*"` (or `--all --skip-absent`) — see [Coverage & Readiness](./coverage.md)
 - Read the [API Reference](https://github.com/Fremen-Labs/elastro/blob/main/docs/api_reference.md) for detailed information about all available methods
 - Explore [Advanced Features](https://github.com/Fremen-Labs/elastro/blob/main/docs/advanced_features.md) for more complex operations
 - Check the [Examples](https://github.com/Fremen-Labs/elastro/tree/main/examples) directory for more code samples
