@@ -86,57 +86,16 @@ Lima/k3s (second pass, cluster up):
 
 ---
 
-## Observed without a cluster (still real bugs / UX)
+## Observed without a cluster (resolved in 1.14.0)
 
-These showed up in the 122-command matrix. Help always exit 0. Live ES commands exit 1 on connect, which is the intended fail-closed path.
+The 122-command matrix below is historical (2026-11-20). These UX items shipped in follow-up PRs:
 
-### B1. Root callback pings ES on every invocation, including `--help`
-
-64 of 65 `--help` runs logged a failed ping to `localhost:9205`. `elastro coverage --help`, `elastro health assess --help`, even missing Click arguments (`index find`, `snapshot list`) still connect first.
-
-`config list`, `coverage templates list`, `coverage templates apply --dry-run`, `memory prune --dry-run`, `health rollback list`, `esql build`, and `daemon status` all **succeed** without ES, but they still log a connect **ERROR** first.
-
-`coverage fleet status` talks only to Kibana and still pings Elasticsearch before printing `Fleet is disabled...` (exit 2).
-
-**Wanted:** skip `connect()` for `--help`, `config`, `gui`, `daemon`, Fleet, and dry-run/local paths. Store the error on `ctx.meta` without logging ERROR until a command actually needs the client (`require_client`).
-
-### B2. ASCII art on every `--help`
-
-Stdout for help is ~4KB of banner plus usage. Scripts that scrape `--help` get the art. Root `--help` was the only help that did **not** also ping ES (fast path?).
-
-**Wanted:** banner on interactive TTY only, or `ELASTRO_NO_ART=1`.
-
-### B3. Connect logs are noisy and include auth shape
-
-Every command logs:
-
-```
-Connecting with params: hosts=[...], auth={'type': 'basic', 'username': 'elastic', 'password': '******', 'api_key': '******'}, basic_auth=('elastic', '******')
-```
-
-Password is masked. Username is not. `INFO` on every CLI start is loud for operators and for `coverage --help`.
-
-**Wanted:** log host (userinfo stripped) at DEBUG; never log `basic_auth` tuples.
-
-### B4. Click usage (exit 2) after a failed ping
-
-`elastro index find` (missing `PATTERN`) and `elastro snapshot list` (missing `REPOSITORY`) exit 2 as Click usage, but only after the connect ERROR. The usage text is buried under logs + ASCII art.
-
-**Wanted:** validate args before connect, or do not connect until the subcommand runs.
-
-### B5. `painless scaffold` is not a clean non-TTY command
-
-Non-interactive run prints the wizard, then `Aborted.` First matrix run exited 1; a later `/dev/null` run exited 0. Local scaffold should not need ES (it still pings). Non-TTY should exit 2 with “interactive wizard requires a TTY” like `ml init-job`.
-
-### B6. Mutations without `--yes`
-
-Covered well for `coverage templates apply`, `memory prune`, `tasks cancel`, `script delete`, `cluster settings --enable-routing` (all exit 2).
-
-`elastro ilm start` / `ilm stop` have **no** `--yes` and would mutate as soon as the cluster is up. Same class of gap as the uplift’s passthrough commands.
-
-### B7. `index find` is only a required-pattern wrapper around `list`
-
-Fine, but `--help` says “Wrapper for list”. Easy to call without a pattern and get usage 2 plus a connect error.
+- **B1 / B4 / CLI-1 / CLI-2 / CLI-7:** `connect()` only in `require_client()`. `--help`, config, Fleet, dry-run, and missing-arg paths do not ping ES.
+- **B2 / CLI-3:** ASCII header only for `-o table` on a TTY. JSON/YAML and `--help` have no banner.
+- **B3 / CLI-4:** Connect logs host-only at DEBUG; no `basic_auth` tuples.
+- **B5 / CLI-5:** `painless scaffold` non-TTY exits 2 without ES.
+- **B6 / CLI-6:** `ilm start` / `ilm stop` take `--yes` / dry-run.
+- **Fleet JSON:** disabled Fleet is `{enabled: false}` exit 0; table still exits 2.
 
 ---
 
@@ -149,8 +108,8 @@ Fine, but `--help` says “Wrapper for list”. Easy to call without a pattern a
 | `coverage templates apply apm-traces` (no `--yes`) | exit 2 | Confirm gate works |
 | `coverage check --all` / `--service` / `--pattern` | exit 1 | Connect fail (needs ES) |
 | `coverage report` | exit 1 | Connect fail |
-| `coverage fleet status` | exit 2 | Correct “Fleet is disabled” **after** ES ping noise |
-| `coverage fleet agents` | exit 2 | Same |
+| `coverage fleet status` | exit 0 JSON | `{enabled: false}` when unset; table still exits 2 |
+| `coverage fleet agents` | exit 0 JSON | Same |
 
 **Needs live ES:** check freshness/doc counts, report combined with health, `templates apply --yes` on a scratch cluster, `--feature apm` vs default assess SKIPPED, Fleet against a real Kibana URL.
 
