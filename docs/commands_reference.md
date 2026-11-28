@@ -126,10 +126,10 @@ See [Health Commands](./health_commands.md) for full option reference.
 
 See [Coverage & Readiness](./coverage.md) for the full command and Python API reference.
 
-- **`templates list` / `templates apply`**: Ship and apply opinionated ILM + index templates (`apm-traces`, `apm-metrics`, `filebeat-logs`, `metricbeat-metrics`). `--dry-run` prints planned bodies; apply requires `--yes` (or an interactive confirm).
-- **`check`**: Validate document counts, freshness, stream presence, and basic field presence (`--service`, `--pattern`, or `--all`). `--all` is a full APM+Beats gate (every default pattern must pass). Failed checks exit `2` for CI.
-- **`report`**: Combined readiness report (template apply status + coverage checks + APM/Beats health findings).
-- **`fleet status` / `fleet agents`**: Optional read-only Fleet helpers (Kibana API). Not imported unless the command runs.
+- **`templates list` / `templates apply`**: Ship and apply opinionated ILM + index templates (`apm-traces`, `apm-metrics`, `filebeat-logs`, `metricbeat-metrics`). `--dry-run` prints planned bodies; apply requires `--yes` (or an interactive confirm). On a shared cluster, override with `--policy-name`, `--template-name`, and `--index-pattern elastro-scratch-*` so production `traces-apm*` is not overwritten.
+- **`check`**: Validate document counts, freshness, stream presence, and basic field presence (`--service`, `--pattern`, or `--all`). `--all` is a full APM+Beats AND-gate. `--skip-absent` skips patterns with no matching streams. Failed checks exit `2` for CI.
+- **`report`**: Combined readiness report (template apply status + coverage checks + APM/Beats health findings). Supports `--skip-absent`.
+- **`fleet status` / `fleet agents`**: Optional read-only Fleet helpers (Kibana API, or `ELASTRO_FLEET_*` env). JSON/YAML when disabled: `{enabled: false}` exit 0. The API key is never logged.
 
 Global `-o json|yaml|table` belongs on the root group: `elastro -o json coverage check --all`.
 
@@ -139,7 +139,7 @@ Global `-o json|yaml|table` belongs on the root group: `elastro -o json coverage
 **Purpose**: Client-side data preparation, formatting, and AI-driven pipeline operations.
 **Why it's important**: Elasticsearch ingest pipelines are powerful but run server-side. The `ingest` commands let you process, sanitize, validate, and format data (like CSV, SQL, Parquet, or NDJSON) locally *before* it reaches your cluster, and provides smart AI tools to rapidly author complex ingest logic.
 
-- **`import`**: Multi-format streaming data import (CSV, NDJSON, JSON array, SQL). Automatically parses inputs without loading entire files into memory.
+- **`import`**: Multi-format streaming data import (CSV, NDJSON, JSON array, SQL). Automatically parses inputs without loading entire files into memory. SQL (`--sql` / `--dsn`) requires `pip install "elastro-client[ingest-sql]"`.
 - **`profile`**: Analyze a local data source to generate a pre-ingest data quality report, identifying PII risk, uniqueness, and null rates.
 - **`validate`**: Dry-run document validation against an Elasticsearch index mapping with strict type coercion enforcement.
 - **`auto-map`**: Sample a dataset to infer optimal Elasticsearch field mappings (including nested objects) automatically.
