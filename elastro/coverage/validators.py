@@ -46,6 +46,7 @@ class CoverageCheck(BaseModel):
     detail: Optional[str] = None
     doc_count: int = 0
     latest_timestamp: Optional[str] = None
+    skipped: bool = False
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -121,18 +122,25 @@ class CoverageValidator:
         min_docs: int = DEFAULT_MIN_DOCS,
         max_age: Optional[str] = None,
         max_cardinality: Optional[int] = None,
+        skip_absent: bool = False,
     ) -> CoverageReport:
-        """Check every default APM and Beats pattern (full coverage gate)."""
-        reports = [
-            self.check_pattern(
+        """Check every default APM and Beats pattern (full coverage gate).
+
+        ``skip_absent`` keeps the AND-gate for patterns that exist and skips
+        patterns with no matching indices or data streams.
+        """
+        reports: List[CoverageReport] = []
+        for pattern in DEFAULT_ALL_PATTERNS:
+            report = self.check_pattern(
                 pattern,
                 window=window,
                 min_docs=min_docs,
                 max_age=max_age,
                 max_cardinality=max_cardinality,
             )
-            for pattern in DEFAULT_ALL_PATTERNS
-        ]
+            if skip_absent:
+                report = _skip_absent_pattern(report, pattern)
+            reports.append(report)
         checks: List[CoverageCheck] = []
         for report in reports:
             checks.extend(report.checks)
@@ -468,6 +476,24 @@ def _has_presence_aggs(body: Dict[str, Any]) -> bool:
         or "has_host_name" in body
         or "service_cardinality" in body
     )
+
+
+def _skip_absent_pattern(report: CoverageReport, pattern: str) -> CoverageReport:
+    """Treat a pattern with no matching streams as skipped, not failed."""
+    streams = next(
+        (check for check in report.checks if check.name == "streams_present"),
+        None,
+    )
+    if streams is None or streams.passed:
+        return report
+    for check in report.checks:
+        check.passed = True
+        check.skipped = True
+        check.metadata["skipped_absent"] = True
+        check.metadata["pattern"] = pattern
+    streams.summary = f"No indices or data streams match '{pattern}' (skipped)"
+    report.passed = True
+    return report
 
 
 def _scoped_aggs(aggs: Dict[str, Any]) -> Dict[str, Any]:

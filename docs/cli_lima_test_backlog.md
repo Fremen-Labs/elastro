@@ -196,7 +196,7 @@ Fine, but `--help` says “Wrapper for list”. Easy to call without a pattern a
 | CLI-8 | P2 | `doc search --query`. | Done |
 | CLI-9 | P2 | `cluster allocation` empty success on green cluster. | Done |
 | CLI-10 | P2 | `memory`/`tools` search empty when agent indices missing. | Done |
-| COV-1 | P1 | `--all` AND-gate (metricbeat patterns absent on Lima). | Open by design |
+| COV-1 | P1 | `--all` AND-gate (metricbeat patterns absent on Lima). | Done: default AND-gate kept; `--skip-absent` skips missing patterns |
 | COV-2 | P1 | No `templates apply --yes` on shared Lima. | Open by design |
 | COV-3 | P1 | `--feature apm`/`beats` keep cluster FAIL findings. | Done |
 | COV-4 | P2 | `coverage report` does not write `elastro-health-audit`. | Done (`audit=False`) |

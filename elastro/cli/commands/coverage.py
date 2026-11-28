@@ -156,6 +156,12 @@ def templates_apply(
     default=None,
     help="Fail when unique service.name values exceed this count",
 )
+@click.option(
+    "--skip-absent",
+    is_flag=True,
+    default=False,
+    help="With --all, skip patterns that have no matching indices or data streams",
+)
 @click.pass_context
 def coverage_check(
     ctx: click.Context,
@@ -166,6 +172,7 @@ def coverage_check(
     min_docs: int,
     max_age: Optional[str],
     max_cardinality: Optional[int],
+    skip_absent: bool,
 ) -> None:
     """
     Validate that APM or Beats data is arriving.
@@ -173,6 +180,7 @@ def coverage_check(
     `--all` is an AND-gate: every default pattern must be present and pass
     (`traces-apm*`, `metrics-apm*`, `logs-apm*`, `filebeat-*`, `metricbeat-*`,
     and data-stream aliases `logs-filebeat*`, `metrics-metricbeat*`).
+    `--skip-absent` keeps that gate for patterns that exist and skips missing ones.
 
     Examples:
 
@@ -180,18 +188,22 @@ def coverage_check(
     elastro coverage check --service my-app --window 15m
     elastro coverage check --pattern "traces-apm*" --min-docs 100 --max-age 5m
     elastro -o table coverage check --all
+    elastro coverage check --all --skip-absent
     ```
     """
     selected = [bool(service), bool(pattern), bool(check_all)]
     if sum(selected) != 1:
         usage_error("Provide exactly one of --service, --pattern, or --all")
+    if skip_absent and not check_all:
+        usage_error("--skip-absent requires --all")
     resolved_window = window or default_coverage_window()
     client = require_client(ctx)
     logger.info(
-        "coverage.check service=%s pattern=%s all=%s window=%s min_docs=%s",
+        "coverage.check service=%s pattern=%s all=%s skip_absent=%s window=%s min_docs=%s",
         service or "-",
         pattern or "-",
         check_all,
+        skip_absent,
         resolved_window,
         min_docs,
     )
@@ -219,6 +231,7 @@ def coverage_check(
                 min_docs=min_docs,
                 max_age=max_age,
                 max_cardinality=max_cardinality,
+                skip_absent=skip_absent,
             )
     except ValidationError as exc:
         usage_error(str(exc))
@@ -242,6 +255,12 @@ def coverage_check(
 @click.option("--min-docs", type=int, default=1, show_default=True)
 @click.option("--max-age", type=str, default=None)
 @click.option("--max-cardinality", type=int, default=None)
+@click.option(
+    "--skip-absent",
+    is_flag=True,
+    default=False,
+    help="When reporting all patterns, skip those with no matching streams",
+)
 @click.pass_context
 def coverage_report(
     ctx: click.Context,
@@ -251,6 +270,7 @@ def coverage_report(
     min_docs: int,
     max_age: Optional[str],
     max_cardinality: Optional[int],
+    skip_absent: bool,
 ) -> None:
     """
     Combined readiness report (templates + coverage + APM/Beats health).
@@ -264,6 +284,8 @@ def coverage_report(
     """
     if service and pattern:
         usage_error("Use only one of --service or --pattern")
+    if skip_absent and (service or pattern):
+        usage_error("--skip-absent applies only to the default all-pattern report")
     resolved_window = window or default_coverage_window()
     client = require_client(ctx)
     logger.info(
@@ -282,6 +304,7 @@ def coverage_report(
             min_docs=min_docs,
             max_age=max_age,
             max_cardinality=max_cardinality,
+            skip_absent=skip_absent,
         )
     except ValidationError as exc:
         usage_error(str(exc))

@@ -14,6 +14,8 @@ You can install Elastro using pip:
 
 ```bash
 pip install elastro-client
+# SQL ingest (--sql / --dsn) needs the extra:
+pip install "elastro-client[ingest-sql]"
 ```
 
 Or install from source:

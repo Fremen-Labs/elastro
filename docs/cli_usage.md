@@ -8,6 +8,7 @@ The CLI is automatically installed when you install the elastro package:
 
 ```bash
 pip install elastro-client
+pip install "elastro-client[ingest-sql]"   # optional: SQL ingest via --sql / --dsn
 ```
 
 ## Getting Started

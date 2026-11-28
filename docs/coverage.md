@@ -23,6 +23,8 @@ elastro coverage check --service my-app --window 15m
 elastro coverage check --pattern "traces-apm*" --min-docs 100 --max-age 5m
 # --all is a full APM+Beats gate: every default pattern must pass
 elastro -o table coverage check --all
+# Skip patterns with no matching streams (Lima without metricbeat)
+elastro coverage check --all --skip-absent
 
 # Combined readiness report
 elastro -o json coverage report
