@@ -189,13 +189,17 @@ elastro health assess -o table
 elastro health score
 elastro health assess --fix --dry-run -o table
 elastro health assess --history -o table
-elastro health rollback --id rb-abc123 --dry-run
+elastro health rollback apply --id rb-abc123 --dry-run
 elastro health shards --analyze
 elastro health hotspots
 elastro health lint -o table
 
 # Classic cluster status (prefer over utils health)
 elastro health status
+
+# APM/Beats coverage
+elastro coverage check --all --skip-absent
+elastro -o json coverage fleet status
 
 # Data Ingest & Processing (Client-Side)
 elastro ingest import data.csv --index customers --format csv
@@ -207,9 +211,9 @@ elastro ingest grok-builder --sample "10.0.0.1 - - [12/May/2026:07:03:12] \"GET 
 elastro ingest pipelines
 elastro ingest simulate my-pipeline --docs ./docs.json
 
-# Manage native realm security users and roles
-elastro security users list
-elastro security roles create my-role --privileges "monitor,manage"
+# Inspect native realm users and roles
+elastro security users
+elastro security roles --name kibana_admin
 
 # View long-running cluster tasks
 elastro tasks list --detailed
