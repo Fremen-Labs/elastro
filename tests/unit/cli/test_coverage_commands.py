@@ -105,6 +105,42 @@ def test_templates_apply_dry_run_does_not_put() -> None:
     cls.assert_called_once_with()
     cls.return_value.apply.assert_called_once()
     assert cls.return_value.apply.call_args.kwargs["dry_run"] is True
+
+
+def test_templates_apply_scratch_overrides() -> None:
+    client = _client()
+    planned = TemplateApplyResult(
+        name="apm-traces",
+        dry_run=True,
+        ilm_policy_name="elastro-scratch-apm",
+        ilm_policy={"policy": {"phases": {}}},
+        index_template_name="elastro-scratch-apm",
+        index_template={"index_patterns": ["elastro-scratch-traces-*"]},
+        applied=False,
+    )
+    with patch("elastro.cli.commands.coverage.TemplateManager") as cls:
+        cls.return_value.apply.return_value = planned
+        result = CliRunner().invoke(
+            coverage_group,
+            [
+                "templates",
+                "apply",
+                "apm-traces",
+                "--dry-run",
+                "--policy-name",
+                "elastro-scratch-apm",
+                "--template-name",
+                "elastro-scratch-apm",
+                "--index-pattern",
+                "elastro-scratch-traces-*",
+            ],
+            obj=client,
+        )
+    assert result.exit_code == 0, result.output
+    kwargs = cls.return_value.apply.call_args.kwargs
+    assert kwargs["ilm_policy_name"] == "elastro-scratch-apm"
+    assert kwargs["index_template_name"] == "elastro-scratch-apm"
+    assert kwargs["index_patterns"] == ["elastro-scratch-traces-*"]
     client.client.ilm.put_lifecycle.assert_not_called()
     client.client.indices.put_index_template.assert_not_called()
 

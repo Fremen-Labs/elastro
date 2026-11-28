@@ -82,9 +82,7 @@ Lima/k3s (second pass, cluster up):
 ## Install notes
 
 - `pipx install --force --python python3.13 .` from this repo succeeded. `elastro --version` → `1.14.0`. New group `coverage` is on `--help`.
-- PyPI `elastro-client` is still **1.13.1**. Anyone installing via `install.sh` / `pipx install elastro-client` will not get coverage, fail-closed CLI, or 1.14.0 until a release is published.
-
-**Backlog:** cut a 1.14.0 GitHub/PyPI release (or document `pipx install git+https://github.com/Fremen-Labs/elastro.git`).
+- PyPI `elastro-client` **1.14.0** is published. `install.sh` / `pipx install elastro-client` install coverage and the fail-closed CLI.
 
 ---
 
@@ -197,7 +195,7 @@ Fine, but `--help` says “Wrapper for list”. Easy to call without a pattern a
 | CLI-9 | P2 | `cluster allocation` empty success on green cluster. | Done |
 | CLI-10 | P2 | `memory`/`tools` search empty when agent indices missing. | Done |
 | COV-1 | P1 | `--all` AND-gate (metricbeat patterns absent on Lima). | Done: default AND-gate kept; `--skip-absent` skips missing patterns |
-| COV-2 | P1 | No `templates apply --yes` on shared Lima. | Open by design |
+| COV-2 | P1 | No production `templates apply --yes` on shared Lima. | Done: `--index-pattern` / `--template-name` scratch apply |
 | COV-3 | P1 | `--feature apm`/`beats` keep cluster FAIL findings. | Done |
 | COV-4 | P2 | `coverage report` does not write `elastro-health-audit`. | Done (`audit=False`) |
 | COV-5 | P2 | Fleet live Kibana API-key test. | Open by design |

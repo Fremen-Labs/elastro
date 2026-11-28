@@ -17,6 +17,10 @@ elastro coverage templates apply apm-traces --dry-run
 
 # Apply (non-interactive)
 elastro coverage templates apply metricbeat --policy-name custom-metrics --yes
+# Shared-cluster scratch apply (does not overwrite traces-apm*)
+elastro coverage templates apply apm-traces --yes \
+  --policy-name elastro-scratch-apm --template-name elastro-scratch-apm \
+  --index-pattern 'elastro-scratch-traces-*'
 
 # Data arrival / freshness
 elastro coverage check --service my-app --window 15m

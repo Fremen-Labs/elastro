@@ -99,6 +99,8 @@ class TemplateManager:
         hot_max_age: Optional[str] = None,
         warm_min_age: Optional[str] = None,
         delete_min_age: Optional[str] = None,
+        index_patterns: Optional[List[str]] = None,
+        index_template_name: Optional[str] = None,
     ) -> TemplateApplyResult:
         """Create or preview the ILM policy and composable index template."""
         asset = _load_asset(name, extra_dir=self._templates_path())
@@ -110,6 +112,8 @@ class TemplateManager:
             hot_max_age=hot_max_age,
             warm_min_age=warm_min_age,
             delete_min_age=delete_min_age,
+            index_patterns=index_patterns,
+            index_template_name=index_template_name,
         )
         result = TemplateApplyResult(
             name=str(asset.get("name") or _canonical_name(name)),
@@ -294,6 +298,8 @@ def _build_bodies(
     hot_max_age: Optional[str],
     warm_min_age: Optional[str],
     delete_min_age: Optional[str],
+    index_patterns: Optional[List[str]] = None,
+    index_template_name: Optional[str] = None,
 ) -> Dict[str, Any]:
     name = str(asset.get("name") or "coverage")
     ilm_block = copy.deepcopy(asset.get("ilm") or {})
@@ -324,15 +330,19 @@ def _build_bodies(
     template = copy.deepcopy(asset.get("template") or {})
     settings = template.setdefault("template", {}).setdefault("settings", {})
     settings["index.lifecycle.name"] = policy_name
-    if "index_patterns" not in template:
+    patterns = [item for item in (index_patterns or []) if item]
+    if patterns:
+        template["index_patterns"] = patterns
+    elif "index_patterns" not in template:
         template["index_patterns"] = list(asset.get("index_patterns") or [])
     meta = template.setdefault("_meta", {})
     meta.setdefault("managed_by", "elastro")
     meta["coverage_template"] = name
+    template_name = (index_template_name or "").strip() or f"elastro-{name}"
 
     return {
         "ilm_policy_name": policy_name,
         "ilm_policy": {"policy": policy},
-        "index_template_name": f"elastro-{name}",
+        "index_template_name": template_name,
         "index_template": template,
     }

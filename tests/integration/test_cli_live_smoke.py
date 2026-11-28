@@ -71,6 +71,53 @@ def test_live_cli_coverage_templates_list_no_cluster_needed(real_es_client) -> N
 
 
 @pytest.mark.integration
+def test_live_cli_scratch_template_apply_and_cleanup(real_es_client) -> None:
+    from elastro.core.ilm import IlmManager
+
+    policy = "elastro-scratch-apm-traces"
+    template = "elastro-scratch-apm-traces"
+    pattern = "elastro-scratch-traces-*"
+    es = real_es_client.get_client()
+    try:
+        result = _invoke(
+            real_es_client,
+            "-o",
+            "json",
+            "coverage",
+            "templates",
+            "apply",
+            "apm-traces",
+            "--yes",
+            "--policy-name",
+            policy,
+            "--template-name",
+            template,
+            "--index-pattern",
+            pattern,
+        )
+        assert result.exit_code == 0, result.output
+        payload = _json_payload(result.stdout)
+        assert payload.get("applied") is True
+        assert payload.get("index_template_name") == template
+        got = es.indices.get_index_template(name=template)
+        names = [
+            item.get("name")
+            for item in (got.get("index_templates") or [])
+            if isinstance(item, dict)
+        ]
+        assert template in names or got
+    finally:
+        try:
+            es.indices.delete_index_template(name=template)
+        except Exception:
+            pass
+        try:
+            IlmManager(real_es_client).delete_policy(policy)
+        except Exception:
+            pass
+
+
+@pytest.mark.integration
 def test_live_cli_coverage_templates_apply_dry_run(real_es_client) -> None:
     result = _invoke(
         real_es_client,
