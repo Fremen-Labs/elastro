@@ -77,6 +77,7 @@ The Elastro CLI provides a robust feature set for managing your Elasticsearch cl
 - **`create`**: Upload a customized JSON ILM policy.
 - **`list`** / **`get`**: Inspect the policies currently governing your cluster data.
 - **`delete`**: Remove an ILM policy.
+- **`start`** / **`stop`**: Enable or disable ILM on the cluster (`--yes` or `--dry-run` required for mutations).
 
 ---
 
@@ -146,3 +147,84 @@ Global `-o json|yaml|table` belongs on the root group: `elastro -o json coverage
 - **`grok-builder`**: A dual-mode (Deterministic and AI-Assisted) builder to rapidly construct and test Grok patterns against the ES Simulate API.
 - **`pipelines`**: List and inspect currently active server-side Elasticsearch ingest pipelines.
 - **`simulate`**: Test an existing pipeline against a sample document or file to verify its transformations.
+
+---
+
+## 13. `cluster`
+**Purpose**: Cluster-level allocation and routing.
+**Why it's important**: Unassigned shards and routing blocks are the usual reasons a cluster sits yellow/red. These commands explain allocation and toggle routing without raw `_cluster` JSON.
+
+- **`allocation`**: Explain unassigned shards (empty success when none are unassigned).
+- **`settings`**: Show or update allocation routing (`--enable-routing` requires `--yes`).
+
+---
+
+## 14. `security`
+**Purpose**: Inspect Elasticsearch native users and roles.
+**Why it's important**: Fast RBAC inventory without opening Kibana.
+
+- **`users`**: List native users (optional username filter).
+- **`roles`**: List roles (optional name filter).
+
+---
+
+## 15. `tasks`
+**Purpose**: List and cancel cluster tasks.
+**Why it's important**: Long reindexes and bulk jobs show up here; cancel requires `--yes`.
+
+- **`list`**: List tasks (`--action` filter).
+- **`cancel`**: Cancel a task by id (confirm gate).
+
+---
+
+## 16. `script`
+**Purpose**: Stored script CRUD and execute.
+**Why it's important**: Shared Painless/Mustache scripts live in the cluster script store.
+
+- **`list`** / **`get`** / **`create`** / **`delete`**: Manage stored scripts (`delete` requires `--yes`).
+- **`execute`**: Run a stored or inline script.
+
+---
+
+## 17. `painless`
+**Purpose**: Scaffold and test Painless locally.
+**Why it's important**: `scaffold` is TTY-only (exit 2 without a TTY). `test` executes against mock or cluster context.
+
+- **`scaffold`**: Interactive boilerplate (non-TTY exits 2, no ES).
+- **`test`**: Execute a script file.
+
+---
+
+## 18. `esql`
+**Purpose**: Run ES|QL and build queries.
+**Why it's important**: Ad-hoc analytics without writing Query DSL.
+
+- **`query`**: Run an ES|QL string against the cluster.
+- **`build`**: Fluent builder (`-s`, `-w`, `--stats`, `--by`, `--limit`).
+
+---
+
+## 19. `daemon`
+**Purpose**: Optional local fast-path process for `doc search`.
+**Why it's important**: Repeated `elastro doc search` from scripts can skip full CLI startup when the daemon is up.
+
+- **`start`** / **`status`**: Start or check the local XML-RPC helper.
+
+---
+
+## 20. `memory` / `tools` / `telemetry`
+**Purpose**: Agent memory, tool registry, and telemetry ingest helpers.
+**Why it's important**: Optional agent features. Missing indices return empty results and exit 0 (no 404 stack traces).
+
+- **`memory search` / `ingest` / `prune` / `wake`**: Memory index helpers (`prune` has `--dry-run` / `--yes`).
+- **`tools search` / `register`**: Tool catalog.
+- **`telemetry ingest`**: Ingest telemetry payloads.
+
+---
+
+## 21. `ml` / `rag`
+**Purpose**: Anomaly-detection job init and repo RAG ingest.
+**Why it's important**: Optional ML/RAG workflows. `ml init-job` is TTY-only.
+
+- **`ml init-job`**: Interactive ML job scaffold.
+- **`rag ingest-repo` / `update-file`**: Index a repo or file for RAG.
